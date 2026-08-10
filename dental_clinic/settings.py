@@ -41,13 +41,28 @@ else:
 if DEBUG:
     ALLOWED_HOSTS = ['*']
 else:
+    # Get the public domain from environment or use a default
+    railway_domain = os.environ.get('RAILWAY_PUBLIC_DOMAIN', '')
     ALLOWED_HOSTS = [
         'localhost',
         '127.0.0.1',
         '.railway.app',
         '.up.railway.app',
-        os.environ.get('RAILWAY_PUBLIC_DOMAIN', ''),
     ]
+    if railway_domain:
+        ALLOWED_HOSTS.append(railway_domain)
+    # Also allow the full domain without wildcard
+    ALLOWED_HOSTS.append('dorah-dental-production.up.railway.app')
+
+# =======================
+# CSRF TRUSTED ORIGINS
+# =======================
+
+CSRF_TRUSTED_ORIGINS = [
+    'https://dorah-dental-production.up.railway.app',
+    'https://*.railway.app',
+    'https://*.up.railway.app',
+]
 
 # =======================
 # INSTALLED APPS
@@ -67,8 +82,8 @@ INSTALLED_APPS = [
     'appointments',
     'billing',
     'core',
-    'inventory', 
-    'notifications',
+    'inventory',
+    'notifications',  # REMOVED the Pillow line!
 ]
 
 # =======================
@@ -90,14 +105,8 @@ ROOT_URLCONF = 'dental_clinic.urls'
 WSGI_APPLICATION = 'dental_clinic.wsgi.application'
 
 # =======================
-# DATABASE - PostgreSQL ONLY (Railway)
-# =======================
-
-# =======================
 # DATABASE - PostgreSQL (Railway)
 # =======================
-
-import dj_database_url
 
 # Your actual Railway PostgreSQL connection string
 DATABASE_URL = "postgresql://postgres:yMgKMbELWuRVkvCumYxKoBzGgRmZHoJb@altaria.proxy.rlwy.net:15815/railway"
