@@ -1,0 +1,228 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block page_title %}Add Dental Images{% endblock %}
+
+{% block extra_css %}
+<style>
+    .image-preview {
+        border: 2px dashed #dee2e6;
+        border-radius: 10px;
+        padding: 20px;
+        text-align: center;
+        min-height: 100px;
+        transition: all 0.3s;
+        cursor: pointer;
+    }
+    .image-preview:hover {
+        border-color: #667eea;
+        background: #f8f9fa;
+    }
+    .image-preview .preview-text {
+        color: #6c757d;
+    }
+    .image-preview .preview-text i {
+        font-size: 2rem;
+    }
+    .preview-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+        gap: 10px;
+        margin-top: 15px;
+    }
+    .preview-item {
+        position: relative;
+        border: 1px solid #dee2e6;
+        border-radius: 8px;
+        overflow: hidden;
+    }
+    .preview-item img {
+        width: 100%;
+        height: 120px;
+        object-fit: cover;
+    }
+    .preview-item .file-name {
+        padding: 5px;
+        font-size: 0.7rem;
+        text-align: center;
+        background: #f8f9fa;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+    .preview-item .remove-btn {
+        position: absolute;
+        top: 5px;
+        right: 5px;
+        background: rgba(255,0,0,0.7);
+        color: white;
+        border: none;
+        border-radius: 50%;
+        width: 25px;
+        height: 25px;
+        font-size: 14px;
+        cursor: pointer;
+        display: none;
+    }
+    .preview-item:hover .remove-btn {
+        display: block;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">
+                <i class="fas fa-images text-primary"></i> Add Dental Images for {{ patient.full_name }}
+            </div>
+            <div class="card-body">
+                <form method="post" enctype="multipart/form-data">
+                    {% csrf_token %}
+                    
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle"></i>
+                        Upload photos of the patient's dental condition, x-rays, or treatment progress.
+                        <br>
+                        <small>Accepted formats: JPG, PNG, GIF (Max: 10MB per file)</small>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="image_type" class="form-label">Image Type</label>
+                        <select class="form-select" id="image_type" name="image_type">
+                            <option value="clinical">Clinical Photo</option>
+                            <option value="xray">X-Ray</option>
+                            <option value="treatment">Treatment Photo</option>
+                            <option value="before">Before Treatment</option>
+                            <option value="after">After Treatment</option>
+                            <option value="surgery">Surgery Photo</option>
+                            <option value="other">Other</option>
+                        </select>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="dental_images" class="form-label">Select Images</label>
+                        <div class="image-preview" id="dropZone">
+                            <div class="preview-text" id="previewText">
+                                <i class="fas fa-cloud-upload-alt"></i>
+                                <p class="mb-0">Drag & drop images here or click to browse</p>
+                                <small class="text-muted">You can select multiple images</small>
+                            </div>
+                            <input type="file" class="d-none" id="dental_images" name="dental_images" 
+                                   accept="image/*" multiple required>
+                        </div>
+                        <div id="previewContainer" class="preview-grid"></div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="image_description" class="form-label">Image Description (Optional)</label>
+                        <textarea class="form-control" id="image_description" name="image_description" rows="2" 
+                                  placeholder="Describe what the images show (e.g., 'Upper right molar cavity', 'Before treatment - tooth 23')"></textarea>
+                    </div>
+                    
+                    <div class="d-flex justify-content-between">
+                        <a href="{% url 'patients:detail' patient.pk %}" class="btn btn-secondary">
+                            <i class="fas fa-arrow-left"></i> Cancel
+                        </a>
+                        <button type="submit" class="btn btn-primary" id="uploadBtn">
+                            <i class="fas fa-upload"></i> Upload Images
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Drag and drop functionality
+    const dropZone = document.getElementById('dropZone');
+    const fileInput = document.getElementById('dental_images');
+    const previewContainer = document.getElementById('previewContainer');
+    const previewText = document.getElementById('previewText');
+    const uploadBtn = document.getElementById('uploadBtn');
+    let selectedFiles = [];
+
+    // Click to browse
+    dropZone.addEventListener('click', function() {
+        fileInput.click();
+    });
+
+    // File selection
+    fileInput.addEventListener('change', function(e) {
+        handleFiles(this.files);
+    });
+
+    // Drag and drop events
+    dropZone.addEventListener('dragover', function(e) {
+        e.preventDefault();
+        this.style.borderColor = '#667eea';
+        this.style.background = '#f0f4ff';
+    });
+
+    dropZone.addEventListener('dragleave', function(e) {
+        e.preventDefault();
+        this.style.borderColor = '#dee2e6';
+        this.style.background = 'transparent';
+    });
+
+    dropZone.addEventListener('drop', function(e) {
+        e.preventDefault();
+        this.style.borderColor = '#dee2e6';
+        this.style.background = 'transparent';
+        handleFiles(e.dataTransfer.files);
+    });
+
+    function handleFiles(files) {
+        // Convert FileList to array
+        const newFiles = Array.from(files);
+        selectedFiles = [...selectedFiles, ...newFiles];
+        
+        // Update the file input
+        const dt = new DataTransfer();
+        selectedFiles.forEach(file => dt.items.add(file));
+        fileInput.files = dt.files;
+        
+        // Update preview
+        renderPreviews();
+        
+        // Hide placeholder text
+        previewText.style.display = selectedFiles.length > 0 ? 'none' : 'block';
+    }
+
+    function renderPreviews() {
+        previewContainer.innerHTML = '';
+        
+        selectedFiles.forEach((file, index) => {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const div = document.createElement('div');
+                div.className = 'preview-item';
+                div.innerHTML = `
+                    <img src="${e.target.result}" alt="${file.name}">
+                    <div class="file-name">${file.name}</div>
+                    <button class="remove-btn" onclick="removeFile(${index})">×</button>
+                `;
+                previewContainer.appendChild(div);
+            };
+            reader.readAsDataURL(file);
+        });
+        
+        // Enable/disable upload button
+        uploadBtn.disabled = selectedFiles.length === 0;
+    }
+
+    function removeFile(index) {
+        selectedFiles.splice(index, 1);
+        
+        // Update file input
+        const dt = new DataTransfer();
+        selectedFiles.forEach(file => dt.items.add(file));
+        fileInput.files = dt.files;
+        
+        renderPreviews();
+        previewText.style.display = selectedFiles.length > 0 ? 'none' : 'block';
+    }
+</script>
+{% endblock %}

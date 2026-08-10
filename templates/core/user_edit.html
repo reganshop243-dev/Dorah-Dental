@@ -1,0 +1,174 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block page_title %}Edit User{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">
+                <i class="fas fa-user-edit text-primary"></i> Edit User: {{ user.username }}
+            </div>
+            <div class="card-body">
+                <form method="post">
+                    {% csrf_token %}
+                    
+                    <!-- Personal Information -->
+                    <h6 class="text-muted mb-3"><i class="fas fa-user"></i> Personal Information</h6>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="first_name" class="form-label">First Name</label>
+                            <input type="text" class="form-control" id="first_name" name="first_name" 
+                                   value="{{ user.first_name }}">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="last_name" class="form-label">Last Name</label>
+                            <input type="text" class="form-control" id="last_name" name="last_name" 
+                                   value="{{ user.last_name }}">
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="email" class="form-label">Email</label>
+                            <input type="email" class="form-control" id="email" name="email" 
+                                   value="{{ user.email }}">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="phone" class="form-label">Phone</label>
+                            <input type="text" class="form-control" id="phone" name="phone" 
+                                   value="{{ profile.phone }}">
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="address" class="form-label">Address</label>
+                        <textarea class="form-control" id="address" name="address" rows="2">{{ profile.address }}</textarea>
+                    </div>
+                    
+                    <hr>
+                    
+                    <!-- Account Information -->
+                    <h6 class="text-muted mb-3"><i class="fas fa-lock"></i> Account Information</h6>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="role" class="form-label">Role *</label>
+                            <select class="form-select" id="role" name="role" required onchange="toggleDoctorFields()">
+                                {% for role_code, role_name in roles %}
+                                    <option value="{{ role_code }}" {% if profile.role == role_code %}selected{% endif %}>
+                                        {{ role_name }}
+                                    </option>
+                                {% endfor %}
+                            </select>
+                            <small class="text-muted">This determines what the user can access</small>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <div class="form-check mt-4">
+                                <input type="checkbox" class="form-check-input" id="is_active" name="is_active" 
+                                       {% if user.is_active %}checked{% endif %}>
+                                <label class="form-check-label" for="is_active">
+                                    <i class="fas fa-check-circle text-success"></i> Active
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                    
+<div class="col-md-6 mb-3">
+    <label for="phone" class="form-label">
+        Phone Number <span class="text-danger">*</span>
+    </label>
+    <input type="text" class="form-control" id="phone" name="phone" 
+           value="{{ profile.phone }}" required>
+    <small class="text-muted">Required for OTP verification and SMS notifications</small>
+</div>
+
+                    <!-- Doctor Fields (Optional - Only shows for Doctor role) -->
+                    <div id="doctorFields" style="display: {% if profile.role == 'doctor' %}block{% else %}none{% endif %};">
+                        <hr>
+                        <h6 class="text-muted mb-3"><i class="fas fa-user-md"></i> Doctor Profile (Optional)</h6>
+                        
+                        <div class="mb-3">
+                            <label for="doctor_option" class="form-label">Doctor Profile Option</label>
+                            <select class="form-select" id="doctor_option" name="doctor_option" onchange="toggleDoctorLink()">
+                                <option value="auto">Auto-create doctor profile</option>
+                                <option value="existing" {% if current_doctor %}selected{% endif %}>Link to existing doctor</option>
+                            </select>
+                            <small class="text-muted">Choose to link to an existing doctor or create a new one</small>
+                        </div>
+                        
+                        <div id="doctorLinkField" style="display: {% if current_doctor %}block{% else %}none{% endif %};">
+                            <div class="mb-3">
+                                <label for="doctor_link" class="form-label">Select Existing Doctor</label>
+                                <select class="form-select" id="doctor_link" name="doctor_link">
+                                    <option value="">-- Select a doctor --</option>
+                                    {% for doctor in doctors %}
+                                        <option value="{{ doctor.pk }}" {% if current_doctor and current_doctor.pk == doctor.pk %}selected{% endif %}>
+                                            Dr. {{ doctor.name }} - {{ doctor.specialization }}
+                                        </option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="specialization" class="form-label">Specialization (for new doctor)</label>
+                            <input type="text" class="form-control" id="specialization" name="specialization" 
+                                   placeholder="e.g., General Dentistry, Orthodontics" 
+                                   value="{% if current_doctor %}{{ current_doctor.specialization }}{% endif %}">
+                            <small class="text-muted">Only used when creating a new doctor profile</small>
+                        </div>
+                    </div>
+                    
+                    <hr>
+                    
+                    <!-- Change Password -->
+                    <h6 class="text-muted mb-3"><i class="fas fa-key"></i> Change Password (optional)</h6>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="new_password" class="form-label">New Password</label>
+                            <input type="password" class="form-control" id="new_password" name="new_password">
+                            <small class="text-muted">Leave blank to keep current password</small>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="confirm_password" class="form-label">Confirm New Password</label>
+                            <input type="password" class="form-control" id="confirm_password" name="confirm_password">
+                        </div>
+                    </div>
+                    
+                    <div class="d-flex justify-content-between">
+                        <a href="{% url 'core:user_list' %}" class="btn btn-secondary">
+                            <i class="fas fa-arrow-left"></i> Cancel
+                        </a>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-save"></i> Update User
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    function toggleDoctorFields() {
+        const role = document.getElementById('role').value;
+        const doctorFields = document.getElementById('doctorFields');
+        if (role === 'doctor') {
+            doctorFields.style.display = 'block';
+        } else {
+            doctorFields.style.display = 'none';
+        }
+    }
+    
+    function toggleDoctorLink() {
+        const option = document.getElementById('doctor_option').value;
+        const linkField = document.getElementById('doctorLinkField');
+        if (option === 'existing') {
+            linkField.style.display = 'block';
+        } else {
+            linkField.style.display = 'none';
+        }
+    }
+</script>
+{% endblock %}

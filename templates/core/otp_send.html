@@ -1,0 +1,68 @@
+{% extends 'core/base_otp.html' %}
+{% load static %}
+
+{% block title %}OTP Verification{% endblock %}
+
+{% block content %}
+<div class="otp-title">Verify Your Identity</div>
+<div class="otp-subtitle">Get OTP Code</div>
+
+{% if messages %}
+    {% for message in messages %}
+        <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+            {{ message }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    {% endfor %}
+{% endif %}
+
+<div class="text-center mb-4">
+    <i class="fas fa-sms fa-3x text-primary"></i>
+    <p class="text-muted mt-2">
+        An OTP will be sent to your registered phone number:<br>
+        <strong>{{ user.profile.phone }}</strong>
+    </p>
+    <p class="text-muted small">
+        <i class="fas fa-info-circle"></i> OTP is valid for 5 minutes
+    </p>
+    {% if user.profile.otp_code %}
+        <div class="alert alert-info mt-2">
+            <i class="fas fa-clock"></i> 
+            You already have an active OTP. Please check your phone or go to the verification page.
+        </div>
+    {% endif %}
+</div>
+
+<form method="post" id="otpForm">
+    {% csrf_token %}
+    <button type="submit" class="btn-verify">
+        <i class="fas fa-paper-plane"></i> Send OTP
+    </button>
+</form>
+
+<div class="text-center mt-3">
+    <small>
+        <a href="{% url 'core:otp_verify' %}" class="text-muted">
+            <i class="fas fa-arrow-left"></i> Go to verification
+        </a>
+    </small>
+</div>
+
+<div class="text-center mt-2">
+    <small>
+        <a href="{% url 'core:logout' %}" class="text-danger">
+            <i class="fas fa-sign-out-alt"></i> Logout
+        </a>
+    </small>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // No auto-submit - user must click the button
+    document.addEventListener('DOMContentLoaded', function() {
+        // Just log that the page loaded
+        console.log('OTP Send page loaded - waiting for user action');
+    });
+</script>
+{% endblock %}

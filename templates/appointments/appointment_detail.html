@@ -1,0 +1,249 @@
+{% extends 'base.html' %}
+{% load static %}
+{% load humanize %}
+
+{% block page_title %}Appointment Details{% endblock %}
+
+{% block extra_css %}
+<style>
+    .status-badge {
+        font-size: 0.9rem;
+        padding: 8px 16px;
+    }
+    .timeline {
+        position: relative;
+        padding-left: 30px;
+    }
+    .timeline::before {
+        content: '';
+        position: absolute;
+        left: 10px;
+        top: 0;
+        bottom: 0;
+        width: 2px;
+        background: #dee2e6;
+    }
+    .timeline-item {
+        position: relative;
+        margin-bottom: 20px;
+    }
+    .timeline-item::before {
+        content: '';
+        position: absolute;
+        left: -24px;
+        top: 5px;
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        background: #667eea;
+        border: 2px solid white;
+        box-shadow: 0 0 0 3px #667eea;
+    }
+    .timeline-item.completed::before {
+        background: #2ecc71;
+        box-shadow: 0 0 0 3px #2ecc71;
+    }
+    .timeline-item.current::before {
+        background: #f39c12;
+        box-shadow: 0 0 0 3px #f39c12;
+        animation: pulse 1.5s infinite;
+    }
+    @keyframes pulse {
+        0% { box-shadow: 0 0 0 3px #f39c12; }
+        50% { box-shadow: 0 0 0 6px rgba(243, 156, 18, 0.4); }
+        100% { box-shadow: 0 0 0 3px #f39c12; }
+    }
+    .timeline-item.pending::before {
+        background: #95a5a6;
+        box-shadow: 0 0 0 3px #95a5a6;
+    }
+    .treatment-section {
+        background: #f8f9fa;
+        border-radius: 10px;
+        padding: 15px;
+        margin-top: 10px;
+    }
+    .prescription-item {
+        border-left: 3px solid #667eea;
+        padding-left: 12px;
+        margin-bottom: 8px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-8">
+        <!-- Appointment Info -->
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span><i class="fas fa-calendar-check text-primary"></i> Appointment Details</span>
+                <div>
+                    <a href="{% url 'appointments:edit' appointment.pk %}" class="btn btn-sm btn-primary">
+                        <i class="fas fa-edit"></i> Edit
+                    </a>
+                    <a href="{% url 'appointments:delete' appointment.pk %}" class="btn btn-sm btn-danger">
+                        <i class="fas fa-trash"></i> Delete
+                    </a>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <p><strong>Patient:</strong> 
+                            <a href="{% url 'patients:detail' appointment.patient.pk %}">
+                                {{ appointment.patient.full_name }}
+                            </a>
+                        </p>
+                        <p><strong>Doctor:</strong> Dr. {{ appointment.doctor.name }}</p>
+                        <p><strong>Service:</strong> {{ appointment.service.name }}</p>
+                        <p><strong>Price:</strong> UGX {{ appointment.service.price|floatformat:0|intcomma }}</p>
+                    </div>
+                    <div class="col-md-6">
+                        <p><strong>Date:</strong> {{ appointment.appointment_date|date:"F d, Y" }}</p>
+                        <p><strong>Time:</strong> {{ appointment.appointment_time|time:"H:i" }}</p>
+                        <p><strong>Duration:</strong> {{ appointment.duration_minutes }} minutes</p>
+                        <p><strong>Status:</strong> 
+                            <span class="badge {% if appointment.status == 'scheduled' %}bg-primary{% elif appointment.status == 'checked_in' %}bg-info{% elif appointment.status == 'in_progress' %}bg-warning{% elif appointment.status == 'completed' %}bg-success{% elif appointment.status == 'treatment_done' %}bg-success{% elif appointment.status == 'follow_up_needed' %}bg-info{% elif appointment.status == 'cancelled' %}bg-danger{% elif appointment.status == 'no_show' %}bg-secondary{% endif %} status-badge">
+                                {{ appointment.get_status_display }}
+                            </span>
+                        </p>
+                    </div>
+                </div>
+                
+                <!-- Appointment Timeline -->
+                <div class="mt-4">
+                    <h6><i class="fas fa-clock text-primary"></i> Appointment Timeline</h6>
+                    <div class="timeline">
+                        <div class="timeline-item {% if appointment.status == 'scheduled' %}current{% else %}completed{% endif %}">
+                            <strong>Scheduled</strong>
+                            <div class="text-muted small">Appointment booked on {{ appointment.created_at|date:"M d, Y H:i" }}</div>
+                        </div>
+                        <div class="timeline-item {% if appointment.status == 'checked_in' %}current{% elif appointment.status == 'scheduled' %}pending{% else %}completed{% endif %}">
+                            <strong>Checked In</strong>
+                            <div class="text-muted small">Patient arrived at clinic</div>
+                        </div>
+                        <div class="timeline-item {% if appointment.status == 'in_progress' %}current{% elif appointment.status == 'scheduled' or appointment.status == 'checked_in' %}pending{% else %}completed{% endif %}">
+                            <strong>In Progress</strong>
+                            <div class="text-muted small">Consultation/treatment in progress</div>
+                        </div>
+                        <div class="timeline-item {% if appointment.status == 'completed' or appointment.status == 'treatment_done' or appointment.status == 'follow_up_needed' %}completed{% elif appointment.status == 'in_progress' %}current{% else %}pending{% endif %}">
+                            <strong>Completed</strong>
+                            <div class="text-muted small">Treatment completed</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Consultation Notes -->
+        <div class="card mt-3">
+            <div class="card-header">
+                <i class="fas fa-notes-medical text-primary"></i> Consultation & Treatment
+            </div>
+            <div class="card-body">
+                {% if appointment.consultation_notes or appointment.diagnosis %}
+                    <div class="treatment-section">
+                        <h6><i class="fas fa-stethoscope"></i> Diagnosis</h6>
+                        <p>{{ appointment.diagnosis|default:"No diagnosis recorded" }}</p>
+                    </div>
+                    
+                    <div class="treatment-section">
+                        <h6><i class="fas fa-file-medical"></i> Consultation Notes</h6>
+                        <p>{{ appointment.consultation_notes|default:"No notes recorded" }}</p>
+                    </div>
+                    
+                    <div class="treatment-section">
+                        <h6><i class="fas fa-clipboard-list"></i> Treatment Plan</h6>
+                        <p>{{ appointment.treatment_plan|default:"No treatment plan recorded" }}</p>
+                    </div>
+                    
+                    <div class="treatment-section">
+                        <h6><i class="fas fa-prescription"></i> Prescription</h6>
+                        <p>{{ appointment.prescription|default:"No prescription given" }}</p>
+                    </div>
+                    
+                    {% if appointment.treatment_cost %}
+                    <div class="treatment-section">
+                        <h6><i class="fas fa-money-bill-wave"></i> Treatment Cost</h6>
+                        <p><strong>UGX {{ appointment.treatment_cost|floatformat:0|intcomma }}</strong></p>
+                    </div>
+                    {% endif %}
+                    
+                    {% if appointment.referred_to %}
+                    <div class="treatment-section">
+                        <h6><i class="fas fa-ambulance"></i> Referred To</h6>
+                        <p>{{ appointment.referred_to }}</p>
+                    </div>
+                    {% endif %}
+                {% else %}
+                    <p class="text-muted text-center py-3">
+                        <i class="fas fa-notes-medical fa-2x d-block mb-2"></i>
+                        No treatment notes recorded yet.
+                    </p>
+                    <a href="{% url 'appointments:edit' appointment.pk %}" class="btn btn-sm btn-primary">
+                        <i class="fas fa-plus"></i> Add Treatment Notes
+                    </a>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    
+    <!-- Sidebar -->
+    <div class="col-md-4">
+        <!-- Quick Actions -->
+        <div class="card">
+            <div class="card-header">
+                <i class="fas fa-bolt text-warning"></i> Quick Actions
+            </div>
+            <div class="card-body">
+                <div class="d-grid gap-2">
+                    <a href="{% url 'appointments:edit' appointment.pk %}" class="btn btn-primary">
+                        <i class="fas fa-edit"></i> Update Status
+                    </a>
+                    <a href="{% url 'billing:add' %}?patient={{ appointment.patient.pk }}" class="btn btn-success">
+                        <i class="fas fa-file-invoice"></i> Create Invoice
+                    </a>
+                    <a href="#" class="btn btn-info text-white">
+                        <i class="fas fa-prescription"></i> Add Prescription
+                    </a>
+                    <a href="#" class="btn btn-warning text-white">
+                        <i class="fas fa-calendar-plus"></i> Schedule Follow-up
+                    </a>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Patient Info -->
+        <div class="card mt-3">
+            <div class="card-header">
+                <i class="fas fa-user text-primary"></i> Patient Quick Info
+            </div>
+            <div class="card-body">
+                <p><strong>{{ appointment.patient.full_name }}</strong></p>
+                <p><i class="fas fa-phone"></i> {{ appointment.patient.phone }}</p>
+                <p><i class="fas fa-envelope"></i> {{ appointment.patient.email|default:"N/A" }}</p>
+                <p><i class="fas fa-calendar"></i> Age: {{ appointment.patient.age }} years</p>
+                <a href="{% url 'patients:detail' appointment.patient.pk %}" class="btn btn-sm btn-outline-primary w-100">
+                    <i class="fas fa-user"></i> Full Patient Profile
+                </a>
+            </div>
+        </div>
+        
+        <!-- Follow-up Info -->
+        {% if appointment.follow_up_date %}
+        <div class="card mt-3 border-info">
+            <div class="card-header bg-info text-white">
+                <i class="fas fa-calendar-alt"></i> Follow-up Scheduled
+            </div>
+            <div class="card-body">
+                <p><strong>Date:</strong> {{ appointment.follow_up_date|date:"F d, Y" }}</p>
+                {% if appointment.follow_up_notes %}
+                    <p><strong>Notes:</strong> {{ appointment.follow_up_notes }}</p>
+                {% endif %}
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

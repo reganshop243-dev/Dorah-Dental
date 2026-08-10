@@ -1,0 +1,299 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block page_title %}New Appointment{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">
+                <i class="fas fa-calendar-plus text-primary"></i> New Appointment
+            </div>
+            <div class="card-body">
+                <form method="post" id="appointmentForm">
+                    {% csrf_token %}
+                    
+                    <!-- Patient Search -->
+                    <div class="mb-3">
+                        <label class="form-label">Search Patient *</label>
+                        <div class="search-container">
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="fas fa-search"></i></span>
+                                <input type="text" class="form-control" id="patientSearch" 
+                                       placeholder="Search by name, phone, or email..." 
+                                       autocomplete="off">
+                                <button class="btn btn-outline-secondary" type="button" id="clearPatientSearch">
+                                    <i class="fas fa-times"></i>
+                                </button>
+                            </div>
+                            <div class="search-results" id="patientResults">
+                                <div class="loading-spinner" id="patientLoading">
+                                    <i class="fas fa-spinner fa-spin"></i> Searching...
+                                </div>
+                            </div>
+                        </div>
+                        <input type="hidden" id="patient" name="patient" required>
+                        <div class="selected-item" id="selectedPatient">
+                            <div class="d-flex justify-content-between align-items-start">
+                                <div>
+                                    <div class="item-name" id="selectedPatientName"></div>
+                                    <div class="item-details" id="selectedPatientDetails"></div>
+                                </div>
+                                <span class="change-btn" onclick="clearSelectedPatient()">
+                                    <i class="fas fa-edit"></i> Change
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="doctor" class="form-label">Doctor *</label>
+                            <select class="form-select" id="doctor" name="doctor" required>
+                                <option value="">Select Doctor</option>
+                                {% for doctor in doctors %}
+                                    <option value="{{ doctor.pk }}">Dr. {{ doctor.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="service" class="form-label">Service *</label>
+                            <select class="form-select" id="service" name="service" required>
+                                <option value="">Select Service</option>
+                                {% for service in services %}
+                                    <option value="{{ service.pk }}">{{ service.name }} - UGX {{ service.price }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="appointment_date" class="form-label">Date *</label>
+                            <input type="date" class="form-control" id="appointment_date" name="appointment_date" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="appointment_time" class="form-label">Time *</label>
+                            <input type="time" class="form-control" id="appointment_time" name="appointment_time" required>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="notes" class="form-label">Notes</label>
+                        <textarea class="form-control" id="notes" name="notes" rows="2"></textarea>
+                    </div>
+                    
+                    <hr>
+                    
+                    <!-- Notification Section -->
+                    <h6 class="text-muted mb-3"><i class="fas fa-bell"></i> Appointment Reminders</h6>
+                    
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="notification_email" class="form-label">Notification Email</label>
+                            <input type="email" class="form-control" id="notification_email" 
+                                   name="notification_email" placeholder="Enter email for reminders">
+                            <small class="text-muted">Leave blank to use patient's email</small>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="notification_phone" class="form-label">Notification Phone</label>
+                            <input type="text" class="form-control" id="notification_phone" 
+                                   name="notification_phone" placeholder="Enter phone for SMS reminders">
+                            <small class="text-muted">Leave blank to use patient's phone</small>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <div class="form-check">
+                            <input type="checkbox" class="form-check-input" id="send_reminder" 
+                                   name="send_reminder" checked>
+                            <label class="form-check-label" for="send_reminder">
+                                <i class="fas fa-bell text-success"></i> Send reminder for this appointment
+                            </label>
+                        </div>
+                        <small class="text-muted">A confirmation SMS will be sent to the patient</small>
+                    </div>
+                    
+                    <div class="d-flex justify-content-between">
+                        <a href="{% url 'appointments:list' %}" class="btn btn-secondary">
+                            <i class="fas fa-arrow-left"></i> Cancel
+                        </a>
+                        <button type="submit" class="btn btn-primary" id="submitBtn">
+                            <i class="fas fa-save"></i> Create Appointment
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .search-container {
+        position: relative;
+    }
+    .search-results {
+        position: absolute;
+        top: 100%;
+        left: 0;
+        right: 0;
+        max-height: 300px;
+        overflow-y: auto;
+        background: white;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        z-index: 1000;
+        display: none;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    }
+    .search-results .result-item {
+        padding: 10px 15px;
+        cursor: pointer;
+        border-bottom: 1px solid #f0f0f0;
+        transition: background 0.2s;
+    }
+    .search-results .result-item:hover {
+        background: #f0f8ff;
+    }
+    .search-results .result-item .name {
+        font-weight: 600;
+        color: #2c3e50;
+    }
+    .search-results .result-item .details {
+        color: #7f8c8d;
+        font-size: 0.9rem;
+    }
+    .search-results .no-results {
+        padding: 20px;
+        text-align: center;
+        color: #7f8c8d;
+    }
+    .selected-item {
+        background: #f8f9fa;
+        border: 2px solid #3498db;
+        border-radius: 8px;
+        padding: 15px;
+        margin-top: 10px;
+        display: none;
+    }
+    .selected-item .item-name {
+        font-size: 1.1rem;
+        font-weight: 600;
+        color: #2c3e50;
+    }
+    .selected-item .change-btn {
+        cursor: pointer;
+        color: #3498db;
+        text-decoration: underline;
+    }
+    .loading-spinner {
+        display: none;
+        text-align: center;
+        padding: 20px;
+        color: #7f8c8d;
+    }
+</style>
+
+<script>
+    // ==================== PATIENT SEARCH ====================
+    let selectedPatientId = null;
+    const patientSearch = document.getElementById('patientSearch');
+    const patientResults = document.getElementById('patientResults');
+    const patientLoading = document.getElementById('patientLoading');
+    const selectedPatient = document.getElementById('selectedPatient');
+    const submitBtn = document.getElementById('submitBtn');
+    
+    // Set default date to today
+    document.getElementById('appointment_date').valueAsDate = new Date();
+    
+    // Patient search
+    let patientTimeout;
+    patientSearch.addEventListener('input', function() {
+        clearTimeout(patientTimeout);
+        const query = this.value.trim();
+        if (query.length < 2) {
+            patientResults.style.display = 'none';
+            return;
+        }
+        
+        patientLoading.style.display = 'block';
+        patientResults.style.display = 'block';
+        patientResults.innerHTML = '';
+        patientResults.appendChild(patientLoading);
+        
+        patientTimeout = setTimeout(() => {
+            fetch(`/patients/api/search/?q=${encodeURIComponent(query)}`)
+                .then(r => r.json())
+                .then(data => {
+                    patientLoading.style.display = 'none';
+                    patientResults.innerHTML = '';
+                    if (data.results && data.results.length > 0) {
+                        data.results.forEach(p => {
+                            const div = document.createElement('div');
+                            div.className = 'result-item';
+                            // Use full_name or name
+                            const patientName = p.full_name || p.name || 'Unknown';
+                            div.innerHTML = `
+                                <div class="name">${patientName}</div>
+                                <div class="details"><i class="fas fa-phone"></i> ${p.phone || 'N/A'}</div>
+                                ${p.email ? `<div class="details"><i class="fas fa-envelope"></i> ${p.email}</div>` : ''}
+                            `;
+                            div.onclick = () => selectPatient(p.id, patientName, p.phone, p.email);
+                            patientResults.appendChild(div);
+                        });
+                    } else {
+                        patientResults.innerHTML = `<div class="no-results"><i class="fas fa-user-slash"></i> No patients found.</div>`;
+                    }
+                })
+                .catch(() => {
+                    patientLoading.style.display = 'none';
+                    patientResults.innerHTML = '<div class="no-results text-danger">Error searching</div>';
+                });
+        }, 300);
+    });
+    
+    function selectPatient(id, name, phone, email) {
+        selectedPatientId = id;
+        document.getElementById('patient').value = id;
+        document.getElementById('selectedPatientName').textContent = name;
+        document.getElementById('selectedPatientDetails').innerHTML = `
+            <i class="fas fa-phone"></i> ${phone || 'N/A'} ${email ? `| <i class="fas fa-envelope"></i> ${email}` : ''}
+        `;
+        selectedPatient.style.display = 'block';
+        patientResults.style.display = 'none';
+        patientSearch.value = name;
+        
+        // Auto-fill notification fields with patient's info
+        if (email) {
+            document.getElementById('notification_email').placeholder = email;
+            document.getElementById('notification_email').title = `Patient's email: ${email}`;
+        }
+        if (phone) {
+            document.getElementById('notification_phone').placeholder = phone;
+            document.getElementById('notification_phone').title = `Patient's phone: ${phone}`;
+        }
+        
+        submitBtn.disabled = false;
+    }
+    
+    function clearSelectedPatient() {
+        selectedPatientId = null;
+        document.getElementById('patient').value = '';
+        selectedPatient.style.display = 'none';
+        patientSearch.value = '';
+        patientSearch.focus();
+        submitBtn.disabled = true;
+    }
+    
+    // Clear search results when clicking outside
+    document.addEventListener('click', function(e) {
+        const container = document.querySelector('.search-container');
+        if (!container.contains(e.target)) {
+            patientResults.style.display = 'none';
+        }
+    });
+    
+    document.getElementById('clearPatientSearch').onclick = clearSelectedPatient;
+</script>
+{% endblock %}

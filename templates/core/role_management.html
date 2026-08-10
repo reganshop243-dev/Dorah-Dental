@@ -1,0 +1,142 @@
+{% extends 'base.html' %}
+{% load static %}
+{% load custom_filters %}
+
+{% block page_title %}Role Management{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h4><i class="fas fa-user-tag text-primary"></i> Role Management</h4>
+    <a href="{% url 'core:user_add' %}" class="btn btn-primary">
+        <i class="fas fa-user-plus"></i> Add User
+    </a>
+</div>
+
+<!-- Role Statistics -->
+<div class="row mb-4">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-3 text-center">
+                        <h3 class="text-primary">{{ role_stats.admin|default:0 }}</h3>
+                        <p class="text-muted"><i class="fas fa-crown text-danger"></i> Administrators</p>
+                    </div>
+                    <div class="col-md-3 text-center">
+                        <h3 class="text-primary">{{ role_stats.doctor|default:0 }}</h3>
+                        <p class="text-muted"><i class="fas fa-user-md text-primary"></i> Doctors</p>
+                    </div>
+                    <div class="col-md-3 text-center">
+                        <h3 class="text-primary">{{ role_stats.accountant|default:0 }}</h3>
+                        <p class="text-muted"><i class="fas fa-calculator text-success"></i> Accountants</p>
+                    </div>
+                    <div class="col-md-3 text-center">
+                        <h3 class="text-primary">{{ role_stats.receptionist|default:0 }}</h3>
+                        <p class="text-muted"><i class="fas fa-headset text-info"></i> Receptionists</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Users by Role -->
+<div class="row">
+    {% for role_code, role_name in role_choices %}
+        {% with role_users=roles|get_item:role_code %}
+        <div class="col-md-6 mb-4">
+            <div class="card">
+                <div class="card-header">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <i class="fas 
+                                {% if role_code == 'admin' %}fa-crown text-danger
+                                {% elif role_code == 'doctor' %}fa-user-md text-primary
+                                {% elif role_code == 'accountant' %}fa-calculator text-success
+                                {% elif role_code == 'receptionist' %}fa-headset text-info
+                                {% elif role_code == 'nurse' %}fa-user-nurse text-success
+                                {% elif role_code == 'assistant' %}fa-user-cog text-secondary
+                                {% endif %}"></i>
+                            <strong>{{ role_name }}</strong>
+                            <span class="badge bg-secondary">{{ role_users|length }}</span>
+                        </div>
+                        <a href="{% url 'core:user_add' %}?role={{ role_code }}" class="btn btn-sm btn-primary">
+                            <i class="fas fa-plus"></i> Add
+                        </a>
+                    </div>
+                </div>
+                <div class="card-body">
+                    {% if role_users %}
+                        <div class="list-group list-group-flush">
+                            {% for user in role_users %}
+                            <div class="list-group-item d-flex justify-content-between align-items-center">
+                                <div>
+                                    <strong>{{ user.get_full_name|default:user.username }}</strong>
+                                    <br>
+                                    <small class="text-muted">
+                                        <i class="fas fa-user"></i> @{{ user.username }}
+                                        {% if user.email %} | <i class="fas fa-envelope"></i> {{ user.email }}{% endif %}
+                                    </small>
+                                </div>
+                                <div>
+                                    <span class="badge {% if user.is_active %}bg-success{% else %}bg-danger{% endif %} me-2">
+                                        {% if user.is_active %}Active{% else %}Inactive{% endif %}
+                                    </span>
+                                    <div class="btn-group btn-group-sm">
+                                        <a href="{% url 'core:user_edit' user.pk %}" class="btn btn-outline-primary" title="Edit">
+                                            <i class="fas fa-edit"></i>
+                                        </a>
+                                        {% if user.is_active %}
+                                        <a href="{% url 'core:user_delete' user.pk %}" class="btn btn-outline-danger" title="Deactivate">
+                                            <i class="fas fa-ban"></i>
+                                        </a>
+                                        {% else %}
+                                        <a href="{% url 'core:user_activate' user.pk %}" class="btn btn-outline-success" title="Activate">
+                                            <i class="fas fa-check"></i>
+                                        </a>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        <p class="text-muted text-center py-3">No users in this role.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        {% endwith %}
+    {% endfor %}
+</div>
+
+<!-- Quick Actions -->
+<div class="row">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header">
+                <i class="fas fa-bolt text-warning"></i> Quick Actions
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-3">
+                        <a href="{% url 'core:user_add' %}" class="btn btn-primary w-100">
+                            <i class="fas fa-user-plus"></i> Add New User
+                        </a>
+                    </div>
+                    <div class="col-md-3">
+                        <a href="{% url 'core:user_list' %}" class="btn btn-info w-100 text-white">
+                            <i class="fas fa-list"></i> View All Users
+                        </a>
+                    </div>
+                    <div class="col-md-3">
+                        <a href="/admin/" class="btn btn-danger w-100" target="_blank">
+                            <i class="fas fa-crown"></i> Django Admin
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

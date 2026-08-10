@@ -1,0 +1,141 @@
+{% extends 'base.html' %}
+{% load static %}
+{% load humanize %}
+
+{% block page_title %}Inventory Details{% endblock %}
+
+{% block content %}
+<div class="row">
+    <!-- Item Details -->
+    <div class="col-md-7">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span><i class="fas fa-box text-primary"></i> {{ item.name }}</span>
+                <div>
+                    <a href="{% url 'inventory:edit' item.pk %}" class="btn btn-sm btn-primary">
+                        <i class="fas fa-edit"></i> Edit
+                    </a>
+                    <a href="{% url 'inventory:delete' item.pk %}" class="btn btn-sm btn-danger">
+                        <i class="fas fa-trash"></i> Delete
+                    </a>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <p><strong>Category:</strong> {{ item.category.name|default:"-" }}</p>
+                        <p><strong>Quantity:</strong> 
+                            <span class="{% if item.is_out_of_stock %}text-danger{% elif item.is_low_stock %}text-warning{% else %}text-success{% endif %} fw-bold">
+                                {{ item.quantity }}
+                            </span>
+                        </p>
+                        <p><strong>Unit:</strong> {{ item.get_unit_display }}</p>
+                        <p><strong>Min Alert:</strong> {{ item.min_quantity }}</p>
+                        <p><strong>Status:</strong> 
+                            <span class="badge {% if item.status == 'available' %}bg-success{% elif item.status == 'low_stock' %}bg-warning{% elif item.status == 'out_of_stock' %}bg-danger{% else %}bg-secondary{% endif %}">
+                                {{ item.get_status_display }}
+                            </span>
+                        </p>
+                    </div>
+                    <div class="col-md-6">
+                        <p><strong>Unit Cost:</strong> UGX {{ item.unit_cost|floatformat:0|intcomma }}</p>
+                        <p><strong>Selling Price:</strong> UGX {{ item.selling_price|floatformat:0|intcomma }}</p>
+                        <p><strong>Total Value:</strong> UGX {{ item.total_value|floatformat:0|intcomma }}</p>
+                        <p><strong>Last Restocked:</strong> {{ item.last_restocked|date:"M d, Y H:i"|default:"Never" }}</p>
+                        <p><strong>Location:</strong> {{ item.location|default:"-" }}</p>
+                    </div>
+                </div>
+                
+                {% if item.description %}
+                    <hr>
+                    <p><strong>Description:</strong> {{ item.description }}</p>
+                {% endif %}
+                
+                {% if item.supplier %}
+                    <hr>
+                    <p><strong>Supplier:</strong> {{ item.supplier }}</p>
+                    <p><strong>Supplier Contact:</strong> {{ item.supplier_contact|default:"-" }}</p>
+                {% endif %}
+                
+                {% if item.notes %}
+                    <hr>
+                    <p><strong>Notes:</strong> {{ item.notes }}</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    
+    <!-- Quick Actions -->
+    <div class="col-md-5">
+        <div class="card mb-3">
+            <div class="card-header">
+                <i class="fas fa-exchange-alt text-success"></i> Adjust Stock
+            </div>
+            <div class="card-body">
+                <form method="post" action="{% url 'inventory:adjust_stock' item.pk %}">
+                    {% csrf_token %}
+                    <div class="row">
+                        <div class="col-md-6 mb-2">
+                            <label class="form-label">Action</label>
+                            <select class="form-select" name="adjustment_type" required>
+                                <option value="add">Add Stock</option>
+                                <option value="remove">Remove Stock</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6 mb-2">
+                            <label class="form-label">Quantity</label>
+                            <input type="number" class="form-control" name="quantity" min="1" required>
+                        </div>
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label">Notes</label>
+                        <input type="text" class="form-control" name="notes" placeholder="Reason for adjustment">
+                    </div>
+                    <button type="submit" class="btn btn-success w-100">
+                        <i class="fas fa-save"></i> Update Stock
+                    </button>
+                </form>
+                <small class="text-muted">Current quantity: <strong>{{ item.quantity }}</strong></small>
+            </div>
+        </div>
+        
+        <!-- Movement History -->
+        <div class="card">
+            <div class="card-header">
+                <i class="fas fa-history text-primary"></i> Recent Movements
+            </div>
+            <div class="card-body">
+                {% if movements %}
+                    <div class="list-group list-group-flush">
+                    {% for movement in movements %}
+                        <div class="list-group-item">
+                            <div class="d-flex justify-content-between">
+                                <div>
+                                    <strong>{{ movement.get_movement_type_display }}</strong>
+                                    <br>
+                                    <small class="text-muted">
+                                        <i class="far fa-clock"></i> {{ movement.created_at|date:"M d, H:i" }}
+                                    </small>
+                                </div>
+                                <div class="text-end">
+                                    <span class="{% if movement.quantity > 0 %}text-success{% else %}text-danger{% endif %} fw-bold">
+                                        {{ movement.quantity }}
+                                    </span>
+                                    <br>
+                                    <small class="text-muted">{{ movement.previous_quantity }} → {{ movement.new_quantity }}</small>
+                                </div>
+                            </div>
+                            {% if movement.notes %}
+                                <small class="text-muted">{{ movement.notes }}</small>
+                            {% endif %}
+                        </div>
+                    {% endfor %}
+                    </div>
+                {% else %}
+                    <p class="text-muted text-center py-3">No movements recorded.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,828 @@
+{% extends 'base.html' %}
+{% load static %}
+{% load humanize %}
+
+{% block page_title %}New Invoice{% endblock %}
+
+{% block extra_css %}
+<style>
+    .search-container {
+        position: relative;
+    }
+    .search-results {
+        position: absolute;
+        top: 100%;
+        left: 0;
+        right: 0;
+        max-height: 300px;
+        overflow-y: auto;
+        background: white;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        z-index: 1000;
+        display: none;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    }
+    .search-results .result-item {
+        padding: 10px 15px;
+        cursor: pointer;
+        border-bottom: 1px solid #f0f0f0;
+        transition: background 0.2s;
+    }
+    .search-results .result-item:hover {
+        background: #f0f8ff;
+    }
+    .search-results .result-item .name {
+        font-weight: 600;
+        color: #2c3e50;
+    }
+    .search-results .result-item .details {
+        color: #7f8c8d;
+        font-size: 0.9rem;
+    }
+    .search-results .no-results {
+        padding: 20px;
+        text-align: center;
+        color: #7f8c8d;
+    }
+    .selected-item {
+        background: #f8f9fa;
+        border: 2px solid #28a745;
+        border-radius: 8px;
+        padding: 15px;
+        margin-top: 10px;
+        display: none;
+    }
+    .selected-item .item-name {
+        font-size: 1.1rem;
+        font-weight: 600;
+        color: #2c3e50;
+    }
+    .selected-item .change-btn {
+        cursor: pointer;
+        color: #28a745;
+        text-decoration: underline;
+    }
+    .selected-item .change-btn:hover {
+        color: #1e7e34;
+    }
+    .loading-spinner {
+        display: none;
+        text-align: center;
+        padding: 20px;
+        color: #7f8c8d;
+    }
+    .cart-item {
+        border: 1px solid #e9ecef;
+        border-radius: 8px;
+        padding: 12px;
+        margin-bottom: 10px;
+        background: white;
+        transition: all 0.2s;
+    }
+    .cart-item:hover {
+        box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    }
+    .cart-item .item-type-badge {
+        font-size: 0.7rem;
+        padding: 2px 8px;
+        border-radius: 12px;
+    }
+    .cart-item .item-type-badge.service {
+        background: #e3f2fd;
+        color: #1976d2;
+    }
+    .cart-item .item-type-badge.supply {
+        background: #e8f5e9;
+        color: #2e7d32;
+    }
+    .quick-add-btn {
+        cursor: pointer;
+        transition: all 0.2s;
+        border: 1px solid #dee2e6;
+        background: white;
+    }
+    .quick-add-btn:hover {
+        transform: scale(1.05);
+        background: #f8f9fa;
+        border-color: #28a745;
+    }
+    .price-input {
+        width: 100px;
+        display: inline-block;
+    }
+    .help-text {
+        font-size: 0.8rem;
+        color: #6c757d;
+        margin-top: 2px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <!-- Left Column - Invoice Form -->
+    <div class="col-md-7">
+        <div class="card">
+            <div class="card-header">
+                <i class="fas fa-file-invoice text-primary"></i> Create New Invoice
+            </div>
+            <div class="card-body">
+                <form method="post" id="invoiceForm">
+                    {% csrf_token %}
+                    
+                    <!-- Patient Search -->
+                    <div class="mb-3">
+                        <label class="form-label">Search Patient *</label>
+                        <div class="search-container">
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="fas fa-search"></i></span>
+                                <input type="text" class="form-control" id="patientSearch" 
+                                       placeholder="Search by name, phone, or email..." 
+                                       autocomplete="off">
+                                <button type="button" class="btn btn-outline-secondary" id="clearPatientSearch">
+                                    <i class="fas fa-times"></i>
+                                </button>
+                            </div>
+                            <div class="search-results" id="patientResults">
+                                <div class="loading-spinner" id="patientLoading">
+                                    <i class="fas fa-spinner fa-spin"></i> Searching...
+                                </div>
+                            </div>
+                        </div>
+                        <input type="hidden" id="patient" name="patient" required>
+                        <div class="selected-item" id="selectedPatient">
+                            <div class="d-flex justify-content-between align-items-start">
+                                <div>
+                                    <div class="item-name" id="selectedPatientName"></div>
+                                    <div class="item-details" id="selectedPatientDetails"></div>
+                                </div>
+                                <span class="change-btn" onclick="clearSelectedPatient()">
+                                    <i class="fas fa-edit"></i> Change
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <hr>
+                    
+                    <!-- Add Items Section -->
+                    <div class="mb-3">
+                        <label class="form-label">Add Items to Invoice</label>
+                        <div class="row g-2">
+                            <div class="col-md-5">
+                                <input type="text" class="form-control" id="itemSearch" 
+                                       placeholder="Search services or supplies..." 
+                                       autocomplete="off">
+                            </div>
+                            <div class="col-md-2">
+                                <input type="number" class="form-control" id="itemQuantity" 
+                                       placeholder="Qty" value="1" min="1">
+                            </div>
+                            <div class="col-md-3">
+                                <input type="number" step="0.01" class="form-control" id="itemPrice" 
+                                       placeholder="Price" value="0">
+                            </div>
+                            <div class="col-md-2">
+                                <button type="button" class="btn btn-success w-100" id="addItemBtn" disabled>
+                                    <i class="fas fa-plus"></i> Add
+                                </button>
+                            </div>
+                        </div>
+                        <div class="search-container mt-2">
+                            <div class="search-results" id="itemResults">
+                                <div class="loading-spinner" id="itemLoading">
+                                    <i class="fas fa-spinner fa-spin"></i> Searching...
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Quick Add Services -->
+                    <div class="mb-3">
+                        <label class="form-label">Quick Add Services</label>
+                        <div class="row g-2">
+                            {% for service in services|slice:":6" %}
+                            <div class="col-md-4">
+                                <div class="quick-add-btn rounded p-2 text-center" 
+                                     onclick="quickAddService({{ service.id }}, '{{ service.name }}', {{ service.price }})">
+                                    <small class="d-block fw-bold">{{ service.name }}</small>
+                                    <small class="text-success">UGX {{ service.price|floatformat:0|intcomma }}</small>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    
+                    <hr>
+                    
+                    <!-- Invoice Summary -->
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="subtotal" class="form-label">Subtotal</label>
+                            <input type="text" class="form-control" id="subtotalDisplay" value="UGX 0" readonly>
+                            <input type="hidden" id="subtotalHidden" name="subtotal" value="0">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Tax Rate (%)</label>
+                            <input type="number" step="0.01" class="form-control" id="taxRate" name="tax_rate" value="0" onchange="updateTotals()">
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="issue_date" class="form-label">Invoice Date</label>
+                            <input type="date" class="form-control" id="issueDate" name="issue_date">
+                            <div class="help-text">Leave blank for today. Use this to backdate invoices.</div>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="due_date" class="form-label">Due Date</label>
+                            <input type="date" class="form-control" id="dueDate" name="due_date">
+                            <div class="help-text">Leave blank for no due date</div>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Discount</label>
+                            <input type="number" step="0.01" class="form-control" id="discount" name="discount" value="0" onchange="updateTotals()">
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Notes</label>
+                        <textarea class="form-control" id="notes" name="notes" rows="2"></textarea>
+                    </div>
+                    
+                    <div class="d-flex justify-content-between">
+                        <a href="{% url 'billing:list' %}" class="btn btn-secondary">
+                            <i class="fas fa-arrow-left"></i> Cancel
+                        </a>
+                        <button type="button" class="btn btn-primary" id="submitBtn" onclick="submitInvoice()" disabled>
+                            <i class="fas fa-save"></i> Create Invoice
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Right Column - Cart -->
+    <div class="col-md-5">
+        <div class="card">
+            <div class="card-header">
+                <i class="fas fa-shopping-cart text-success"></i> Invoice Items
+                <span class="badge bg-secondary float-end" id="itemCount">0</span>
+            </div>
+            <div class="card-body" id="cartContainer" style="max-height: 500px; overflow-y: auto;">
+                <p class="text-muted text-center py-4" id="emptyCart">
+                    <i class="fas fa-cart-plus fa-2x d-block mb-2"></i>
+                    No items added yet.<br>
+                    Search and add items above.
+                </p>
+            </div>
+            <div class="card-footer">
+                <div class="row">
+                    <div class="col-6"><strong>Total:</strong></div>
+                    <div class="col-6 text-end"><strong id="cartTotal">UGX 0</strong></div>
+                </div>
+                <input type="hidden" id="cartItemsHidden" name="cart_items" value="">
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // ==================== STATE ====================
+    let selectedPatientId = null;
+    let cartItems = [];
+    
+    // ==================== DOM Elements ====================
+    const patientSearch = document.getElementById('patientSearch');
+    const patientResults = document.getElementById('patientResults');
+    const patientLoading = document.getElementById('patientLoading');
+    const selectedPatient = document.getElementById('selectedPatient');
+    const submitBtn = document.getElementById('submitBtn');
+    
+    const itemSearch = document.getElementById('itemSearch');
+    const itemResults = document.getElementById('itemResults');
+    const itemLoading = document.getElementById('itemLoading');
+    const itemQuantity = document.getElementById('itemQuantity');
+    const itemPrice = document.getElementById('itemPrice');
+    const addItemBtn = document.getElementById('addItemBtn');
+    
+    const cartContainer = document.getElementById('cartContainer');
+    const itemCount = document.getElementById('itemCount');
+    const cartTotal = document.getElementById('cartTotal');
+    const cartItemsHidden = document.getElementById('cartItemsHidden');
+    const subtotalDisplay = document.getElementById('subtotalDisplay');
+    const subtotalHidden = document.getElementById('subtotalHidden');
+    const taxRate = document.getElementById('taxRate');
+    const discount = document.getElementById('discount');
+    const dueDate = document.getElementById('dueDate');
+    const issueDate = document.getElementById('issueDate');
+    
+    // ==================== INIT ====================
+    document.addEventListener('DOMContentLoaded', function() {
+        const today = new Date().toISOString().split('T')[0];
+        const dueDateValue = new Date();
+        dueDateValue.setDate(dueDateValue.getDate() + 30);
+        
+        // Set default issue date to today
+        issueDate.value = today;
+        
+        // Set default due date to 30 days from now
+        dueDate.value = dueDateValue.toISOString().split('T')[0];
+    });
+    
+    // ==================== UPDATE HIDDEN FIELD ====================
+    function updateCartHiddenField() {
+        const cartData = JSON.stringify(cartItems);
+        document.getElementById('cartItemsHidden').value = cartData;
+    }
+    
+    // ==================== PATIENT SEARCH ====================
+    let patientTimeout;
+    patientSearch.addEventListener('input', function() {
+        clearTimeout(patientTimeout);
+        const query = this.value.trim();
+        if (query.length < 2) {
+            patientResults.style.display = 'none';
+            return;
+        }
+        
+        patientLoading.style.display = 'block';
+        patientResults.style.display = 'block';
+        patientResults.innerHTML = '';
+        patientResults.appendChild(patientLoading);
+        
+        patientTimeout = setTimeout(() => {
+            fetch(`/patients/api/search/?q=${encodeURIComponent(query)}`)
+                .then(r => r.json())
+                .then(data => {
+                    patientLoading.style.display = 'none';
+                    patientResults.innerHTML = '';
+                    if (data.results && data.results.length > 0) {
+                        data.results.forEach(p => {
+                            const div = document.createElement('div');
+                            div.className = 'result-item';
+                            const patientName = p.full_name || p.name || 'Unknown';
+                            div.innerHTML = `
+                                <div class="name">${patientName}</div>
+                                <div class="details"><i class="fas fa-phone"></i> ${p.phone || 'N/A'}</div>
+                                ${p.email ? `<div class="details"><i class="fas fa-envelope"></i> ${p.email}</div>` : ''}
+                            `;
+                            div.onclick = () => selectPatient(p.id, patientName, p.phone, p.email);
+                            patientResults.appendChild(div);
+                        });
+                    } else {
+                        patientResults.innerHTML = `<div class="no-results"><i class="fas fa-user-slash"></i> No patients found.</div>`;
+                    }
+                })
+                .catch(() => {
+                    patientLoading.style.display = 'none';
+                    patientResults.innerHTML = '<div class="no-results text-danger">Error searching</div>';
+                });
+        }, 300);
+    });
+    
+    function selectPatient(id, name, phone, email) {
+        selectedPatientId = id;
+        document.getElementById('patient').value = id;
+        document.getElementById('selectedPatientName').textContent = name;
+        document.getElementById('selectedPatientDetails').innerHTML = `
+            <i class="fas fa-phone"></i> ${phone || 'N/A'} ${email ? `| <i class="fas fa-envelope"></i> ${email}` : ''}
+        `;
+        selectedPatient.style.display = 'block';
+        patientResults.style.display = 'none';
+        patientSearch.value = name;
+        checkSubmit();
+    }
+    
+    function clearSelectedPatient() {
+        selectedPatientId = null;
+        document.getElementById('patient').value = '';
+        selectedPatient.style.display = 'none';
+        patientSearch.value = '';
+        patientSearch.focus();
+        checkSubmit();
+    }
+    
+    // ==================== ITEM SEARCH ====================
+    let itemTimeout;
+    itemSearch.addEventListener('input', function() {
+        clearTimeout(itemTimeout);
+        const query = this.value.trim();
+        if (query.length < 2) {
+            itemResults.style.display = 'none';
+            addItemBtn.disabled = true;
+            return;
+        }
+        
+        itemLoading.style.display = 'block';
+        itemResults.style.display = 'block';
+        itemResults.innerHTML = '';
+        itemResults.appendChild(itemLoading);
+        addItemBtn.disabled = true;
+        
+        itemTimeout = setTimeout(() => {
+            Promise.all([
+                fetch(`/appointments/api/services/search/?q=${encodeURIComponent(query)}`).then(r => r.json()).catch(() => ({results: []})),
+                fetch(`/inventory/api/search/?q=${encodeURIComponent(query)}`).then(r => r.json()).catch(() => ({results: []}))
+            ])
+            .then(([services, inventory]) => {
+                itemLoading.style.display = 'none';
+                itemResults.innerHTML = '';
+                
+                let results = [];
+                
+                if (services.results && services.results.length > 0) {
+                    services.results.forEach(s => {
+                        results.push({
+                            id: s.id,
+                            name: s.name,
+                            price: s.price,
+                            type: 'service',
+                            typeLabel: 'Service',
+                            stock: null,
+                            unit: null
+                        });
+                    });
+                }
+                
+                if (inventory.results && inventory.results.length > 0) {
+                    inventory.results.forEach(i => {
+                        results.push({
+                            id: i.id,
+                            name: i.name,
+                            price: i.selling_price,
+                            type: 'inventory',
+                            typeLabel: 'Supply',
+                            stock: i.quantity,
+                            unit: i.unit
+                        });
+                    });
+                }
+                
+                if (results.length > 0) {
+                    results.forEach(item => {
+                        const div = document.createElement('div');
+                        div.className = 'result-item';
+                        const inCart = cartItems.some(c => c.id === item.id && c.type === item.type);
+                        div.innerHTML = `
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <div class="name">
+                                        ${item.name}
+                                        <span class="badge ${item.type === 'service' ? 'bg-primary' : 'bg-success'}">${item.typeLabel}</span>
+                                    </div>
+                                    <div class="details">
+                                        ${item.type === 'inventory' ? `<i class="fas fa-boxes"></i> Stock: ${item.stock} ${item.unit} | ` : ''}
+                                        <i class="fas fa-tag"></i> UGX ${Number(item.price).toLocaleString()}
+                                    </div>
+                                </div>
+                                ${inCart ? 
+                                    '<span class="badge bg-success"><i class="fas fa-check"></i> Added</span>' :
+                                    `<button type="button" class="btn btn-sm btn-success" onclick="selectItemForCart(${item.id}, '${item.name.replace(/'/g, "\\'")}', ${item.price}, '${item.type}', ${item.stock || null}, '${item.unit || ''}')">
+                                        <i class="fas fa-plus"></i> Select
+                                    </button>`
+                                }
+                            </div>
+                        `;
+                        itemResults.appendChild(div);
+                    });
+                    addItemBtn.disabled = false;
+                } else {
+                    itemResults.innerHTML = '<div class="no-results"><i class="fas fa-box-open"></i> No items found.</div>';
+                    addItemBtn.disabled = true;
+                }
+            })
+            .catch(() => {
+                itemLoading.style.display = 'none';
+                itemResults.innerHTML = '<div class="no-results text-danger">Error searching. Please try again.</div>';
+                addItemBtn.disabled = true;
+            });
+        }, 400);
+    });
+    
+    // ==================== SELECT ITEM ====================
+    let selectedItemData = null;
+    
+    function selectItemForCart(id, name, price, type, stock, unit) {
+        selectedItemData = {
+            id: id,
+            name: name,
+            price: price,
+            type: type,
+            stock: stock,
+            unit: unit
+        };
+        
+        document.getElementById('itemPrice').value = price;
+        document.getElementById('itemQuantity').focus();
+        
+        itemResults.innerHTML = `
+            <div class="result-item" style="background: #e8f5e9;">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <div class="name">
+                            ${name}
+                            <span class="badge ${type === 'service' ? 'bg-primary' : 'bg-success'}">${type === 'service' ? 'Service' : 'Supply'}</span>
+                        </div>
+                        <div class="details">
+                            ${type === 'inventory' ? `<i class="fas fa-boxes"></i> Stock: ${stock} ${unit} | ` : ''}
+                            <i class="fas fa-tag"></i> UGX ${Number(price).toLocaleString()}
+                        </div>
+                    </div>
+                    <span class="badge bg-info">Selected</span>
+                </div>
+            </div>
+        `;
+        
+        addItemBtn.disabled = false;
+    }
+    
+    // ==================== ADD ITEMS ====================
+    function addItemToCart() {
+        if (!selectedItemData) {
+            alert('Please search and select an item first.');
+            return;
+        }
+        
+        const id = selectedItemData.id;
+        const name = selectedItemData.name;
+        const type = selectedItemData.type;
+        const stock = selectedItemData.stock;
+        const unit = selectedItemData.unit;
+        const price = parseFloat(document.getElementById('itemPrice').value) || 0;
+        const quantity = parseInt(document.getElementById('itemQuantity').value) || 1;
+        
+        if (price <= 0) {
+            alert('Please enter a valid price.');
+            return;
+        }
+        
+        if (quantity < 1) {
+            alert('Quantity must be at least 1.');
+            return;
+        }
+        
+        if (type === 'inventory' && stock !== null && quantity > stock) {
+            alert(`Only ${stock} items available in stock!`);
+            return;
+        }
+        
+        if (cartItems.some(c => c.id === id && c.type === type)) {
+            alert('Item already in cart!');
+            return;
+        }
+        
+        const newItem = {
+            id: id,
+            name: name,
+            price: price,
+            type: type,
+            typeLabel: type === 'service' ? 'Service' : 'Supply',
+            quantity: quantity,
+            stock: stock,
+            unit: unit || ''
+        };
+        
+        cartItems.push(newItem);
+        
+        renderCart();
+        updateTotals();
+        checkSubmit();
+        updateCartHiddenField();
+        
+        itemSearch.value = '';
+        itemResults.style.display = 'none';
+        itemResults.innerHTML = '';
+        itemQuantity.value = 1;
+        itemPrice.value = 0;
+        addItemBtn.disabled = true;
+        selectedItemData = null;
+        
+        storeCartInSession();
+    }
+    
+    function quickAddService(id, name, price) {
+        if (cartItems.some(c => c.id === id && c.type === 'service')) {
+            alert('Service already in cart!');
+            return;
+        }
+        
+        const quantity = parseInt(document.getElementById('itemQuantity').value) || 1;
+        
+        cartItems.push({
+            id: id,
+            name: name,
+            price: price,
+            type: 'service',
+            typeLabel: 'Service',
+            quantity: quantity,
+            stock: null,
+            unit: ''
+        });
+        
+        renderCart();
+        updateTotals();
+        checkSubmit();
+        updateCartHiddenField();
+        storeCartInSession();
+    }
+    
+    function removeFromCart(index) {
+        cartItems.splice(index, 1);
+        renderCart();
+        updateTotals();
+        checkSubmit();
+        updateCartHiddenField();
+        storeCartInSession();
+    }
+    
+    function updateQuantity(index, newQty) {
+        if (newQty < 1) { removeFromCart(index); return; }
+        const item = cartItems[index];
+        if (item.type === 'inventory' && item.stock !== null && newQty > item.stock) {
+            alert(`Only ${item.stock} items available in stock!`);
+            return;
+        }
+        item.quantity = newQty;
+        renderCart();
+        updateTotals();
+        updateCartHiddenField();
+        storeCartInSession();
+    }
+    
+    function updatePrice(index, newPrice) {
+        if (newPrice < 0) { return; }
+        const item = cartItems[index];
+        item.price = newPrice;
+        renderCart();
+        updateTotals();
+        updateCartHiddenField();
+        storeCartInSession();
+    }
+    
+    // ==================== STORE CART IN SESSION ====================
+    function storeCartInSession() {
+        const cartData = JSON.stringify(cartItems);
+        fetch('/billing/store-cart/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+            },
+            body: JSON.stringify({ cart_items: cartData })
+        }).catch(error => console.error('Error storing cart:', error));
+    }
+    
+    // ==================== RENDER CART ====================
+    function renderCart() {
+        cartContainer.innerHTML = '';
+        if (cartItems.length === 0) {
+            cartContainer.innerHTML = `
+                <p class="text-muted text-center py-4">
+                    <i class="fas fa-cart-plus fa-2x d-block mb-2"></i>
+                    No items added yet.<br>
+                    Search and add items above.
+                </p>
+            `;
+            itemCount.textContent = '0';
+            return;
+        }
+        
+        cartItems.forEach((item, index) => {
+            const div = document.createElement('div');
+            div.className = 'cart-item';
+            div.innerHTML = `
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <div>
+                            <span class="item-type-badge ${item.type}">${item.typeLabel}</span>
+                            <span class="fw-bold">${item.name}</span>
+                        </div>
+                        <div class="small text-muted">
+                            ${item.type === 'inventory' ? `Stock: ${item.stock} ${item.unit} | ` : ''}
+                        </div>
+                    </div>
+                    <button type="button" class="btn btn-sm btn-outline-danger" onclick="removeFromCart(${index})">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <div class="row mt-2">
+                    <div class="col-4">
+                        <label class="form-label small">Qty</label>
+                        <input type="number" class="form-control form-control-sm" 
+                               value="${item.quantity}" min="1" 
+                               ${item.type === 'inventory' && item.stock !== null ? `max="${item.stock}"` : ''}
+                               onchange="updateQuantity(${index}, parseInt(this.value))">
+                    </div>
+                    <div class="col-4">
+                        <label class="form-label small">Price</label>
+                        <input type="number" step="0.01" class="form-control form-control-sm" 
+                               value="${item.price}" min="0"
+                               onchange="updatePrice(${index}, parseFloat(this.value))">
+                    </div>
+                    <div class="col-4 text-end">
+                        <label class="form-label small">Total</label>
+                        <div class="fw-bold text-success">UGX ${(item.price * item.quantity).toLocaleString()}</div>
+                    </div>
+                </div>
+            `;
+            cartContainer.appendChild(div);
+        });
+        
+        itemCount.textContent = cartItems.length;
+    }
+    
+    // ==================== TOTALS ====================
+    function updateTotals() {
+        const subtotal = cartItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+        const taxRateVal = parseFloat(taxRate.value) || 0;
+        const discountVal = parseFloat(discount.value) || 0;
+        const taxAmount = (subtotal * taxRateVal) / 100;
+        const total = subtotal + taxAmount - discountVal;
+        
+        subtotalDisplay.value = `UGX ${subtotal.toLocaleString()}`;
+        subtotalHidden.value = subtotal;
+        cartTotal.textContent = `UGX ${total.toLocaleString()}`;
+    }
+    
+    // ==================== CHECK SUBMIT ====================
+    function checkSubmit() {
+        const hasPatient = selectedPatientId !== null;
+        const hasItems = cartItems.length > 0;
+        submitBtn.disabled = !(hasPatient && hasItems);
+    }
+    
+    // ==================== SUBMIT INVOICE ====================
+    function submitInvoice() {
+        if (cartItems.length === 0) {
+            alert('Please add at least one item to the invoice.');
+            return;
+        }
+        
+        if (!selectedPatientId) {
+            alert('Please select a patient.');
+            return;
+        }
+        
+        const cartData = JSON.stringify(cartItems);
+        document.getElementById('cartItemsHidden').value = cartData;
+        
+        document.getElementById('invoiceForm').submit();
+    }
+    
+    // ==================== EVENTS ====================
+    document.addEventListener('click', function(e) {
+        document.querySelectorAll('.search-container .search-results').forEach(el => {
+            if (!el.parentElement.contains(e.target)) {
+                el.style.display = 'none';
+            }
+        });
+    });
+    
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') {
+            document.querySelectorAll('.search-results').forEach(el => el.style.display = 'none');
+        }
+    });
+    
+    document.getElementById('clearPatientSearch').onclick = clearSelectedPatient;
+    
+    addItemBtn.addEventListener('click', function() {
+        addItemToCart();
+    });
+    
+    document.getElementById('itemPrice').addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            addItemToCart();
+        }
+    });
+    
+    document.getElementById('itemQuantity').addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            addItemToCart();
+        }
+    });
+    
+    itemSearch.addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            const firstSelectBtn = itemResults.querySelector('.btn-success');
+            if (firstSelectBtn) {
+                firstSelectBtn.click();
+            }
+        }
+    });
+    
+    document.getElementById('invoiceForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        submitInvoice();
+    });
+</script>
+{% endblock %}

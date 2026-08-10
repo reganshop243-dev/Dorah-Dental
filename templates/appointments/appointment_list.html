@@ -1,0 +1,117 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block page_title %}Appointments{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h4><i class="fas fa-calendar-check text-primary"></i> Appointments</h4>
+    <a href="{% url 'appointments:add' %}" class="btn btn-primary">
+        <i class="fas fa-plus"></i> New Appointment
+    </a>
+</div>
+
+<!-- Filters -->
+<!-- Add this to the filter section -->
+<div class="col-md-3">
+    <select class="form-select" name="status" id="statusFilter">
+        <option value="">All Status</option>
+        {% for status_code, status_label in status_choices %}
+            <option value="{{ status_code }}" {% if status_filter == status_code %}selected{% endif %}>
+                {{ status_label }}
+            </option>
+        {% endfor %}
+    </select>
+</div>
+
+<div class="card mb-4">
+    <div class="card-body">
+        <form method="get" class="row g-3">
+            <div class="col-md-4">
+                <label for="status" class="form-label">Status</label>
+                <select class="form-select" id="status" name="status">
+                    <option value="">All Statuses</option>
+                    {% for status_code, status_label in status_choices %}
+                        <option value="{{ status_code }}" {% if status_filter == status_code %}selected{% endif %}>
+                            {{ status_label }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-4">
+                <label for="date" class="form-label">Date</label>
+                <input type="date" class="form-control" id="date" name="date" value="{{ date_filter }}">
+            </div>
+            <div class="col-md-4 d-flex align-items-end">
+                <button type="submit" class="btn btn-primary me-2">
+                    <i class="fas fa-filter"></i> Filter
+                </button>
+                <a href="{% url 'appointments:list' %}" class="btn btn-secondary">
+                    <i class="fas fa-undo"></i> Reset
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Appointments Table -->
+<div class="card">
+    <div class="card-body">
+        {% if appointments %}
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Time</th>
+                            <th>Patient</th>
+                            <th>Doctor</th>
+                            <th>Service</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for appt in appointments %}
+                        <tr>
+                            <td>{{ appt.appointment_date|date:"M d, Y" }}</td>
+                            <td>{{ appt.appointment_time|time:"H:i" }}</td>
+                            <td>
+                                <a href="{% url 'patients:detail' appt.patient.pk %}">
+                                    {{ appt.patient.full_name }}
+                                </a>
+                            </td>
+                            <td>Dr. {{ appt.doctor.name }}</td>
+                            <td>{{ appt.service.name }}</td>
+                            <td>
+                                <span class="badge {% if appt.status == 'scheduled' %}bg-primary{% elif appt.status == 'checked_in' %}bg-info{% elif appt.status == 'in_progress' %}bg-warning{% elif appt.status == 'completed' %}bg-success{% elif appt.status == 'cancelled' %}bg-danger{% elif appt.status == 'no_show' %}bg-secondary{% endif %}">
+                                    {{ appt.get_status_display }}
+                                </span>
+                            </td>
+                            <td>
+                                <div class="btn-group btn-group-sm">
+                                    <a href="{% url 'appointments:detail' appt.pk %}" class="btn btn-outline-primary">
+                                        <i class="fas fa-eye"></i>
+                                    </a>
+                                    <a href="{% url 'appointments:edit' appt.pk %}" class="btn btn-outline-secondary">
+                                        <i class="fas fa-edit"></i>
+                                    </a>
+                                    <a href="{% url 'appointments:delete' appt.pk %}" class="btn btn-outline-danger">
+                                        <i class="fas fa-trash"></i>
+                                    </a>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <p class="text-muted text-center py-4">
+                <i class="fas fa-calendar-plus fa-2x d-block mb-2"></i>
+                No appointments found.
+            </p>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

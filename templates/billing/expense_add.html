@@ -1,0 +1,103 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block page_title %}Add Expense{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-7">
+        <div class="card">
+            <div class="card-header">
+                <i class="fas fa-plus-circle text-danger"></i> Add New Expense
+            </div>
+            <div class="card-body">
+                <form method="post" enctype="multipart/form-data">
+                    {% csrf_token %}
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Description <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" name="description" placeholder="What was this expense for?" required>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Category <span class="text-danger">*</span></label>
+                            <select class="form-select" name="category" required>
+                                <option value="">Select Category</option>
+                                {% for code, name in categories %}
+                                    <option value="{{ code }}">{{ name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Amount (UGX) <span class="text-danger">*</span></label>
+                            <input type="number" step="0.01" class="form-control" name="amount" placeholder="0.00" required>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Expense Date</label>
+                            <input type="date" class="form-control" name="expense_date" id="expense_date">
+                            <div class="help-text">
+                                <i class="fas fa-info-circle"></i> 
+                                Leave blank for today. Use this to backdate expenses.
+                            </div>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Payment Method</label>
+                            <select class="form-select" name="payment_method">
+                                {% for code, name in payment_methods %}
+                                    <option value="{{ code }}" {% if code == 'cash' %}selected{% endif %}>
+                                        {{ name }}
+                                    </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Reference Number</label>
+                            <input type="text" class="form-control" name="reference_number" placeholder="Receipt or invoice number">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Receipt</label>
+                            <input type="file" class="form-control" name="receipt" accept="image/*,.pdf">
+                            <div class="help-text">Upload receipt (JPG, PNG, PDF)</div>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Notes</label>
+                        <textarea class="form-control" name="notes" rows="3" placeholder="Any additional notes about this expense"></textarea>
+                    </div>
+                    
+                    <div class="alert alert-info">
+                        <i class="fas fa-calendar-alt"></i>
+                        <strong>Tip:</strong> To backdate an expense, simply select a date in the past. 
+                        This will reflect the expense on the correct date in reports.
+                    </div>
+                    
+                    <div class="d-flex justify-content-between">
+                        <a href="{% url 'billing:expense_list' %}" class="btn btn-secondary">
+                            <i class="fas fa-arrow-left"></i> Cancel
+                        </a>
+                        <button type="submit" class="btn btn-danger">
+                            <i class="fas fa-save"></i> Add Expense
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Set default date to today
+    document.addEventListener('DOMContentLoaded', function() {
+        const today = new Date().toISOString().split('T')[0];
+        document.getElementById('expense_date').value = today;
+    });
+</script>
+{% endblock %}

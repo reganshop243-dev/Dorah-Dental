@@ -1,0 +1,229 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block page_title %}Notification Settings{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">
+                <i class="fas fa-bell text-primary"></i> Notification Settings
+            </div>
+            <div class="card-body">
+                <form method="post">
+                    {% csrf_token %}
+                    
+                    <!-- General Settings -->
+                    <h6 class="text-muted mb-3"><i class="fas fa-cog"></i> General Settings</h6>
+                    <div class="mb-3">
+                        <div class="form-check">
+                            <input type="checkbox" class="form-check-input" id="enable_reminders" 
+                                   name="enable_reminders" {% if settings.enable_reminders %}checked{% endif %}>
+                            <label class="form-check-label" for="enable_reminders">
+                                <i class="fas fa-check-circle text-success"></i> Enable Appointment Reminders
+                            </label>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="reminder_hours_before" class="form-label">Reminder Hours Before Appointment</label>
+                            <input type="number" class="form-control" id="reminder_hours_before" 
+                                   name="reminder_hours_before" value="{{ settings.reminder_hours_before }}" min="1">
+                            <small class="text-muted">How many hours before the appointment to send reminder</small>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="channel" class="form-label">Notification Channel</label>
+                            <select class="form-select" id="channel" name="channel">
+                                <option value="email" {% if settings.channel == 'email' %}selected{% endif %}>Email Only</option>
+                                <option value="sms" {% if settings.channel == 'sms' %}selected{% endif %}>SMS Only</option>
+                                <option value="both" {% if settings.channel == 'both' %}selected{% endif %}>Both Email & SMS</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <hr>
+                    
+                    <!-- Email Settings -->
+                    <h6 class="text-muted mb-3"><i class="fas fa-envelope"></i> Email Settings</h6>
+                    <div class="mb-3">
+                        <label for="email_subject" class="form-label">Email Subject</label>
+                        <input type="text" class="form-control" id="email_subject" 
+                               name="email_subject" value="{{ settings.email_subject }}">
+                    </div>
+                    <div class="mb-3">
+                        <label for="email_template" class="form-label">Email Template</label>
+                        <textarea class="form-control" id="email_template" name="email_template" rows="8">{{ settings.email_template }}</textarea>
+                        <small class="text-muted">
+                            Available variables: {{ patient_name }}, {{ appointment_date }}, {{ appointment_time }}, 
+                            {{ doctor_name }}, {{ service_name }}, {{ clinic_name }}, {{ clinic_phone }}, {{ clinic_email }}, {{ clinic_address }}
+                        </small>
+                    </div>
+                    
+                    <hr>
+                    
+                    <!-- SMS Settings -->
+<hr>
+
+<!-- Yoola SMS Settings -->
+<h6 class="text-muted mb-3"><i class="fas fa-comment-dots"></i> Yoola SMS Test</h6>
+<div class="alert alert-success">
+    <i class="fas fa-check-circle"></i> 
+    Yoola SMS is Uganda's most affordable SMS service!
+    <br>
+    <small>Pay with Mobile Money. No VISA needed.</small>
+</div>
+
+<div class="row">
+    <div class="col-md-6 mb-3">
+        <label for="test_phone" class="form-label">Test Phone Number</label>
+        <input type="text" class="form-control" id="test_phone" name="test_phone" 
+               placeholder="0700000000 or 256700000000" value="{{ request.user.profile.phone }}">
+    </div>
+    <div class="col-md-6 mb-3">
+        <label for="test_message" class="form-label">Test Message</label>
+        <input type="text" class="form-control" id="test_message" name="test_message" 
+               value="Dora's Dental Gem Test SMS - Sent via Yoola!">
+    </div>
+</div>
+
+<div class="mb-3">
+    <button type="button" class="btn btn-success" onclick="sendYoolaTest()">
+        <i class="fas fa-paper-plane"></i> Send Yoola Test SMS
+    </button>
+    <small class="text-muted ms-2">Sends a test SMS via Yoola (Uganda's best SMS service)</small>
+</div>
+
+<script>
+function sendYoolaTest() {
+    const phone = document.getElementById('test_phone').value;
+    const message = document.getElementById('test_message').value;
+    
+    if (!phone) {
+        alert('Please enter a phone number');
+        return;
+    }
+    
+    if (!message) {
+        alert('Please enter a message');
+        return;
+    }
+    
+    if (confirm(`Send test SMS to ${phone}?`)) {
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = "{% url 'notifications:test_yoola' %}";
+        
+        const csrf = document.createElement('input');
+        csrf.type = 'hidden';
+        csrf.name = 'csrfmiddlewaretoken';
+        csrf.value = document.querySelector('[name=csrfmiddlewaretoken]').value;
+        form.appendChild(csrf);
+        
+        const phoneInput = document.createElement('input');
+        phoneInput.type = 'hidden';
+        phoneInput.name = 'phone_number';
+        phoneInput.value = phone;
+        form.appendChild(phoneInput);
+        
+        const messageInput = document.createElement('input');
+        messageInput.type = 'hidden';
+        messageInput.name = 'message';
+        messageInput.value = message;
+        form.appendChild(messageInput);
+        
+        document.body.appendChild(form);
+        form.submit();
+    }
+}
+</script>
+                    <h6 class="text-muted mb-3"><i class="fas fa-sms"></i> SMS Settings</h6>
+                    <div class="mb-3">
+                        <label for="sms_template" class="form-label">SMS Template</label>
+                        <textarea class="form-control" id="sms_template" name="sms_template" rows="3">{{ settings.sms_template }}</textarea>
+                        <small class="text-muted">
+                            Available variables: {{ patient_name }}, {{ appointment_date }}, {{ appointment_time }}, 
+                            {{ doctor_name }}, {{ clinic_name }}, {{ clinic_phone }}
+                        </small>
+                    </div>
+                    
+                    <hr>
+                    
+                    <!-- Twilio Settings -->
+                    <h6 class="text-muted mb-3"><i class="fas fa-phone"></i> Twilio SMS Settings</h6>
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle"></i> 
+                        To send SMS reminders, you need a Twilio account. 
+                        <a href="https://www.twilio.com/try-twilio" target="_blank">Sign up for Twilio</a>
+                    </div>
+                    <div class="mb-3">
+                        <label for="twilio_account_sid" class="form-label">Twilio Account SID</label>
+                        <input type="text" class="form-control" id="twilio_account_sid" 
+                               name="twilio_account_sid" value="{{ settings.twilio_account_sid }}">
+                    </div>
+                    <div class="mb-3">
+                        <label for="twilio_auth_token" class="form-label">Twilio Auth Token</label>
+                        <input type="password" class="form-control" id="twilio_auth_token" 
+                               name="twilio_auth_token" value="{{ settings.twilio_auth_token }}">
+                    </div>
+                    <div class="mb-3">
+                        <label for="twilio_phone_number" class="form-label">Twilio Phone Number</label>
+                        <input type="text" class="form-control" id="twilio_phone_number" 
+                               name="twilio_phone_number" value="{{ settings.twilio_phone_number }}">
+                        <small class="text-muted">Include country code (e.g., +1234567890)</small>
+                    </div>
+                    
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-save"></i> Save Settings
+                            </button>
+                            <a href="{% url 'notifications:test_reminder' %}" class="btn btn-warning" onclick="return confirm('Send a test reminder to your email/SMS?')">
+                                <i class="fas fa-paper-plane"></i> Send Test Reminder
+                            </a>
+                        </div>
+                        <a href="{% url 'core:admin_dashboard' %}" class="btn btn-secondary">
+                            <i class="fas fa-arrow-left"></i> Back to Dashboard
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Notification Logs -->
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header">
+                <i class="fas fa-history text-primary"></i> Recent Notifications
+            </div>
+            <div class="card-body" style="max-height: 600px; overflow-y: auto;">
+                {% if logs %}
+                    {% for log in logs %}
+                        <div class="border-bottom pb-2 mb-2">
+                            <div class="d-flex justify-content-between">
+                                <small>
+                                    <i class="fas fa-{% if log.channel == 'email' %}envelope{% else %}sms{% endif %}"></i>
+                                    {{ log.get_channel_display }}
+                                </small>
+                                <span class="badge {% if log.status == 'sent' %}bg-success{% elif log.status == 'failed' %}bg-danger{% else %}bg-warning{% endif %}">
+                                    {{ log.get_status_display }}
+                                </span>
+                            </div>
+                            <div>
+                                <small class="d-block text-truncate">{{ log.message|truncatechars:50 }}</small>
+                                <small class="text-muted">{{ log.sent_to }}</small>
+                                <br>
+                                <small class="text-muted">{{ log.created_at|timesince }} ago</small>
+                            </div>
+                        </div>
+                    {% endfor %}
+                {% else %}
+                    <p class="text-muted text-center py-3">No notifications sent yet.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

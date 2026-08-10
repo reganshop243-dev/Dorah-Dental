@@ -1,0 +1,150 @@
+{% extends 'core/base_otp.html' %}
+{% load static %}
+
+{% block title %}OTP Verification{% endblock %}
+
+{% block extra_css %}
+<style>
+    .otp-input {
+        text-align: center;
+        font-size: 2rem;
+        font-weight: bold;
+        letter-spacing: 10px;
+        padding: 15px;
+        border-radius: 12px;
+        border: 2px solid #dee2e6;
+        transition: all 0.3s;
+    }
+    .otp-input:focus {
+        border-color: #667eea;
+        box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
+    }
+    .resend-link {
+        color: #667eea;
+        text-decoration: underline;
+        cursor: pointer;
+    }
+    .resend-link:hover {
+        color: #764ba2;
+    }
+    .timer {
+        font-weight: 600;
+        color: #e74c3c;
+    }
+    .otp-expired {
+        color: #e74c3c;
+        font-weight: 600;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="otp-title">OTP Verification</div>
+<div class="otp-subtitle">Enter the code sent to your phone</div>
+
+{% if messages %}
+    {% for message in messages %}
+        <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+            {{ message }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    {% endfor %}
+{% endif %}
+
+<div class="text-center mb-4">
+    <i class="fas fa-sms fa-3x text-primary"></i>
+    <p class="text-muted mt-2">
+        Enter the 6-digit code sent to:<br>
+        <strong>{{ user.profile.phone }}</strong>
+    </p>
+    <p class="text-muted small" id="otpTimer">
+        <i class="fas fa-clock"></i> 
+        OTP expires in: <span class="timer" id="countdown">5:00</span>
+    </p>
+    {% if not user.profile.otp_code %}
+        <p class="text-warning">
+            <i class="fas fa-exclamation-triangle"></i> 
+            No OTP has been sent. Please request a new one.
+        </p>
+    {% endif %}
+</div>
+
+<form method="post">
+    {% csrf_token %}
+    <div class="mb-4">
+        <label for="otp_code" class="form-label">Enter OTP Code</label>
+        <input type="text" class="form-control otp-input" id="otp_code" 
+               name="otp_code" placeholder="000000" maxlength="6" 
+               inputmode="numeric" pattern="[0-9]*" required autofocus
+               {% if not user.profile.otp_code %}disabled{% endif %}>
+    </div>
+    
+    <button type="submit" class="btn-verify" 
+            {% if not user.profile.otp_code %}disabled{% endif %}>
+        <i class="fas fa-check-circle"></i> Verify OTP
+    </button>
+</form>
+
+<div class="text-center mt-3">
+    <small>
+        Didn't receive the code?
+        <a href="{% url 'core:otp_send' %}" class="resend-link" id="resendLink">
+            <i class="fas fa-redo"></i> Resend OTP
+        </a>
+    </small>
+</div>
+
+<div class="text-center mt-2">
+    <small>
+        <a href="{% url 'core:logout' %}" class="text-danger">
+            <i class="fas fa-sign-out-alt"></i> Logout
+        </a>
+    </small>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Countdown timer for OTP expiry
+    document.addEventListener('DOMContentLoaded', function() {
+        // Only start timer if OTP exists
+        if ({{ user.profile.otp_code|yesno:"true,false" }}) {
+            startTimer(5); // 5 minutes
+        }
+        
+        // Auto-submit when 6 digits are entered
+        const otpInput = document.getElementById('otp_code');
+        otpInput.addEventListener('input', function() {
+            this.value = this.value.replace(/[^0-9]/g, '');
+            if (this.value.length === 6) {
+                this.form.submit();
+            }
+        });
+        otpInput.focus();
+    });
+    
+    function startTimer(minutes) {
+        let time = minutes * 60; // seconds
+        const timerDisplay = document.getElementById('countdown');
+        const resendLink = document.getElementById('resendLink');
+        
+        const interval = setInterval(function() {
+            const mins = Math.floor(time / 60);
+            const secs = time % 60;
+            timerDisplay.textContent = `${mins}:${secs.toString().padStart(2, '0')}`;
+            
+            if (time <= 0) {
+                clearInterval(interval);
+                timerDisplay.textContent = 'Expired!';
+                timerDisplay.className = 'timer otp-expired';
+                resendLink.style.color = '#e74c3c';
+                resendLink.innerHTML = '<i class="fas fa-exclamation-triangle"></i> OTP Expired - Click to Resend';
+                // Disable verify button
+                document.querySelector('button[type="submit"]').disabled = true;
+                document.getElementById('otp_code').disabled = true;
+            }
+            time--;
+        }, 1000);
+    }
+</script>
+{% endblock %}

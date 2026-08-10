@@ -1,0 +1,433 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block page_title %}Add Patient{% endblock %}
+
+{% block extra_css %}
+<style>
+    .form-section {
+        background: #f8f9fa;
+        border-radius: 10px;
+        padding: 20px;
+        margin-bottom: 20px;
+        border-left: 4px solid #3498db;
+    }
+    .form-section .section-title {
+        font-weight: 600;
+        color: #2c3e50;
+        margin-bottom: 15px;
+        font-size: 1.1rem;
+    }
+    .form-section .section-title i {
+        color: #3498db;
+        margin-right: 10px;
+    }
+    .form-label {
+        font-weight: 500;
+        font-size: 0.9rem;
+        color: #2c3e50;
+    }
+    .form-label .required {
+        color: #e74c3c;
+        margin-left: 3px;
+    }
+    .form-control, .form-select {
+        border-radius: 8px;
+        border: 1px solid #dee2e6;
+        transition: all 0.3s;
+    }
+    .form-control:focus, .form-select:focus {
+        border-color: #3498db;
+        box-shadow: 0 0 0 0.2rem rgba(52, 152, 219, 0.25);
+    }
+    .help-text {
+        font-size: 0.8rem;
+        color: #6c757d;
+        margin-top: 2px;
+    }
+    .card-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+    }
+    .card-header i {
+        color: white;
+    }
+    .radio-group {
+        display: flex;
+        gap: 20px;
+        padding-top: 5px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-9">
+        <div class="card">
+            <div class="card-header">
+                <i class="fas fa-user-plus me-2"></i> Register New Patient
+            </div>
+            <div class="card-body">
+                <form method="post" id="patientForm" enctype="multipart/form-data">
+                    {% csrf_token %}
+                    
+                    <!-- Personal Information -->
+                    <div class="form-section">
+                        <div class="section-title">
+                            <i class="fas fa-user"></i> Personal Information
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="first_name" class="form-label">
+                                    First Name <span class="required">*</span>
+                                </label>
+                                <input type="text" class="form-control" id="first_name" name="first_name" 
+                                       placeholder="Enter first name" required>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="last_name" class="form-label">
+                                    Last Name <span class="required">*</span>
+                                </label>
+                                <input type="text" class="form-control" id="last_name" name="last_name" 
+                                       placeholder="Enter last name" required>
+                            </div>
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-md-4 mb-3">
+                                <label for="date_of_birth" class="form-label">Date of Birth</label>
+                                <input type="date" class="form-control" id="date_of_birth" name="date_of_birth">
+                                <div class="help-text">Leave blank if unknown</div>
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <label for="age_years" class="form-label">Age in Years</label>
+                                <input type="number" class="form-control" id="age_years" name="age_years" 
+                                       placeholder="e.g., 35" min="0" max="150">
+                                <div class="help-text">Use this if date of birth is unknown</div>
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <label for="gender" class="form-label">
+                                    Gender <span class="required">*</span>
+                                </label>
+                                <select class="form-select" id="gender" name="gender" required>
+                                    <option value="">Select Gender</option>
+                                    <option value="M">Male</option>
+                                    <option value="F">Female</option>
+                                    <option value="O">Other</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Registration Date -->
+                    <div class="form-section">
+                        <div class="section-title">
+                            <i class="fas fa-calendar-alt"></i> Registration Details
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="registered_at" class="form-label">Registration Date</label>
+                                <input type="date" class="form-control" id="registered_at" name="registered_at">
+                                <div class="help-text">Leave blank for today's date. Use this to backdate registration.</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Contact Information -->
+                    <div class="form-section">
+                        <div class="section-title">
+                            <i class="fas fa-address-card"></i> Contact Information
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="phone" class="form-label">
+                                    Phone Number <span class="required">*</span>
+                                </label>
+                                <input type="text" class="form-control" id="phone" name="phone" 
+                                       placeholder="+256 700 000 000" required>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="email" class="form-label">Email Address</label>
+                                <input type="email" class="form-control" id="email" name="email" 
+                                       placeholder="patient@email.com">
+                                <div class="help-text">Optional but recommended for reminders</div>
+                            </div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="address" class="form-label">Physical Address</label>
+                            <textarea class="form-control" id="address" name="address" rows="2" 
+                                      placeholder="Enter full address"></textarea>
+                        </div>
+                    </div>
+                    
+                    <!-- Emergency Contact / Next of Kin -->
+                    <div class="form-section">
+                        <div class="section-title">
+                            <i class="fas fa-phone-alt"></i> Emergency Contact / Next of Kin
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="next_of_kin" class="form-label">Next of Kin Name</label>
+                                <input type="text" class="form-control" id="next_of_kin" name="next_of_kin" 
+                                       placeholder="Full name of next of kin">
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="next_of_kin_contact" class="form-label">Next of Kin Contact</label>
+                                <input type="text" class="form-control" id="next_of_kin_contact" name="next_of_kin_contact" 
+                                       placeholder="Phone number of next of kin">
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Medical History -->
+                    <div class="form-section">
+                        <div class="section-title">
+                            <i class="fas fa-notes-medical"></i> Medical History
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label class="form-label">Are you currently under the care of a physician?</label>
+                            <div class="radio-group">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="radio" name="under_physician" id="physician_yes" value="yes">
+                                    <label class="form-check-label" for="physician_yes">Yes</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="radio" name="under_physician" id="physician_no" value="no" checked>
+                                    <label class="form-check-label" for="physician_no">No</label>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="mb-3" id="physician_details_wrapper" style="display: none;">
+                            <label for="physician_details" class="form-label">Physician Details</label>
+                            <input type="text" class="form-control" id="physician_details" name="physician_details" 
+                                   placeholder="Physician's name and contact information">
+                            <div class="help-text">Please provide your physician's name and contact details</div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="allergies" class="form-label">Allergies</label>
+                            <textarea class="form-control" id="allergies" name="allergies" rows="2" 
+                                      placeholder="List any allergies (e.g., medication, latex, food allergies)"></textarea>
+                            <div class="help-text">Please list all known allergies</div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="current_medications" class="form-label">Current Medications</label>
+                            <textarea class="form-control" id="current_medications" name="current_medications" rows="3" 
+                                      placeholder="List any medications you are currently taking (include dosage if known)"></textarea>
+                            <div class="help-text">Please list all current medications, including over-the-counter and supplements</div>
+                        </div>
+                    </div>
+                    
+                    <!-- Dental History -->
+                    <div class="form-section">
+                        <div class="section-title">
+                            <i class="fas fa-tooth"></i> Dental History
+                        </div>
+                        
+                        <!-- Question 1: Reason for Visit -->
+                        <div class="mb-3">
+                            <label for="reason_for_visit" class="form-label">
+                                Reason for Visit Today <span class="required">*</span>
+                            </label>
+                            <textarea class="form-control" id="reason_for_visit" name="reason_for_visit" rows="3" 
+                                      placeholder="Please describe the reason for your visit today" required></textarea>
+                            <div class="help-text">e.g., toothache, cleaning, checkup, cosmetic, etc.</div>
+                        </div>
+                        
+                        <!-- Question 2: Dental Pain/Discomfort -->
+                        <div class="mb-3">
+                            <label class="form-label">Have you experienced any dental pain or discomfort recently?</label>
+                            <div class="radio-group">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="radio" name="dental_discomfort" id="discomfort_yes" value="yes">
+                                    <label class="form-check-label" for="discomfort_yes">Yes</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="radio" name="dental_discomfort" id="discomfort_no" value="no" checked>
+                                    <label class="form-check-label" for="discomfort_no">No</label>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="mb-3" id="discomfort_details_wrapper" style="display: none;">
+                            <label for="discomfort_details" class="form-label">Describe the discomfort</label>
+                            <textarea class="form-control" id="discomfort_details" name="discomfort_details" rows="3" 
+                                      placeholder="Please describe any pain, sensitivity, bleeding, swelling, or other discomfort"></textarea>
+                            <div class="help-text">Include details about location, duration, and severity</div>
+                        </div>
+                        
+                        <!-- Question 3: Previous Dental Procedures/Surgeries -->
+                        <div class="mb-3">
+                            <label class="form-label">Have you had any dental procedures or surgeries in the past?</label>
+                            <div class="radio-group">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="radio" name="previous_surgery" id="surgery_yes" value="yes">
+                                    <label class="form-check-label" for="surgery_yes">Yes</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="radio" name="previous_surgery" id="surgery_no" value="no" checked>
+                                    <label class="form-check-label" for="surgery_no">No</label>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="mb-3" id="surgery_details_wrapper" style="display: none;">
+                            <label for="surgery_details" class="form-label">Describe the procedures/surgeries</label>
+                            <textarea class="form-control" id="surgery_details" name="surgery_details" rows="3" 
+                                      placeholder="Please describe any previous dental procedures or surgeries"></textarea>
+                            <div class="help-text">Include dates and details of procedures</div>
+                        </div>
+                        
+                        <!-- Question 4: Last Dental Visit -->
+                        <div class="mb-3">
+                            <label for="last_dental_visit" class="form-label">When was your last dental visit?</label>
+                            <input type="date" class="form-control" id="last_dental_visit" name="last_dental_visit">
+                            <div class="help-text">If you haven't visited a dentist before, leave blank</div>
+                        </div>
+                    </div>
+                    
+                    <!-- Dental Images -->
+                    <div class="form-section">
+                        <div class="section-title">
+                            <i class="fas fa-images"></i> Dental Images / Attachments
+                        </div>
+                        <div class="alert alert-info">
+                            <i class="fas fa-info-circle"></i>
+                            You can upload photos of the patient's dental condition, x-rays, or treatment progress images.
+                            <br>
+                            <small>Accepted formats: JPG, PNG, GIF, PDF (Max: 10MB per file)</small>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="image_type" class="form-label">Image Type</label>
+                            <select class="form-select" id="image_type" name="image_type">
+                                <option value="clinical">Clinical Photo</option>
+                                <option value="xray">X-Ray</option>
+                                <option value="treatment">Treatment Photo</option>
+                                <option value="before">Before Treatment</option>
+                                <option value="after">After Treatment</option>
+                                <option value="surgery">Surgery Photo</option>
+                                <option value="other">Other</option>
+                            </select>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="dental_images" class="form-label">Upload Images</label>
+                            <input type="file" class="form-control" id="dental_images" name="dental_images" 
+                                   accept="image/*" multiple>
+                            <div class="help-text">You can select multiple images at once</div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="image_description" class="form-label">Image Description</label>
+                            <textarea class="form-control" id="image_description" name="image_description" rows="2" 
+                                      placeholder="Describe what the images show (e.g., 'Upper right molar cavity', 'Before treatment - tooth 23')"></textarea>
+                        </div>
+                        
+                        <!-- Image Preview -->
+                        <div id="imagePreviewContainer" style="display: none;">
+                            <label class="form-label">Selected Images</label>
+                            <div id="imagePreviewGrid" class="row"></div>
+                        </div>
+                    </div>
+                    
+                    <div class="d-flex justify-content-between">
+                        <a href="{% url 'patients:list' %}" class="btn btn-secondary">
+                            <i class="fas fa-arrow-left"></i> Cancel
+                        </a>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-save"></i> Register Patient
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Image preview for dental images
+    const dentalImagesInput = document.getElementById('dental_images');
+    const imagePreviewContainer = document.getElementById('imagePreviewContainer');
+    const imagePreviewGrid = document.getElementById('imagePreviewGrid');
+
+    dentalImagesInput.addEventListener('change', function(e) {
+        const files = this.files;
+        imagePreviewGrid.innerHTML = '';
+        
+        if (files.length > 0) {
+            imagePreviewContainer.style.display = 'block';
+            
+            Array.from(files).forEach((file, index) => {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const col = document.createElement('div');
+                    col.className = 'col-md-3 col-sm-4 col-6 mb-2';
+                    col.innerHTML = `
+                        <div style="border: 1px solid #ddd; border-radius: 8px; padding: 5px; text-align: center;">
+                            <img src="${e.target.result}" alt="Image ${index + 1}" 
+                                 style="width: 100%; height: 100px; object-fit: cover; border-radius: 4px;">
+                            <small class="d-block text-truncate" style="font-size: 0.7rem;">${file.name}</small>
+                            <small class="d-block text-muted" style="font-size: 0.6rem;">${(file.size / 1024).toFixed(1)} KB</small>
+                        </div>
+                    `;
+                    imagePreviewGrid.appendChild(col);
+                }
+                reader.readAsDataURL(file);
+            });
+        } else {
+            imagePreviewContainer.style.display = 'none';
+        }
+    });
+    
+    // Show/hide physician details
+    document.querySelectorAll('input[name="under_physician"]').forEach(function(radio) {
+        radio.addEventListener('change', function() {
+            const wrapper = document.getElementById('physician_details_wrapper');
+            if (this.value === 'yes' && this.checked) {
+                wrapper.style.display = 'block';
+            } else {
+                wrapper.style.display = 'none';
+            }
+        });
+    });
+    
+    // Show/hide discomfort details
+    document.querySelectorAll('input[name="dental_discomfort"]').forEach(function(radio) {
+        radio.addEventListener('change', function() {
+            const wrapper = document.getElementById('discomfort_details_wrapper');
+            if (this.value === 'yes' && this.checked) {
+                wrapper.style.display = 'block';
+            } else {
+                wrapper.style.display = 'none';
+            }
+        });
+    });
+    
+    // Show/hide surgery details
+    document.querySelectorAll('input[name="previous_surgery"]').forEach(function(radio) {
+        radio.addEventListener('change', function() {
+            const wrapper = document.getElementById('surgery_details_wrapper');
+            if (this.value === 'yes' && this.checked) {
+                wrapper.style.display = 'block';
+            } else {
+                wrapper.style.display = 'none';
+            }
+        });
+    });
+    
+    // Set default dates
+    document.addEventListener('DOMContentLoaded', function() {
+        const today = new Date().toISOString().split('T')[0];
+        document.getElementById('date_of_birth').max = today;
+        document.getElementById('last_dental_visit').max = today;
+        
+        // Set default registration date to today
+        document.getElementById('registered_at').value = today;
+    });
+</script>
+{% endblock %}

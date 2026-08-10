@@ -1,0 +1,146 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1 class="mb-0">Edit Patient</h1>
+    <a href="{% url 'patients:detail' patient.pk %}" class="btn btn-secondary">
+        <i class="fas fa-arrow-left"></i> Back
+    </a>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        <form method="post">
+            {% csrf_token %}
+            
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="mb-3">
+                        <label class="form-label">First Name *</label>
+                        <input type="text" name="first_name" class="form-control" value="{{ patient.first_name }}" required>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="mb-3">
+                        <label class="form-label">Last Name *</label>
+                        <input type="text" name="last_name" class="form-control" value="{{ patient.last_name }}" required>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="mb-3">
+                        <label class="form-label">Phone *</label>
+                        <input type="text" name="phone" class="form-control" value="{{ patient.phone }}" required>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="mb-3">
+                        <label class="form-label">Email</label>
+                        <input type="email" name="email" class="form-control" value="{{ patient.email }}">
+                    </div>
+                </div>
+            </div>
+            
+            <div class="mb-3">
+                <label class="form-label">Address</label>
+                <textarea name="address" class="form-control" rows="2">{{ patient.address }}</textarea>
+            </div>
+            
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="mb-3">
+                        <label class="form-label">Date of Birth *</label>
+                        <input type="date" name="date_of_birth" class="form-control" value="{{ patient.date_of_birth|date:'Y-m-d' }}" required>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="mb-3">
+                        <label class="form-label">Gender *</label>
+                        <select name="gender" class="form-select" required>
+                            <option value="">Select Gender</option>
+                            <option value="M" {% if patient.gender == 'M' %}selected{% endif %}>Male</option>
+                            <option value="F" {% if patient.gender == 'F' %}selected{% endif %}>Female</option>
+                            <option value="O" {% if patient.gender == 'O' %}selected{% endif %}>Other</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="mb-3">
+                <label class="form-label">Medical History</label>
+                <textarea name="medical_history" class="form-control" rows="2">{{ patient.medical_history }}</textarea>
+            </div>
+
+            <!-- Dental History -->
+<div class="form-section">
+    <div class="section-title">
+        <i class="fas fa-tooth"></i> Dental History
+    </div>
+    
+    <div class="mb-3">
+        <label class="form-label">Have you experienced any dental pain or discomfort recently?</label>
+        <div class="d-flex gap-3">
+            <div class="form-check">
+                <input class="form-check-input" type="radio" name="dental_discomfort" id="discomfort_yes" value="yes" {% if patient.dental_discomfort == 'yes' %}checked{% endif %}>
+                <label class="form-check-label" for="discomfort_yes">Yes</label>
+            </div>
+            <div class="form-check">
+                <input class="form-check-input" type="radio" name="dental_discomfort" id="discomfort_no" value="no" {% if patient.dental_discomfort == 'no' or not patient.dental_discomfort %}checked{% endif %}>
+                <label class="form-check-label" for="discomfort_no">No</label>
+            </div>
+        </div>
+    </div>
+    
+    <div class="mb-3" id="discomfort_details_wrapper" style="display: {% if patient.dental_discomfort == 'yes' %}block{% else %}none{% endif %};">
+        <label for="discomfort_details" class="form-label">Describe the discomfort</label>
+        <textarea class="form-control" id="discomfort_details" name="discomfort_details" rows="3">{{ patient.discomfort_details }}</textarea>
+    </div>
+    
+    <div class="mb-3">
+        <label class="form-label">Have you had any dental procedures or surgeries in the past?</label>
+        <div class="d-flex gap-3">
+            <div class="form-check">
+                <input class="form-check-input" type="radio" name="previous_surgery" id="surgery_yes" value="yes" {% if patient.previous_surgery == 'yes' %}checked{% endif %}>
+                <label class="form-check-label" for="surgery_yes">Yes</label>
+            </div>
+            <div class="form-check">
+                <input class="form-check-input" type="radio" name="previous_surgery" id="surgery_no" value="no" {% if patient.previous_surgery == 'no' or not patient.previous_surgery %}checked{% endif %}>
+                <label class="form-check-label" for="surgery_no">No</label>
+            </div>
+        </div>
+    </div>
+    
+    <div class="mb-3" id="surgery_details_wrapper" style="display: {% if patient.previous_surgery == 'yes' %}block{% else %}none{% endif %};">
+        <label for="surgery_details" class="form-label">Describe the procedures/surgeries</label>
+        <textarea class="form-control" id="surgery_details" name="surgery_details" rows="3">{{ patient.surgery_details }}</textarea>
+    </div>
+    
+    <div class="mb-3">
+        <label for="reason_for_visit" class="form-label">Reason for Visit Today <span class="required">*</span></label>
+        <textarea class="form-control" id="reason_for_visit" name="reason_for_visit" rows="3" required>{{ patient.reason_for_visit }}</textarea>
+    </div>
+    
+    <div class="mb-3">
+        <label for="last_dental_visit" class="form-label">When was your last dental visit?</label>
+        <input type="date" class="form-control" id="last_dental_visit" name="last_dental_visit" value="{{ patient.last_dental_visit|date:'Y-m-d' }}">
+    </div>
+</div>
+            
+            <div class="mb-3">
+                <label class="form-label">Allergies</label>
+                <textarea name="allergies" class="form-control" rows="2">{{ patient.allergies }}</textarea>
+            </div>
+            
+            <div class="d-flex gap-2">
+                <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-save"></i> Update Patient
+                </button>
+                <a href="{% url 'patients:detail' patient.pk %}" class="btn btn-secondary">Cancel</a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

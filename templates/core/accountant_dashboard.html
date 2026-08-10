@@ -1,0 +1,183 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block page_title %}Accountant Dashboard{% endblock %}
+
+{% block content %}
+<div class="row">
+    <!-- Stats -->
+    <div class="col-md-3 mb-3">
+        <div class="stat-card">
+            <div class="d-flex justify-content-between">
+                <div>
+                    <div class="number">UGX {{ monthly_revenue|floatformat:0 }}</div>
+                    <div class="label">Monthly Revenue</div>
+                </div>
+                <div class="icon">
+                    <i class="fas fa-chart-line text-success"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 mb-3">
+        <div class="stat-card">
+            <div class="d-flex justify-content-between">
+                <div>
+                    <div class="number">UGX {{ daily_revenue|floatformat:0 }}</div>
+                    <div class="label">Today's Revenue</div>
+                </div>
+                <div class="icon">
+                    <i class="fas fa-coins text-primary"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 mb-3">
+        <div class="stat-card">
+            <div class="d-flex justify-content-between">
+                <div>
+                    <div class="number">UGX {{ pending_total|floatformat:0 }}</div>
+                    <div class="label">Pending Payments</div>
+                </div>
+                <div class="icon">
+                    <i class="fas fa-clock text-warning"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 mb-3">
+        <div class="stat-card">
+            <div class="d-flex justify-content-between">
+                <div>
+                    <div class="number">{{ pending_invoices|length }}</div>
+                    <div class="label">Pending Invoices</div>
+                </div>
+                <div class="icon">
+                    <i class="fas fa-file-invoice text-danger"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <!-- Recent Transactions -->
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">
+                <i class="fas fa-history text-primary"></i> Recent Transactions
+            </div>
+            <div class="card-body">
+                {% if recent_payments %}
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Date</th>
+                                    <th>Invoice</th>
+                                    <th>Patient</th>
+                                    <th>Amount</th>
+                                    <th>Method</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for payment in recent_payments %}
+                                <tr>
+                                    <td>{{ payment.payment_date|date:"M d, H:i" }}</td>
+                                    <td>{{ payment.invoice.invoice_number }}</td>
+                                    <td>{{ payment.invoice.patient_name }}</td>
+                                    <td><strong>UGX {{ payment.amount|floatformat:0 }}</strong></td>
+                                    <td>{{ payment.get_payment_method_display }}</td>
+                                    <td>
+                                        <span class="badge bg-success">
+                                            <i class="fas fa-check"></i> {{ payment.get_status_display }}
+                                        </span>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}
+                    <p class="text-muted text-center py-4">No recent transactions.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Financial Reports - Admin & Accountant -->
+{% if user.profile.role == 'admin' or user.profile.role == 'accountant' %}
+    <a class="nav-link {% if 'revenue' in request.path %}active{% endif %}" href="{% url 'core:revenue_dashboard' %}">
+        <i class="fas fa-chart-line"></i> <span>Revenue Reports</span>
+    </a>
+    <a class="nav-link {% if 'balance-sheet' in request.path %}active{% endif %}" href="{% url 'billing:balance_sheet' %}">
+        <i class="fas fa-balance-scale"></i> <span>Balance Sheet</span>
+    </a>
+{% endif %}
+    <!-- Quick Actions -->
+<div class="card">
+    <div class="card-header">Quick Actions</div>
+    <div class="card-body">
+        <div class="d-grid gap-2">
+            <a href="{% url 'core:revenue_dashboard' %}" class="btn btn-primary">
+                <i class="fas fa-chart-line"></i> View Revenue Reports
+            </a>
+            <a href="{% url 'billing:add' %}" class="btn btn-info text-white">
+                <i class="fas fa-file-invoice"></i> Create Invoice
+            </a>
+            <a href="{% url 'billing:list' %}" class="btn btn-secondary">
+                <i class="fas fa-list"></i> View All Invoices
+            </a>
+        </div>
+    </div>
+</div>
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header">Quick Actions</div>
+            <div class="card-body">
+                <div class="d-grid gap-2">
+                    <a href="{% url 'billing:add' %}" class="btn btn-primary">
+                        <i class="fas fa-file-invoice"></i> Create Invoice
+                    </a>
+                    <a href="{% url 'billing:list' %}" class="btn btn-info text-white">
+                        <i class="fas fa-list"></i> View All Invoices
+                    </a>
+                    <a href="#" class="btn btn-success">
+                        <i class="fas fa-file-pdf"></i> Generate Report
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Pending Invoices List -->
+        <div class="card mt-3">
+            <div class="card-header">
+                <i class="fas fa-exclamation-triangle text-warning"></i> Pending Invoices
+            </div>
+            <div class="card-body">
+                {% if pending_invoices %}
+                    <ul class="list-group list-group-flush">
+                    {% for invoice in pending_invoices|slice:":5" %}
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            <div>
+                                <small>{{ invoice.invoice_number }}</small><br>
+                                <small class="text-muted">{{ invoice.patient_name }}</small>
+                            </div>
+                            <span class="badge bg-warning">UGX {{ invoice.balance_due|floatformat:0 }}</span>
+                        </li>
+                    {% endfor %}
+                    </ul>
+                    {% if pending_invoices|length > 5 %}
+                        <a href="{% url 'billing:list' %}" class="btn btn-sm btn-outline-primary mt-2 w-100">
+                            View All ({{ pending_invoices|length }})
+                        </a>
+                    {% endif %}
+                {% else %}
+                    <p class="text-muted text-center py-3">No pending invoices.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

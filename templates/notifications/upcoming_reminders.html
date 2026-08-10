@@ -1,0 +1,276 @@
+{% extends 'base.html' %}
+{% load static %}
+{% load humanize %}
+
+{% block page_title %}Upcoming Appointment Reminders{% endblock %}
+
+{% block extra_css %}
+<style>
+    .date-group {
+        background: #f8f9fa;
+        border-radius: 10px;
+        padding: 15px;
+        margin-bottom: 20px;
+        border-left: 4px solid #667eea;
+    }
+    .date-group .date-header {
+        font-weight: 600;
+        color: #2c3e50;
+        margin-bottom: 10px;
+    }
+    .date-group .date-header .badge {
+        font-size: 0.8rem;
+    }
+    .appointment-item {
+        background: white;
+        border-radius: 8px;
+        padding: 12px 15px;
+        margin-bottom: 8px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+        border: 1px solid #e9ecef;
+        transition: all 0.2s;
+    }
+    .appointment-item:hover {
+        border-color: #667eea;
+        box-shadow: 0 2px 8px rgba(102, 126, 234, 0.15);
+    }
+    .appointment-item .patient-name {
+        font-weight: 600;
+        color: #2c3e50;
+    }
+    .appointment-item .appointment-time {
+        color: #636e72;
+        font-size: 0.9rem;
+    }
+    .appointment-item .appointment-details {
+        color: #7f8c8d;
+        font-size: 0.85rem;
+    }
+    .reminder-status {
+        font-size: 0.75rem;
+    }
+    .sent-status {
+        color: #27ae60;
+    }
+    .pending-status {
+        color: #f39c12;
+    }
+    .stats-card {
+        background: white;
+        border-radius: 12px;
+        padding: 20px;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+        text-align: center;
+    }
+    .stats-card .number {
+        font-size: 2.5rem;
+        font-weight: 700;
+    }
+    .stats-card .label {
+        color: #7f8c8d;
+        font-size: 0.9rem;
+    }
+    .stats-card.total .number { color: #3498db; }
+    .stats-card.sent .number { color: #27ae60; }
+    .stats-card.pending .number { color: #f39c12; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h4><i class="fas fa-bell text-primary"></i> Upcoming Appointment Reminders</h4>
+    <div>
+        <a href="{% url 'notifications:settings' %}" class="btn btn-secondary">
+            <i class="fas fa-cog"></i> Settings
+        </a>
+        <button onclick="sendReminders()" class="btn btn-success">
+            <i class="fas fa-paper-plane"></i> Send All Reminders
+        </button>
+    </div>
+</div>
+
+<!-- Stats -->
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="stats-card total">
+            <div class="number">{{ total_appointments|default:0 }}</div>
+            <div class="label">Total Appointments</div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="stats-card pending">
+            <div class="number">{{ pending_reminders|default:0 }}</div>
+            <div class="label">Pending Reminders</div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="stats-card sent">
+            <div class="number">{{ sent_reminders|default:0 }}</div>
+            <div class="label">Reminders Sent</div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="stats-card">
+            <div class="number">{{ upcoming_reminders|default:0 }}</div>
+            <div class="label">Upcoming (7 days)</div>
+        </div>
+    </div>
+</div>
+
+<!-- Send Form -->
+<div class="card mb-4">
+    <div class="card-header">
+        <i class="fas fa-paper-plane text-success"></i> Send Reminders
+    </div>
+    <div class="card-body">
+        <form method="post" id="reminderForm">
+            {% csrf_token %}
+            <div class="row align-items-end">
+                <div class="col-md-4">
+                    <label class="form-label">Days Ahead</label>
+                    <select class="form-select" name="days" id="daysSelect">
+                        <option value="1">1 Day (Tomorrow)</option>
+                        <option value="2" selected>2 Days</option>
+                        <option value="3">3 Days</option>
+                        <option value="4">4 Days</option>
+                        <option value="5">5 Days</option>
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <div class="form-check mt-2">
+                        <input class="form-check-input" type="checkbox" id="previewOnly" name="preview_only">
+                        <label class="form-check-label" for="previewOnly">
+                            Preview Only (Don't Send)
+                        </label>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <button type="submit" class="btn btn-success w-100" id="sendBtn">
+                        <i class="fas fa-paper-plane"></i> Send Reminders
+                    </button>
+                </div>
+            </div>
+        </form>
+        <div class="mt-2">
+            <small class="text-muted">
+                <i class="fas fa-info-circle"></i> 
+                Reminders will be sent to patients with appointments in the selected number of days.
+                Only patients with phone numbers will receive SMS reminders.
+            </small>
+        </div>
+    </div>
+</div>
+
+<!-- Appointments List -->
+<div class="card">
+    <div class="card-header">
+        <i class="fas fa-calendar-alt text-primary"></i> Upcoming Appointments
+        <span class="badge bg-primary float-end">{{ total_appointments|default:0 }}</span>
+    </div>
+    <div class="card-body">
+        {% if appointments_by_date %}
+            {% for date_str, appointments in appointments_by_date.items %}
+                <div class="date-group">
+                    <div class="date-header">
+                        <i class="fas fa-calendar-day"></i> 
+                        {{ date_str|date:"l, F d, Y" }}
+                        <span class="badge bg-secondary">{{ appointments|length }}</span>
+                    </div>
+                    {% for appt in appointments %}
+                        <div class="appointment-item">
+                            <div class="row align-items-center">
+                                <div class="col-md-5">
+                                    <div class="patient-name">
+                                        <a href="{% url 'appointments:detail' appt.pk %}">
+                                            {{ appt.patient.full_name }}
+                                        </a>
+                                    </div>
+                                    <div class="appointment-details">
+                                        <i class="fas fa-phone"></i> {{ appt.patient.phone|default:"No phone" }}
+                                        <br>
+                                        <i class="fas fa-envelope"></i> {{ appt.patient.email|default:"No email" }}
+                                    </div>
+                                </div>
+                                <div class="col-md-3">
+                                    <div class="appointment-time">
+                                        <i class="far fa-clock"></i> {{ appt.appointment_time|time:"H:i" }}
+                                    </div>
+                                    <div class="appointment-details">
+                                        Dr. {{ appt.doctor.name }}
+                                    </div>
+                                </div>
+                                <div class="col-md-2">
+                                    <div class="appointment-details">
+                                        {{ appt.service.name }}
+                                    </div>
+                                    <div class="reminder-status">
+                                        {% if appt.reminder_sent %}
+                                            <span class="badge bg-success">
+                                                <i class="fas fa-check"></i> Sent
+                                            </span>
+                                        {% else %}
+                                            <span class="badge bg-warning">
+                                                <i class="fas fa-clock"></i> Pending
+                                            </span>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                <div class="col-md-2 text-end">
+                                    <a href="{% url 'appointments:detail' appt.pk %}" class="btn btn-sm btn-outline-primary">
+                                        <i class="fas fa-eye"></i>
+                                    </a>
+                                    {% if not appt.reminder_sent %}
+                                        <button class="btn btn-sm btn-success" onclick="sendSingleReminder({{ appt.pk }})">
+                                            <i class="fas fa-paper-plane"></i>
+                                        </button>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+            {% endfor %}
+        {% else %}
+            <div class="text-center py-5">
+                <i class="fas fa-calendar-check fa-3x text-muted mb-3"></i>
+                <h5>No upcoming appointments</h5>
+                <p class="text-muted">There are no appointments scheduled for the next 7 days.</p>
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+<script>
+    function sendReminders() {
+        const days = document.getElementById('daysSelect').value;
+        const form = document.getElementById('reminderForm');
+        
+        if (confirm(`Send reminders for appointments in ${days} day(s)?`)) {
+            form.submit();
+        }
+    }
+    
+    function sendSingleReminder(appointmentId) {
+        if (confirm('Send reminder for this appointment?')) {
+            fetch(`/notifications/send-single-reminder/${appointmentId}/`, {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+                },
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert('✅ Reminder sent successfully!');
+                    location.reload();
+                } else {
+                    alert('❌ Failed to send reminder: ' + data.error);
+                }
+            })
+            .catch(error => {
+                alert('❌ Error: ' + error);
+            });
+        }
+    }
+</script>
+{% endblock %}
