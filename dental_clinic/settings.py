@@ -31,37 +31,19 @@ DATA_DIR.mkdir(exist_ok=True)
 
 SECRET_KEY = os.environ.get('SECRET_KEY', 'django-insecure-dental-clinic-standalone-key')
 
-# Debug mode - False on Railway, True locally
-if os.environ.get('RAILWAY_ENVIRONMENT'):
-    DEBUG = False
-else:
-    DEBUG = True
+# TEMPORARY: Force DEBUG on Railway
+DEBUG = True  # Force debug on for now
 
-# Allowed hosts
-if DEBUG:
-    ALLOWED_HOSTS = ['*']
-else:
-    # Get the public domain from environment or use a default
-    railway_domain = os.environ.get('RAILWAY_PUBLIC_DOMAIN', '')
-    ALLOWED_HOSTS = [
-        'localhost',
-        '127.0.0.1',
-        '.railway.app',
-        '.up.railway.app',
-    ]
-    if railway_domain:
-        ALLOWED_HOSTS.append(railway_domain)
-    # Also allow the full domain without wildcard
-    ALLOWED_HOSTS.append('dorah-dental-production.up.railway.app')
+# Allowed hosts - allow all for debugging
+ALLOWED_HOSTS = ['*']
 
-# =======================
-# CSRF TRUSTED ORIGINS
-# =======================
-
+# CSRF Trusted Origins
 CSRF_TRUSTED_ORIGINS = [
     'https://dorah-dental-production.up.railway.app',
     'https://*.railway.app',
     'https://*.up.railway.app',
+    'http://*.railway.app',
+    'http://*.up.railway.app',
 ]
 
 # =======================
@@ -83,7 +65,7 @@ INSTALLED_APPS = [
     'billing',
     'core',
     'inventory',
-    'notifications',  # REMOVED the Pillow line!
+    'notifications',
 ]
 
 # =======================
@@ -108,10 +90,8 @@ WSGI_APPLICATION = 'dental_clinic.wsgi.application'
 # DATABASE - PostgreSQL (Railway)
 # =======================
 
-# Your actual Railway PostgreSQL connection string
 DATABASE_URL = "postgresql://postgres:yMgKMbELWuRVkvCumYxKoBzGgRmZHoJb@altaria.proxy.rlwy.net:15815/railway"
 
-# Use the DATABASE_URL
 DATABASES = {
     'default': dj_database_url.parse(DATABASE_URL, conn_max_age=600)
 }
@@ -155,16 +135,14 @@ STATICFILES_DIRS = [BASE_DIR / 'static']
 STATIC_ROOT = DATA_DIR / 'staticfiles'
 MEDIA_URL = '/media/'
 MEDIA_ROOT = DATA_DIR / 'media'
-
-# WhiteNoise configuration for static files
 STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
 # =======================
-# AUTHENTICATION
+# AUTHENTICATION - FIXED!
 # =======================
 
 LOGIN_URL = '/login/'
-LOGIN_REDIRECT_URL = '/dashboard/'
+LOGIN_REDIRECT_URL = '/'  # Root URL maps to dashboard
 LOGOUT_REDIRECT_URL = '/login/'
 
 # =======================
@@ -190,14 +168,11 @@ BUSINESS_TAGLINE = "Quality Dental Care"
 BUSINESS_LOGO_ICON = "fa-tooth"
 BUSINESS_LOGO_TEXT = "DORA'S"
 BUSINESS_LOGO_HIGHLIGHT = "DENTAL"
-
 BUSINESS_EMAIL = "info@dorasdentalgem.com"
 BUSINESS_PHONE = "+256 700 000 000"
 BUSINESS_ADDRESS = "Kampala, Uganda"
 BUSINESS_CURRENCY = "UGX"
 BUSINESS_YEAR = "2026"
-
-# Colors - Clean Professional
 BUSINESS_PRIMARY_COLOR = "#1a5276"
 BUSINESS_SECONDARY_COLOR = "#2980b9"
 BUSINESS_ACCENT_COLOR = "#2ecc71"
@@ -205,7 +180,6 @@ BUSINESS_DARK_COLOR = "#0a1a2e"
 BUSINESS_CARD_COLOR = "#f8f9fa"
 BUSINESS_MUTED_COLOR = "#6c757d"
 BUSINESS_BORDER_COLOR = "#dee2e6"
-
 BUSINESS_BADGES = ["Trusted", "Professional", "Caring"]
 
 # =======================
@@ -236,18 +210,17 @@ LOGGING = {
 }
 
 # =======================
-# SECURITY SETTINGS (Production)
+# SECURITY - DISABLED FOR DEBUGGING
 # =======================
 
-if not DEBUG:
-    SECURE_SSL_REDIRECT = True
-    SESSION_COOKIE_SECURE = True
-    CSRF_COOKIE_SECURE = True
-    SECURE_BROWSER_XSS_FILTER = True
-    SECURE_CONTENT_TYPE_NOSNIFF = True
-    SECURE_HSTS_SECONDS = 31536000  # 1 year
-    SECURE_HSTS_INCLUDE_SUBDOMAINS = True
-    SECURE_HSTS_PRELOAD = True
+SECURE_SSL_REDIRECT = False
+SESSION_COOKIE_SECURE = False
+CSRF_COOKIE_SECURE = False
+SECURE_BROWSER_XSS_FILTER = False
+SECURE_CONTENT_TYPE_NOSNIFF = False
+SECURE_HSTS_SECONDS = 0
+SECURE_HSTS_INCLUDE_SUBDOMAINS = False
+SECURE_HSTS_PRELOAD = False
 
 # =======================
 # STARTUP MESSAGE
@@ -259,4 +232,5 @@ print("=" * 50)
 print(f"Data Directory: {DATA_DIR}")
 print(f"Database: {DATABASES['default']['NAME']}")
 print(f"Database Engine: {DATABASES['default']['ENGINE']}")
+print(f"DEBUG Mode: {DEBUG}")
 print("=" * 50)
