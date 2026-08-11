@@ -7,6 +7,34 @@ from django.db import models
 from django.http import JsonResponse
 from .models import UserProfile
 from .otp_service import OTPService
+from datetime import timedelta
+
+
+# ====================
+# HELPER FUNCTION - Clean Doctor Names
+# ====================
+
+def clean_doctor_name(first_name, last_name, username=""):
+    """Clean doctor name - remove any existing 'Dr.' prefixes"""
+    # Combine names
+    if first_name and last_name:
+        name = f"{first_name} {last_name}"
+    elif first_name:
+        name = first_name
+    elif last_name:
+        name = last_name
+    else:
+        name = username or "Doctor"
+    
+    # Remove all "Dr." prefixes (case insensitive)
+    import re
+    name = re.sub(r'^Dr\.\s*', '', name, flags=re.IGNORECASE)
+    name = re.sub(r'\s+Dr\.\s*', ' ', name, flags=re.IGNORECASE)
+    
+    # Remove extra spaces
+    name = ' '.join(name.split())
+    
+    return name
 
 
 def login_view(request):
@@ -656,6 +684,9 @@ def user_add(request):
             
             # If role is doctor, create a doctor profile
             if role == 'doctor':
+                # ✅ FIX: Clean the name before saving
+                clean_name = clean_doctor_name(first_name, last_name, username)
+                
                 doctor_option = request.POST.get('doctor_option', 'auto')
                 
                 if doctor_option == 'existing':
@@ -666,7 +697,7 @@ def user_add(request):
                             profile.doctor = doctor
                         except Doctor.DoesNotExist:
                             doctor = Doctor.objects.create(
-                                name=f"Dr. {first_name} {last_name}".strip() or f"Dr. {username}",
+                                name=clean_name,  # ✅ FIXED: No "Dr." hardcoded
                                 specialization=request.POST.get('specialization', 'General Dentistry'),
                                 phone=phone or '',
                                 email=email or '',
@@ -675,7 +706,7 @@ def user_add(request):
                             profile.doctor = doctor
                     else:
                         doctor = Doctor.objects.create(
-                            name=f"Dr. {first_name} {last_name}".strip() or f"Dr. {username}",
+                            name=clean_name,  # ✅ FIXED: No "Dr." hardcoded
                             specialization=request.POST.get('specialization', 'General Dentistry'),
                             phone=phone or '',
                             email=email or '',
@@ -684,7 +715,7 @@ def user_add(request):
                         profile.doctor = doctor
                 else:
                     doctor = Doctor.objects.create(
-                        name=f"Dr. {first_name} {last_name}".strip() or f"Dr. {username}",
+                        name=clean_name,  # ✅ FIXED: No "Dr." hardcoded
                         specialization=request.POST.get('specialization', 'General Dentistry'),
                         phone=phone or '',
                         email=email or '',
@@ -728,9 +759,13 @@ def user_edit(request, pk):
     
     if request.method == 'POST':
         try:
+            # Get form data
+            first_name = request.POST.get('first_name', '').strip()
+            last_name = request.POST.get('last_name', '').strip()
+            
             # Update user fields
-            user.first_name = request.POST.get('first_name', '').strip()
-            user.last_name = request.POST.get('last_name', '').strip()
+            user.first_name = first_name
+            user.last_name = last_name
             user.email = request.POST.get('email', '').strip()
             user.is_active = request.POST.get('is_active') == 'on'
             
@@ -743,6 +778,9 @@ def user_edit(request, pk):
             
             # Optional: Handle doctor linking ONLY if role is doctor
             if new_role == 'doctor':
+                # ✅ FIX: Clean the name before saving
+                clean_name = clean_doctor_name(first_name, last_name, user.username)
+                
                 doctor_option = request.POST.get('doctor_option', 'auto')
                 
                 if doctor_option == 'existing':
@@ -754,7 +792,7 @@ def user_edit(request, pk):
                         except Doctor.DoesNotExist:
                             messages.warning(request, 'Selected doctor not found. Creating new one.')
                             doctor = Doctor.objects.create(
-                                name=f"Dr. {user.get_full_name() or user.username}",
+                                name=clean_name,  # ✅ FIXED: No "Dr." hardcoded
                                 phone=profile.phone or '',
                                 email=user.email or '',
                                 specialization=request.POST.get('specialization', 'General Dentistry'),
@@ -763,7 +801,7 @@ def user_edit(request, pk):
                             profile.doctor = doctor
                     else:
                         doctor = Doctor.objects.create(
-                            name=f"Dr. {user.get_full_name() or user.username}",
+                            name=clean_name,  # ✅ FIXED: No "Dr." hardcoded
                             phone=profile.phone or '',
                             email=user.email or '',
                             specialization=request.POST.get('specialization', 'General Dentistry'),
@@ -772,7 +810,7 @@ def user_edit(request, pk):
                         profile.doctor = doctor
                 else:
                     doctor = Doctor.objects.create(
-                        name=f"Dr. {user.get_full_name() or user.username}",
+                        name=clean_name,  # ✅ FIXED: No "Dr." hardcoded
                         phone=profile.phone or '',
                         email=user.email or '',
                         specialization=request.POST.get('specialization', 'General Dentistry'),
@@ -1103,7 +1141,6 @@ def revenue_dashboard(request):
     return render(request, 'core/revenue_dashboard.html', context)
 
 
-
 @login_required
 def reset_user_otp(request, pk):
     """Admin function to reset a user's OTP cooldown"""
@@ -1113,7 +1150,6 @@ def reset_user_otp(request, pk):
     
     user = get_object_or_404(User, pk=pk)
     from django.utils import timezone
-    from datetime import timedelta
     
     user.profile.last_otp_sent = timezone.now() - timedelta(days=2)
     user.profile.otp_attempts = 0
@@ -1211,4 +1247,3 @@ def company_settings(request):
         'settings': settings,
     }
     return render(request, 'core/company_settings.html', context)
-
