@@ -31,41 +31,26 @@ DATA_DIR.mkdir(exist_ok=True)
 
 SECRET_KEY = os.environ.get('SECRET_KEY', 'django-insecure-dental-clinic-standalone-key')
 
-# TEMPORARY: Force DEBUG on Railway
-DEBUG = True  # Force debug on for now
+# Debug mode - False on Railway, True locally
+if os.environ.get('RAILWAY_ENVIRONMENT'):
+    DEBUG = False
+else:
+    DEBUG = True
 
-# Allowed hosts - allow all for debugging
-ALLOWED_HOSTS = ['*']
-
-INSTALLED_APPS = [
-    # ... your existing apps ...
-    'rest_framework',
-    'corsheaders',  # For mobile app communication
-]
-
-MIDDLEWARE = [
-    'corsheaders.middleware.CorsMiddleware',  # Add at the top
-    # ... your existing middleware ...
-]
-
-# CORS settings for mobile apps
-CORS_ALLOWED_ORIGINS = [
-    "http://localhost:3000",  # React Native dev
-    "http://localhost:19006",  # Expo dev
-    "https://yourdomain.com",
-]
-
-CORS_ALLOW_ALL_ORIGINS = True  # For development only
-
-REST_FRAMEWORK = {
-    'DEFAULT_AUTHENTICATION_CLASSES': [
-        'rest_framework.authentication.SessionAuthentication',
-        'rest_framework.authentication.TokenAuthentication',
-    ],
-    'DEFAULT_PERMISSION_CLASSES': [
-        'rest_framework.permissions.IsAuthenticated',
-    ],
-}
+# Allowed hosts
+if DEBUG:
+    ALLOWED_HOSTS = ['*']
+else:
+    railway_domain = os.environ.get('RAILWAY_PUBLIC_DOMAIN', '')
+    ALLOWED_HOSTS = [
+        'localhost',
+        '127.0.0.1',
+        '.railway.app',
+        '.up.railway.app',
+        'dorah-dental-production.up.railway.app',
+    ]
+    if railway_domain:
+        ALLOWED_HOSTS.append(railway_domain)
 
 # CSRF Trusted Origins
 CSRF_TRUSTED_ORIGINS = [
@@ -74,6 +59,31 @@ CSRF_TRUSTED_ORIGINS = [
     'https://*.up.railway.app',
     'http://*.railway.app',
     'http://*.up.railway.app',
+]
+
+# CORS settings for mobile apps
+CORS_ALLOW_ALL_ORIGINS = True  # For development only
+CORS_ALLOW_CREDENTIALS = True
+
+CORS_ALLOW_METHODS = [
+    'DELETE',
+    'GET',
+    'OPTIONS',
+    'PATCH',
+    'POST',
+    'PUT',
+]
+
+CORS_ALLOW_HEADERS = [
+    'accept',
+    'accept-encoding',
+    'authorization',
+    'content-type',
+    'dnt',
+    'origin',
+    'user-agent',
+    'x-csrftoken',
+    'x-requested-with',
 ]
 
 # =======================
@@ -88,8 +98,15 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'django.contrib.humanize',
+    
+    # Third-party apps
     'crispy_forms',
     'crispy_bootstrap5',
+    'rest_framework',
+    'rest_framework.authtoken',
+    'corsheaders',
+    
+    # Custom apps
     'patients',
     'appointments',
     'billing',
@@ -97,11 +114,7 @@ INSTALLED_APPS = [
     'inventory',
     'notifications',
     'patient_portal',
-     'rest_framework',
-    'corsheaders',
     'api',
-    'rest_framework.authtoken',
-
 ]
 
 # =======================
@@ -109,7 +122,7 @@ INSTALLED_APPS = [
 # =======================
 
 MIDDLEWARE = [
-    'corsheaders.middleware.CorsMiddleware',
+    'corsheaders.middleware.CorsMiddleware',  # Must be at the top
     'django.middleware.security.SecurityMiddleware',
     'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
@@ -124,23 +137,48 @@ ROOT_URLCONF = 'dental_clinic.urls'
 WSGI_APPLICATION = 'dental_clinic.wsgi.application'
 
 # =======================
-# DATABASE - PostgreSQL (Railway)
+# DATABASE - Auto-detect environment
 # =======================
 
-DATABASE_URL = "postgresql://postgres:yMgKMbELWuRVkvCumYxKoBzGgRmZHoJb@altaria.proxy.rlwy.net:15815/railway"
-
-DATABASES = {
-    'default': dj_database_url.parse(DATABASE_URL, conn_max_age=600)
-}
+if os.environ.get('RAILWAY_ENVIRONMENT'):
+    # Production - PostgreSQL on Railway
+    DATABASE_URL = "postgresql://postgres:yMgKMbELWuRVkvCumYxKoBzGgRmZHoJb@altaria.proxy.rlwy.net:15815/railway"
+    DATABASES = {
+        'default': dj_database_url.parse(DATABASE_URL, conn_max_age=600)
+    }
+    print("🔵 Using PostgreSQL (Production)")
+else:
+    # Local Development - SQLite
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.sqlite3',
+            'NAME': BASE_DIR / 'db.sqlite3',
+        }
+    }
+    print("🟢 Using SQLite (Development)")
 
 print("=" * 50)
 print("🦷 DATABASE CONNECTION")
 print("=" * 50)
-print(f"Host: {DATABASES['default']['HOST']}")
-print(f"Port: {DATABASES['default']['PORT']}")
-print(f"Database: {DATABASES['default']['NAME']}")
-print(f"User: {DATABASES['default']['USER']}")
+print(f"Engine: {DATABASES['default']['ENGINE']}")
+print(f"Name: {DATABASES['default']['NAME']}")
 print("=" * 50)
+
+# =======================
+# REST FRAMEWORK
+# =======================
+
+REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': [
+        'rest_framework.authentication.SessionAuthentication',
+        'rest_framework.authentication.TokenAuthentication',
+    ],
+    'DEFAULT_PERMISSION_CLASSES': [
+        'rest_framework.permissions.IsAuthenticated',
+    ],
+    'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
+    'PAGE_SIZE': 20,
+}
 
 # =======================
 # TEMPLATES
@@ -175,11 +213,11 @@ MEDIA_ROOT = DATA_DIR / 'media'
 STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
 # =======================
-# AUTHENTICATION - FIXED!
+# AUTHENTICATION
 # =======================
 
 LOGIN_URL = '/login/'
-LOGIN_REDIRECT_URL = '/'  # Root URL maps to dashboard
+LOGIN_REDIRECT_URL = '/'
 LOGOUT_REDIRECT_URL = '/login/'
 
 # =======================
@@ -247,17 +285,27 @@ LOGGING = {
 }
 
 # =======================
-# SECURITY - DISABLED FOR DEBUGGING
+# SECURITY SETTINGS (Production)
 # =======================
 
-SECURE_SSL_REDIRECT = False
-SESSION_COOKIE_SECURE = False
-CSRF_COOKIE_SECURE = False
-SECURE_BROWSER_XSS_FILTER = False
-SECURE_CONTENT_TYPE_NOSNIFF = False
-SECURE_HSTS_SECONDS = 0
-SECURE_HSTS_INCLUDE_SUBDOMAINS = False
-SECURE_HSTS_PRELOAD = False
+if not DEBUG:
+    SECURE_SSL_REDIRECT = True
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
+    SECURE_BROWSER_XSS_FILTER = True
+    SECURE_CONTENT_TYPE_NOSNIFF = True
+    SECURE_HSTS_SECONDS = 31536000  # 1 year
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+    SECURE_HSTS_PRELOAD = True
+else:
+    SECURE_SSL_REDIRECT = False
+    SESSION_COOKIE_SECURE = False
+    CSRF_COOKIE_SECURE = False
+    SECURE_BROWSER_XSS_FILTER = False
+    SECURE_CONTENT_TYPE_NOSNIFF = False
+    SECURE_HSTS_SECONDS = 0
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = False
+    SECURE_HSTS_PRELOAD = False
 
 # =======================
 # STARTUP MESSAGE
