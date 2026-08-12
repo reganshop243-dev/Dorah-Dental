@@ -1,7 +1,6 @@
 from django.db import models
 from datetime import date
 
-
 class Patient(models.Model):
     GENDER_CHOICES = [
         ('M', 'Male'),
@@ -31,7 +30,7 @@ class Patient(models.Model):
     # Medical History
     under_physician = models.CharField(max_length=3, blank=True, null=True, choices=[('yes', 'Yes'), ('no', 'No')])
     physician_details = models.TextField(blank=True, null=True)
-    allergies = models.TextField(blank=True)
+    allergies = models.TextField(blank=True, null=True)
     current_medications = models.TextField(blank=True, null=True)
     
     # Dental History
@@ -41,8 +40,9 @@ class Patient(models.Model):
     last_dental_visit = models.DateField(blank=True, null=True)
     previous_surgery = models.CharField(max_length=3, blank=True, null=True, choices=[('yes', 'Yes'), ('no', 'No')])
     surgery_details = models.TextField(blank=True, null=True)
-    # System fields - allow backdating
-    registered_at = models.DateTimeField()
+    
+    # System fields - FIXED: auto_now_add sets the date automatically
+    registered_at = models.DateTimeField(auto_now_add=True)  # ✅ This is the fix!
     is_active = models.BooleanField(default=True)
     
     @property

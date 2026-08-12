@@ -40,6 +40,13 @@
     .quick-action-btn:hover {
         transform: scale(1.05);
     }
+    .doctor-view-banner {
+        background: #e8f4fd;
+        border-left: 4px solid #3498db;
+        padding: 10px 15px;
+        border-radius: 8px;
+        margin-bottom: 15px;
+    }
 </style>
 {% endblock %}
 
@@ -47,11 +54,27 @@
 <div class="d-flex justify-content-between align-items-center mb-4">
     <h4><i class="fas fa-users text-primary"></i> Patients</h4>
     <div>
+        <!-- ✅ Only show Add Patient button if NOT a doctor -->
+        {% if not is_doctor %}
         <a href="{% url 'patients:add' %}" class="btn btn-primary">
             <i class="fas fa-plus"></i> Add Patient
         </a>
+        {% else %}
+        <span class="badge bg-info p-2">
+            <i class="fas fa-eye me-1"></i> View Only - Your Assigned Patients
+        </span>
+        {% endif %}
     </div>
 </div>
+
+<!-- ✅ Doctor View Banner -->
+{% if is_doctor %}
+<div class="doctor-view-banner">
+    <i class="fas fa-info-circle text-primary me-2"></i>
+    <strong>Read-Only Access:</strong> As a doctor, you can only view patients assigned to you. 
+    You cannot add, edit, or delete patient records.
+</div>
+{% endif %}
 
 <div class="card">
     <div class="card-body">
@@ -155,9 +178,12 @@
                                         <a href="{% url 'patients:detail' patient.pk %}" class="btn btn-outline-primary quick-action-btn" title="View">
                                             <i class="fas fa-eye"></i>
                                         </a>
+                                        <!-- ✅ Only show Edit and Archive buttons if NOT a doctor -->
+                                        {% if not is_doctor %}
                                         <a href="{% url 'patients:edit' patient.pk %}" class="btn btn-outline-secondary quick-action-btn" title="Edit">
                                             <i class="fas fa-edit"></i>
                                         </a>
+                                        {% endif %}
                                         <a href="{% url 'appointments:add' %}?patient={{ patient.pk }}" class="btn btn-outline-success quick-action-btn" title="Book Appointment">
                                             <i class="fas fa-calendar-plus"></i>
                                         </a>
@@ -166,10 +192,13 @@
                                             <i class="fas fa-file-invoice"></i>
                                         </a>
                                         {% endif %}
+                                        <!-- ✅ Only show Archive button if NOT a doctor -->
+                                        {% if not is_doctor %}
                                         <button type="button" class="btn btn-outline-danger quick-action-btn" title="Archive" 
                                                 onclick="if(confirm('Archive {{ patient.full_name }}?')) window.location.href='{% url 'patients:delete' patient.pk %}'">
                                             <i class="fas fa-archive"></i>
                                         </button>
+                                        {% endif %}
                                     </div>
                                 </td>
                             </tr>
@@ -181,9 +210,14 @@
                                         <i class="fas fa-users fa-3x text-muted mb-3"></i>
                                         <h5>No patients found</h5>
                                         <p class="text-muted">Start by adding your first patient.</p>
+                                        <!-- ✅ Only show Add button if NOT a doctor -->
+                                        {% if not is_doctor %}
                                         <a href="{% url 'patients:add' %}" class="btn btn-primary">
                                             <i class="fas fa-plus"></i> Add Patient
                                         </a>
+                                        {% else %}
+                                        <p class="text-muted"><i class="fas fa-info-circle"></i> You have no assigned patients yet.</p>
+                                        {% endif %}
                                     </div>
                                 </td>
                             </tr>
@@ -205,6 +239,9 @@
     const tableBody = document.getElementById('patientTableBody');
     const resultCount = document.getElementById('resultCount');
     const searchLoading = document.getElementById('searchLoading');
+    
+    // ✅ Check if user is doctor (from template context)
+    const isDoctor = {{ is_doctor|yesno:"true,false" }};
     
     // Initial result count
     updateResultCount();
@@ -346,6 +383,46 @@
             const email = patient.email || '';
             const registeredAt = patient.registered_at || 'N/A';
             
+            // ✅ Build action buttons based on role
+            let actionButtons = `
+                <a href="/patients/${patient.id}/" class="btn btn-outline-primary quick-action-btn" title="View">
+                    <i class="fas fa-eye"></i>
+                </a>
+            `;
+            
+            // Only show Edit if NOT a doctor
+            if (!isDoctor) {
+                actionButtons += `
+                <a href="/patients/${patient.id}/edit/" class="btn btn-outline-secondary quick-action-btn" title="Edit">
+                    <i class="fas fa-edit"></i>
+                </a>
+                `;
+            }
+            
+            actionButtons += `
+                <a href="/appointments/add/?patient=${patient.id}" class="btn btn-outline-success quick-action-btn" title="Book Appointment">
+                    <i class="fas fa-calendar-plus"></i>
+                </a>
+            `;
+            
+            if (balance > 0) {
+                actionButtons += `
+                <a href="/billing/add/?patient=${patient.id}" class="btn btn-outline-warning quick-action-btn" title="Create Invoice">
+                    <i class="fas fa-file-invoice"></i>
+                </a>
+                `;
+            }
+            
+            // Only show Archive if NOT a doctor
+            if (!isDoctor) {
+                actionButtons += `
+                <button type="button" class="btn btn-outline-danger quick-action-btn" title="Archive" 
+                        onclick="if(confirm('Archive ${fullName}?')) window.location.href='/patients/${patient.id}/delete/'">
+                    <i class="fas fa-archive"></i>
+                </button>
+                `;
+            }
+            
             row.innerHTML = `
                 <td>
                     <a href="/patients/${patient.id}/" class="fw-bold text-decoration-none">
@@ -366,24 +443,7 @@
                 <td>${balanceHtml}</td>
                 <td>
                     <div class="btn-group btn-group-sm">
-                        <a href="/patients/${patient.id}/" class="btn btn-outline-primary quick-action-btn" title="View">
-                            <i class="fas fa-eye"></i>
-                        </a>
-                        <a href="/patients/${patient.id}/edit/" class="btn btn-outline-secondary quick-action-btn" title="Edit">
-                            <i class="fas fa-edit"></i>
-                        </a>
-                        <a href="/appointments/add/?patient=${patient.id}" class="btn btn-outline-success quick-action-btn" title="Book Appointment">
-                            <i class="fas fa-calendar-plus"></i>
-                        </a>
-                        ${balance > 0 ? `
-                        <a href="/billing/add/?patient=${patient.id}" class="btn btn-outline-warning quick-action-btn" title="Create Invoice">
-                            <i class="fas fa-file-invoice"></i>
-                        </a>
-                        ` : ''}
-                        <button type="button" class="btn btn-outline-danger quick-action-btn" title="Archive" 
-                                onclick="if(confirm('Archive ${fullName}?')) window.location.href='/patients/${patient.id}/delete/'">
-                            <i class="fas fa-archive"></i>
-                        </button>
+                        ${actionButtons}
                     </div>
                 </td>
             `;

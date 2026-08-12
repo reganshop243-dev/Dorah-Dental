@@ -1,0 +1,81 @@
+{% extends 'base_portal.html' %}
+{% load humanize %}
+
+{% block title %}My Invoices{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="row g-3 mb-4">
+        <div class="col-md-4">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h4 class="text-primary mb-0">UGX {{ total_amount|floatformat:0|intcomma }}</h4>
+                    <small class="text-muted">Total Amount</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h4 class="text-success mb-0">UGX {{ total_paid|floatformat:0|intcomma }}</h4>
+                    <small class="text-muted">Total Paid</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h4 class="text-danger mb-0">UGX {{ total_balance|floatformat:0|intcomma }}</h4>
+                    <small class="text-muted">Outstanding Balance</small>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="card">
+        <div class="card-header">
+            <i class="fas fa-file-invoice me-2"></i> My Invoices
+        </div>
+        <div class="card-body">
+            {% if invoices %}
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Invoice #</th>
+                                <th>Date</th>
+                                <th>Total</th>
+                                <th>Paid</th>
+                                <th>Balance</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for invoice in invoices %}
+                            <tr>
+                                <td><strong>{{ invoice.invoice_number }}</strong></td>
+                                <td>{{ invoice.issue_date|date:"M d, Y" }}</td>
+                                <td>UGX {{ invoice.total_amount|floatformat:0|intcomma }}</td>
+                                <td>UGX {{ invoice.amount_paid|floatformat:0|intcomma }}</td>
+                                <td>UGX {{ invoice.balance_due|floatformat:0|intcomma }}</td>
+                                <td>
+                                    <span class="badge-status {{ invoice.status }}">
+                                        {{ invoice.get_status_display }}
+                                    </span>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                <div class="text-center py-5">
+                    <i class="fas fa-file-invoice fa-3x text-muted mb-3"></i>
+                    <h5>No invoices found</h5>
+                    <p class="text-muted">You don't have any invoices yet.</p>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

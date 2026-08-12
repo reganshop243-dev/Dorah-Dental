@@ -37,6 +37,36 @@ DEBUG = True  # Force debug on for now
 # Allowed hosts - allow all for debugging
 ALLOWED_HOSTS = ['*']
 
+INSTALLED_APPS = [
+    # ... your existing apps ...
+    'rest_framework',
+    'corsheaders',  # For mobile app communication
+]
+
+MIDDLEWARE = [
+    'corsheaders.middleware.CorsMiddleware',  # Add at the top
+    # ... your existing middleware ...
+]
+
+# CORS settings for mobile apps
+CORS_ALLOWED_ORIGINS = [
+    "http://localhost:3000",  # React Native dev
+    "http://localhost:19006",  # Expo dev
+    "https://yourdomain.com",
+]
+
+CORS_ALLOW_ALL_ORIGINS = True  # For development only
+
+REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': [
+        'rest_framework.authentication.SessionAuthentication',
+        'rest_framework.authentication.TokenAuthentication',
+    ],
+    'DEFAULT_PERMISSION_CLASSES': [
+        'rest_framework.permissions.IsAuthenticated',
+    ],
+}
+
 # CSRF Trusted Origins
 CSRF_TRUSTED_ORIGINS = [
     'https://dorah-dental-production.up.railway.app',
@@ -66,6 +96,12 @@ INSTALLED_APPS = [
     'core',
     'inventory',
     'notifications',
+    'patient_portal',
+     'rest_framework',
+    'corsheaders',
+    'api',
+    'rest_framework.authtoken',
+
 ]
 
 # =======================
@@ -73,6 +109,7 @@ INSTALLED_APPS = [
 # =======================
 
 MIDDLEWARE = [
+    'corsheaders.middleware.CorsMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',

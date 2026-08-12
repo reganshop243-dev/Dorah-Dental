@@ -9,6 +9,26 @@ from datetime import date, datetime
 from .models import Patient, DentalImage
 from appointments.models import Appointment, Treatment
 from billing.models import Invoice
+from patient_portal.models import PatientPortalAccess  # ✅ ADD THIS IMPORT
+import random  # ✅ ADD THIS IMPORT
+
+
+# ====================
+# HELPER: Check if user is doctor
+# ====================
+
+def is_doctor(user):
+    """Check if user has doctor role"""
+    return hasattr(user, 'profile') and user.profile.role == 'doctor'
+
+def get_doctor_patients(doctor):
+    """Get patients assigned to a specific doctor"""
+    if doctor:
+        return Patient.objects.filter(
+            is_active=True,
+            appointment__doctor=doctor
+        ).distinct()
+    return Patient.objects.none()
 
 
 # ====================
@@ -18,7 +38,16 @@ from billing.models import Invoice
 @login_required
 def patient_list(request):
     """Display all active patients with balances"""
-    patients = Patient.objects.filter(is_active=True).order_by('-registered_at')
+    user_profile = request.user.profile
+    
+    # ✅ If doctor, only show assigned patients
+    if user_profile.role == 'doctor':
+        doctor = user_profile.doctor
+        patients = get_doctor_patients(doctor)
+        is_doctor_user = True
+    else:
+        patients = Patient.objects.filter(is_active=True).order_by('-registered_at')
+        is_doctor_user = False
     
     # Search functionality
     search = request.GET.get('search', '')
@@ -42,17 +71,25 @@ def patient_list(request):
     context = {
         'patients': patient_list,
         'search_query': search,
+        'is_doctor': is_doctor_user,
     }
     return render(request, 'patients/list.html', context)
 
 
 # ====================
-# PATIENT ADD
+# PATIENT ADD (UPDATED WITH PORTAL PIN)
 # ====================
 
 @login_required
 def patient_add(request):
-    """Add a new patient with dental images and support for age input"""
+    """Add a new patient - Doctors are NOT allowed"""
+    user_profile = request.user.profile
+    
+    # ✅ PREVENT doctors from adding patients
+    if user_profile.role == 'doctor':
+        messages.error(request, '❌ Doctors are not allowed to add patients.')
+        return redirect('patients:list')
+    
     if request.method == 'POST':
         try:
             # Personal Information
@@ -150,6 +187,16 @@ def patient_add(request):
                 is_active=True
             )
             
+            # ✅ ============================================================
+            # ✅ GENERATE PORTAL ACCESS PIN FOR THE PATIENT
+            # ✅ ============================================================
+            portal_pin = f"{random.randint(100000, 999999)}"
+            PatientPortalAccess.objects.create(
+                patient=patient,
+                portal_pin=portal_pin,
+                is_active=True
+            )
+            
             # Handle backdated registration date
             if registered_at:
                 try:
@@ -174,7 +221,18 @@ def patient_add(request):
                         uploaded_by=request.user
                     )
             
-            messages.success(request, f'Patient {patient.full_name} registered successfully!')
+            # ✅ SUCCESS MESSAGE WITH PORTAL PIN
+            messages.success(
+                request, 
+                f'✅ Patient {patient.full_name} registered successfully!\n'
+                f'🔑 Portal PIN: {portal_pin}\n'
+                f'🔗 Login: Patient ID ({patient.id}) or Phone ({patient.phone}) + PIN'
+            )
+            
+            # Store PIN in session to display on the detail page
+            request.session['new_patient_pin'] = portal_pin
+            request.session['new_patient_id'] = patient.id
+            
             return redirect('patients:detail', pk=patient.pk)
             
         except Exception as e:
@@ -187,13 +245,31 @@ def patient_add(request):
 
 
 # ====================
-# PATIENT DETAIL
+# PATIENT DETAIL (UPDATED WITH PORTAL PIN)
 # ====================
 
 @login_required
 def patient_detail(request, pk):
-    """View patient details with appointment and treatment history"""
+    """View patient details - Doctors can only see assigned patients"""
     patient = get_object_or_404(Patient, pk=pk)
+    user_profile = request.user.profile
+    
+    # ✅ Check if doctor has access to this patient
+    if user_profile.role == 'doctor':
+        doctor = user_profile.doctor
+        if doctor:
+            # Check if this patient is assigned to this doctor
+            has_access = Appointment.objects.filter(
+                patient=patient,
+                doctor=doctor
+            ).exists()
+            
+            if not has_access:
+                messages.error(request, '❌ You do not have access to this patient.')
+                return redirect('patients:list')
+        else:
+            messages.error(request, '❌ No doctor profile found.')
+            return redirect('patients:list')
     
     # Get patient's appointments (latest first)
     appointments = Appointment.objects.filter(
@@ -213,12 +289,27 @@ def patient_detail(request, pk):
     # Calculate total amount
     total_amount = invoices.aggregate(Sum('total_amount'))['total_amount__sum'] or 0
     
+    # ✅ Get portal PIN if exists
+    try:
+        portal_access = patient.portal_access
+        portal_pin = portal_access.portal_pin
+    except PatientPortalAccess.DoesNotExist:
+        portal_pin = None
+    
+    # ✅ Get new patient PIN from session (if just created)
+    new_patient_pin = request.session.pop('new_patient_pin', None)
+    new_patient_id = request.session.pop('new_patient_id', None)
+    
     context = {
         'patient': patient,
         'appointments': appointments,
         'treatments': treatments,
         'invoices': invoices,
         'total_amount': total_amount,
+        'is_doctor': user_profile.role == 'doctor',
+        'portal_pin': portal_pin,  # ✅ Pass portal PIN
+        'new_patient_pin': new_patient_pin,  # ✅ Pass new patient PIN
+        'new_patient_id': new_patient_id,  # ✅ Pass new patient ID
     }
     return render(request, 'patients/detail.html', context)
 
@@ -229,7 +320,14 @@ def patient_detail(request, pk):
 
 @login_required
 def patient_edit(request, pk):
-    """Edit patient information with profile picture"""
+    """Edit patient information - Doctors are NOT allowed"""
+    user_profile = request.user.profile
+    
+    # ✅ PREVENT doctors from editing patients
+    if user_profile.role == 'doctor':
+        messages.error(request, '❌ Doctors are not allowed to edit patients.')
+        return redirect('patients:list')
+    
     patient = get_object_or_404(Patient, pk=pk)
     
     if request.method == 'POST':
@@ -288,7 +386,14 @@ def patient_edit(request, pk):
 
 @login_required
 def patient_delete(request, pk):
-    """Archive/delete patient (soft delete)"""
+    """Archive/delete patient - Doctors are NOT allowed"""
+    user_profile = request.user.profile
+    
+    # ✅ PREVENT doctors from deleting patients
+    if user_profile.role == 'doctor':
+        messages.error(request, '❌ Doctors are not allowed to delete patients.')
+        return redirect('patients:list')
+    
     patient = get_object_or_404(Patient, pk=pk)
     
     if request.method == 'POST':
@@ -312,8 +417,24 @@ def patient_delete(request, pk):
 
 @login_required
 def patient_add_image(request, pk):
-    """Add dental images to an existing patient"""
+    """Add dental images - Doctors can add images to their patients"""
     patient = get_object_or_404(Patient, pk=pk)
+    user_profile = request.user.profile
+    
+    # ✅ Check if doctor has access to this patient
+    if user_profile.role == 'doctor':
+        doctor = user_profile.doctor
+        if doctor:
+            has_access = Appointment.objects.filter(
+                patient=patient,
+                doctor=doctor
+            ).exists()
+            if not has_access:
+                messages.error(request, '❌ You do not have access to this patient.')
+                return redirect('patients:list')
+        else:
+            messages.error(request, '❌ No doctor profile found.')
+            return redirect('patients:list')
     
     if request.method == 'POST':
         try:
@@ -344,19 +465,67 @@ def patient_add_image(request, pk):
 
 
 # ====================
+# GENERATE PORTAL PIN FOR EXISTING PATIENT
+# ====================
+
+@login_required
+def generate_portal_pin(request, pk):
+    """Generate portal PIN for existing patient"""
+    # ✅ Only admin and receptionist can generate PINs
+    if request.user.profile.role not in ['admin', 'receptionist']:
+        messages.error(request, '❌ Access denied. Only admin or receptionist can generate portal PINs.')
+        return redirect('patients:detail', pk=pk)
+    
+    patient = get_object_or_404(Patient, pk=pk)
+    
+    portal_pin = f"{random.randint(100000, 999999)}"
+    
+    portal_access, created = PatientPortalAccess.objects.get_or_create(
+        patient=patient,
+        defaults={
+            'portal_pin': portal_pin,
+            'is_active': True
+        }
+    )
+    
+    if not created:
+        portal_access.portal_pin = portal_pin
+        portal_access.is_active = True
+        portal_access.login_attempts = 0
+        portal_access.locked_until = None
+        portal_access.save()
+        messages.success(request, f'✅ Portal PIN updated for {patient.full_name}. New PIN: {portal_pin}')
+    else:
+        messages.success(request, f'✅ Portal access created for {patient.full_name}. PIN: {portal_pin}')
+    
+    return redirect('patients:detail', pk=pk)
+
+
+# ====================
 # PATIENT SEARCH (API)
 # ====================
 
 @login_required
 def patient_search_api(request):
-    """API endpoint for searching patients (for AJAX)"""
+    """API endpoint for searching patients - Doctors only see their patients"""
     try:
         query = request.GET.get('q', '').strip()
         balance_filter = request.GET.get('balance', '')
         sort = request.GET.get('sort', '-registered_at')
+        user_profile = request.user.profile
         
-        # Base queryset - only active patients
-        patients = Patient.objects.filter(is_active=True)
+        # ✅ If doctor, only show assigned patients
+        if user_profile.role == 'doctor':
+            doctor = user_profile.doctor
+            if doctor:
+                patients = Patient.objects.filter(
+                    is_active=True,
+                    appointment__doctor=doctor
+                ).distinct()
+            else:
+                patients = Patient.objects.none()
+        else:
+            patients = Patient.objects.filter(is_active=True)
         
         # Search - if query is provided
         if query:
@@ -403,6 +572,12 @@ def patient_search_api(request):
             elif patient.age_years is not None:
                 age = patient.age_years
             
+            # ✅ Get portal PIN
+            try:
+                portal_pin = patient.portal_access.portal_pin
+            except PatientPortalAccess.DoesNotExist:
+                portal_pin = None
+            
             results.append({
                 'id': patient.id,
                 'full_name': patient.full_name,
@@ -415,6 +590,7 @@ def patient_search_api(request):
                 'registered_at': patient.registered_at.strftime('%b %d, %Y'),
                 'balance': float(total_balance),
                 'gender': patient.get_gender_display(),
+                'portal_pin': portal_pin,  # ✅ Include portal PIN
             })
         
         return JsonResponse({'results': results})

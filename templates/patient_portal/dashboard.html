@@ -1,0 +1,142 @@
+{% extends 'base_portal.html' %}
+{% load humanize %}
+
+{% block title %}Patient Dashboard{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <!-- Welcome -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card bg-primary text-white">
+                <div class="card-body">
+                    <h3 class="mb-0">
+                        <i class="fas fa-user-circle me-2"></i>
+                        Welcome, {{ patient.full_name }}
+                    </h3>
+                    <p class="mb-0 text-white-50">
+                        <i class="fas fa-calendar-alt me-1"></i> 
+                        Patient since {{ patient.registered_at|date:"F d, Y" }}
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Stats -->
+    <div class="row g-3 mb-4">
+        <div class="col-md-3 col-6">
+            <div class="card text-center h-100">
+                <div class="card-body">
+                    <h3 class="text-primary mb-0">{{ total_appointments }}</h3>
+                    <small class="text-muted">Total Appointments</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 col-6">
+            <div class="card text-center h-100">
+                <div class="card-body">
+                    <h3 class="text-success mb-0">{{ upcoming_appointments }}</h3>
+                    <small class="text-muted">Upcoming</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 col-6">
+            <div class="card text-center h-100">
+                <div class="card-body">
+                    <h3 class="text-info mb-0">{{ total_invoices }}</h3>
+                    <small class="text-muted">Invoices</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 col-6">
+            <div class="card text-center h-100">
+                <div class="card-body">
+                    <h3 class="text-warning mb-0">UGX {{ total_spent|floatformat:0|intcomma }}</h3>
+                    <small class="text-muted">Total Spent</small>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Upcoming Appointments -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <i class="fas fa-calendar-alt me-2"></i> Upcoming Appointments
+                </div>
+                <div class="card-body">
+                    {% if upcoming_appts %}
+                        <div class="list-group">
+                            {% for appt in upcoming_appts %}
+                            <div class="list-group-item d-flex justify-content-between align-items-center">
+                                <div>
+                                    <h6 class="mb-0">{{ appt.appointment_date|date:"l, M d, Y" }}</h6>
+                                    <small class="text-muted">
+                                        <i class="fas fa-clock me-1"></i> {{ appt.appointment_time|time:"g:i A" }}
+                                        <i class="fas fa-user-md ms-2 me-1"></i> Dr. {{ appt.doctor.name }}
+                                    </small>
+                                </div>
+                                <span class="badge {% if appt.status == 'scheduled' %}bg-primary{% elif appt.status == 'checked_in' %}bg-warning{% else %}bg-secondary{% endif %}">
+                                    {{ appt.get_status_display }}
+                                </span>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        <p class="text-muted text-center py-3">
+                            <i class="fas fa-calendar-check fa-2x d-block mb-2"></i>
+                            No upcoming appointments
+                        </p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Quick Links -->
+    <div class="row g-3">
+        <div class="col-md-3 col-6">
+            <a href="{% url 'patient_portal:profile' %}" class="text-decoration-none">
+                <div class="card text-center h-100">
+                    <div class="card-body">
+                        <i class="fas fa-user-circle fa-2x text-primary mb-2"></i>
+                        <h6>My Profile</h6>
+                    </div>
+                </div>
+            </a>
+        </div>
+        <div class="col-md-3 col-6">
+            <a href="{% url 'patient_portal:appointments' %}" class="text-decoration-none">
+                <div class="card text-center h-100">
+                    <div class="card-body">
+                        <i class="fas fa-calendar-check fa-2x text-success mb-2"></i>
+                        <h6>Appointments</h6>
+                    </div>
+                </div>
+            </a>
+        </div>
+        <div class="col-md-3 col-6">
+            <a href="{% url 'patient_portal:invoices' %}" class="text-decoration-none">
+                <div class="card text-center h-100">
+                    <div class="card-body">
+                        <i class="fas fa-file-invoice fa-2x text-info mb-2"></i>
+                        <h6>Invoices</h6>
+                    </div>
+                </div>
+            </a>
+        </div>
+        <div class="col-md-3 col-6">
+            <a href="{% url 'patient_portal:services' %}" class="text-decoration-none">
+                <div class="card text-center h-100">
+                    <div class="card-body">
+                        <i class="fas fa-notes-medical fa-2x text-warning mb-2"></i>
+                        <h6>Services</h6>
+                    </div>
+                </div>
+            </a>
+        </div>
+    </div>
+</div>
+{% endblock %}

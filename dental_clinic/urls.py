@@ -7,10 +7,12 @@ urlpatterns = [
     path('admin/', admin.site.urls),
     path('', include('core.urls')),  
     path('appointments/', include('appointments.urls')),
+    path('api/', include('api.urls')), 
     path('patients/', include('patients.urls')),
     path('billing/', include('billing.urls')),
     path('notifications/', include('notifications.urls')),
     path('inventory/', include('inventory.urls')),  
+    path('portal/', include('patient_portal.urls')),
 ]
 
 # Serve media files in development

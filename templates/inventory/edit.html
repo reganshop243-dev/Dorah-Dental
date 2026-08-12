@@ -1,0 +1,104 @@
+{% extends 'base.html' %}
+{% load static %}
+{% load crispy_forms_tags %}
+
+{% block page_title %}Edit Inventory Item{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">
+                <i class="fas fa-edit me-2"></i> Edit Inventory Item
+            </div>
+            <div class="card-body">
+                <form method="post" enctype="multipart/form-data">
+                    {% csrf_token %}
+                    
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="name" class="form-label">Item Name <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="name" name="name" 
+                                   value="{{ item.name }}" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="category" class="form-label">Category</label>
+                            <select class="form-select" id="category" name="category">
+                                <option value="">Select Category</option>
+                                {% for category in categories %}
+                                    <option value="{{ category.id }}" {% if category.id == item.category.id %}selected{% endif %}>
+                                        {{ category.name }}
+                                    </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="description" class="form-label">Description</label>
+                        <textarea class="form-control" id="description" name="description" rows="3">{{ item.description }}</textarea>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-4 mb-3">
+                            <label for="quantity" class="form-label">Quantity <span class="text-danger">*</span></label>
+                            <input type="number" class="form-control" id="quantity" name="quantity" 
+                                   value="{{ item.quantity }}" min="0" required>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label for="min_quantity" class="form-label">Minimum Quantity</label>
+                            <input type="number" class="form-control" id="min_quantity" name="min_quantity" 
+                                   value="{{ item.min_quantity }}" min="0">
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label for="unit" class="form-label">Unit</label>
+                            <select class="form-select" id="unit" name="unit">
+                                <option value="piece" {% if item.unit == 'piece' %}selected{% endif %}>Piece</option>
+                                <option value="box" {% if item.unit == 'box' %}selected{% endif %}>Box</option>
+                                <option value="pack" {% if item.unit == 'pack' %}selected{% endif %}>Pack</option>
+                                <option value="carton" {% if item.unit == 'carton' %}selected{% endif %}>Carton</option>
+                                <option value="set" {% if item.unit == 'set' %}selected{% endif %}>Set</option>
+                                <option value="pair" {% if item.unit == 'pair' %}selected{% endif %}>Pair</option>
+                                <option value="roll" {% if item.unit == 'roll' %}selected{% endif %}>Roll</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-4 mb-3">
+                            <label for="unit_price" class="form-label">Unit Price (UGX)</label>
+                            <input type="number" class="form-control" id="unit_price" name="unit_price" 
+                                   value="{{ item.unit_price }}" step="0.01" min="0">
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label for="supplier" class="form-label">Supplier</label>
+                            <input type="text" class="form-control" id="supplier" name="supplier" 
+                                   value="{{ item.supplier }}">
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label for="expiry_date" class="form-label">Expiry Date</label>
+                            <input type="date" class="form-control" id="expiry_date" name="expiry_date" 
+                                   value="{{ item.expiry_date|date:'Y-m-d' }}">
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3 form-check">
+                        <input type="checkbox" class="form-check-input" id="is_active" name="is_active" 
+                               {% if item.is_active %}checked{% endif %}>
+                        <label class="form-check-label" for="is_active">Active</label>
+                    </div>
+                    
+                    <div class="d-flex justify-content-between">
+                        <a href="{% url 'inventory:list' %}" class="btn btn-secondary">
+                            <i class="fas fa-arrow-left"></i> Cancel
+                        </a>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-save"></i> Update Item
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

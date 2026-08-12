@@ -12,33 +12,97 @@ from billing.models import Invoice
 
 
 # ====================
+# HELPER: Check if user is doctor
+# ====================
+
+def is_doctor(user):
+    """Check if user has doctor role"""
+    return hasattr(user, 'profile') and user.profile.role == 'doctor'
+
+def get_doctor_queryset(user, model, filter_field='doctor'):
+    """Get queryset filtered for doctor if user is a doctor"""
+    if is_doctor(user):
+        doctor = user.profile.doctor
+        if doctor:
+            if filter_field == 'doctor':
+                return model.objects.filter(doctor=doctor)
+            elif filter_field == 'patient':
+                return model.objects.filter(patient__appointment__doctor=doctor).distinct()
+        return model.objects.none()
+    return model.objects.all()
+
+
+# ====================
 # DASHBOARD VIEW
 # ====================
 
 @login_required
 def dashboard(request):
     """Main dashboard view"""
+    user_profile = request.user.profile
     today = timezone.now().date()
     start_of_month = today.replace(day=1)
     
-    # Statistics
-    total_patients = Patient.objects.filter(is_active=True).count()
-    total_appointments_today = Appointment.objects.filter(appointment_date=today).count()
-    total_appointments_month = Appointment.objects.filter(appointment_date__gte=start_of_month).count()
-    
-    # Today's appointments
-    today_appointments = Appointment.objects.filter(
-        appointment_date=today
-    ).select_related('patient', 'doctor', 'service').order_by('appointment_time')
-    
-    # Upcoming appointments (next 7 days)
-    upcoming_appointments = Appointment.objects.filter(
-        appointment_date__gte=today,
-        status__in=['scheduled', 'checked_in']
-    ).select_related('patient', 'doctor', 'service').order_by('appointment_date', 'appointment_time')[:10]
-    
-    # Recent patients
-    recent_patients = Patient.objects.filter(is_active=True).order_by('-registered_at')[:5]
+    # ✅ If doctor, show only their data
+    if is_doctor(request.user):
+        doctor = user_profile.doctor
+        if doctor:
+            # Patients assigned to this doctor
+            total_patients = Patient.objects.filter(
+                appointment__doctor=doctor
+            ).distinct().count()
+            
+            # Appointments for this doctor
+            total_appointments_today = Appointment.objects.filter(
+                doctor=doctor,
+                appointment_date=today
+            ).count()
+            
+            total_appointments_month = Appointment.objects.filter(
+                doctor=doctor,
+                appointment_date__gte=start_of_month
+            ).count()
+            
+            # Today's appointments for this doctor
+            today_appointments = Appointment.objects.filter(
+                doctor=doctor,
+                appointment_date=today
+            ).select_related('patient', 'doctor', 'service').order_by('appointment_time')
+            
+            # Upcoming appointments for this doctor
+            upcoming_appointments = Appointment.objects.filter(
+                doctor=doctor,
+                appointment_date__gte=today,
+                status__in=['scheduled', 'checked_in']
+            ).select_related('patient', 'doctor', 'service').order_by('appointment_date', 'appointment_time')[:10]
+            
+            # Recent patients assigned to this doctor
+            recent_patients = Patient.objects.filter(
+                appointment__doctor=doctor
+            ).distinct().order_by('-registered_at')[:5]
+        else:
+            total_patients = 0
+            total_appointments_today = 0
+            total_appointments_month = 0
+            today_appointments = []
+            upcoming_appointments = []
+            recent_patients = []
+    else:
+        # Admin/Receptionist/Accountant see all data
+        total_patients = Patient.objects.filter(is_active=True).count()
+        total_appointments_today = Appointment.objects.filter(appointment_date=today).count()
+        total_appointments_month = Appointment.objects.filter(appointment_date__gte=start_of_month).count()
+        
+        today_appointments = Appointment.objects.filter(
+            appointment_date=today
+        ).select_related('patient', 'doctor', 'service').order_by('appointment_time')
+        
+        upcoming_appointments = Appointment.objects.filter(
+            appointment_date__gte=today,
+            status__in=['scheduled', 'checked_in']
+        ).select_related('patient', 'doctor', 'service').order_by('appointment_date', 'appointment_time')[:10]
+        
+        recent_patients = Patient.objects.filter(is_active=True).order_by('-registered_at')[:5]
     
     context = {
         'total_patients': total_patients,
@@ -48,6 +112,7 @@ def dashboard(request):
         'upcoming_appointments': upcoming_appointments,
         'recent_patients': recent_patients,
         'today': today,
+        'is_doctor': is_doctor(request.user),
     }
     return render(request, 'appointments/dashboard.html', context)
 
@@ -59,7 +124,19 @@ def dashboard(request):
 @login_required
 def appointment_list(request):
     """List all appointments with filters"""
-    appointments = Appointment.objects.all().select_related('patient', 'doctor', 'service').order_by('-appointment_date', '-appointment_time')
+    user_profile = request.user.profile
+    
+    # ✅ If doctor, only show their appointments
+    if is_doctor(request.user):
+        doctor = user_profile.doctor
+        if doctor:
+            appointments = Appointment.objects.filter(
+                doctor=doctor
+            ).select_related('patient', 'doctor', 'service').order_by('-appointment_date', '-appointment_time')
+        else:
+            appointments = Appointment.objects.none()
+    else:
+        appointments = Appointment.objects.all().select_related('patient', 'doctor', 'service').order_by('-appointment_date', '-appointment_time')
     
     # Filter by status
     status_filter = request.GET.get('status', '')
@@ -76,6 +153,7 @@ def appointment_list(request):
         'status_filter': status_filter,
         'date_filter': date_filter,
         'status_choices': Appointment.STATUS_CHOICES,
+        'is_doctor': is_doctor(request.user),
     }
     return render(request, 'appointments/appointment_list.html', context)
 
@@ -83,6 +161,9 @@ def appointment_list(request):
 @login_required
 def appointment_add(request):
     """Add a new appointment"""
+    user_profile = request.user.profile
+    
+    # ✅ Doctors can only add appointments for their patients
     if request.method == 'POST':
         try:
             patient_id = request.POST.get('patient')
@@ -108,6 +189,26 @@ def appointment_add(request):
             follow_up_notes = request.POST.get('follow_up_notes', '')
             
             patient = get_object_or_404(Patient, pk=patient_id)
+            
+            # ✅ If user is doctor, force doctor_id to their own ID
+            if is_doctor(request.user):
+                doctor = user_profile.doctor
+                if not doctor:
+                    messages.error(request, '❌ No doctor profile found.')
+                    return redirect('appointments:list')
+                doctor_id = doctor.id
+                
+                # ✅ Check if patient is assigned to this doctor
+                has_access = Appointment.objects.filter(
+                    patient=patient,
+                    doctor=doctor
+                ).exists()
+                
+                # Allow if patient has been seen by this doctor OR is new
+                if not has_access and patient.appointment_set.exists():
+                    messages.error(request, '❌ This patient is not assigned to you.')
+                    return redirect('appointments:list')
+            
             doctor = get_object_or_404(Doctor, pk=doctor_id)
             service = get_object_or_404(Service, pk=service_id)
             
@@ -141,14 +242,13 @@ def appointment_add(request):
                 follow_up_date=follow_up_date,
                 follow_up_notes=follow_up_notes,
             )
-            messages.success(request, f'Appointment created for {patient.full_name}')
+            messages.success(request, f'✅ Appointment created for {patient.full_name}')
             
             # Send confirmation SMS if send_reminder is checked
             if send_reminder:
                 try:
                     from notifications.yoola_sms import YoolaSMS
                     from notifications.models import NotificationSetting
-                    from datetime import datetime
                     
                     # Convert date and time strings to datetime objects for formatting
                     appointment_date_obj = datetime.strptime(appointment_date, '%Y-%m-%d').date()
@@ -223,18 +323,32 @@ Thank you,
             
             return redirect('appointments:list')
         except Exception as e:
-            messages.error(request, f'Error creating appointment: {str(e)}')
+            messages.error(request, f'❌ Error creating appointment: {str(e)}')
             import traceback
             traceback.print_exc()
     
-    patients = Patient.objects.filter(is_active=True).order_by('first_name', 'last_name')
-    doctors = Doctor.objects.filter(is_active=True).order_by('name')
+    # ✅ Get patients based on role
+    if is_doctor(request.user):
+        doctor = user_profile.doctor
+        if doctor:
+            patients = Patient.objects.filter(
+                appointment__doctor=doctor
+            ).distinct().order_by('first_name', 'last_name')
+            doctors = Doctor.objects.filter(pk=doctor.id)
+        else:
+            patients = Patient.objects.none()
+            doctors = Doctor.objects.none()
+    else:
+        patients = Patient.objects.filter(is_active=True).order_by('first_name', 'last_name')
+        doctors = Doctor.objects.filter(is_active=True).order_by('name')
+    
     services = Service.objects.filter(is_active=True).order_by('name')
     
     context = {
         'patients': patients,
         'doctors': doctors,
         'services': services,
+        'is_doctor': is_doctor(request.user),
     }
     return render(request, 'appointments/appointment_add.html', context)
 
@@ -243,13 +357,33 @@ Thank you,
 def appointment_detail(request, pk):
     """View appointment details"""
     appointment = get_object_or_404(Appointment, pk=pk)
-    return render(request, 'appointments/appointment_detail.html', {'appointment': appointment})
+    user_profile = request.user.profile
+    
+    # ✅ Check if doctor has access to this appointment
+    if is_doctor(request.user):
+        doctor = user_profile.doctor
+        if doctor and appointment.doctor != doctor:
+            messages.error(request, '❌ You do not have access to this appointment.')
+            return redirect('appointments:list')
+    
+    return render(request, 'appointments/appointment_detail.html', {
+        'appointment': appointment,
+        'is_doctor': is_doctor(request.user),
+    })
 
 
 @login_required
 def appointment_edit(request, pk):
     """Edit an appointment"""
     appointment = get_object_or_404(Appointment, pk=pk)
+    user_profile = request.user.profile
+    
+    # ✅ Check if doctor has access to this appointment
+    if is_doctor(request.user):
+        doctor = user_profile.doctor
+        if doctor and appointment.doctor != doctor:
+            messages.error(request, '❌ You do not have access to this appointment.')
+            return redirect('appointments:list')
     
     if request.method == 'POST':
         try:
@@ -282,13 +416,26 @@ def appointment_edit(request, pk):
             
             appointment.save()
             
-            messages.success(request, 'Appointment updated successfully!')
+            messages.success(request, '✅ Appointment updated successfully!')
             return redirect('appointments:detail', pk=appointment.pk)
         except Exception as e:
-            messages.error(request, f'Error updating appointment: {str(e)}')
+            messages.error(request, f'❌ Error updating appointment: {str(e)}')
     
-    patients = Patient.objects.filter(is_active=True).order_by('first_name', 'last_name')
-    doctors = Doctor.objects.filter(is_active=True).order_by('name')
+    # Get patients based on role for the form
+    if is_doctor(request.user):
+        doctor = user_profile.doctor
+        if doctor:
+            patients = Patient.objects.filter(
+                appointment__doctor=doctor
+            ).distinct().order_by('first_name', 'last_name')
+            doctors = Doctor.objects.filter(pk=doctor.id)
+        else:
+            patients = Patient.objects.none()
+            doctors = Doctor.objects.none()
+    else:
+        patients = Patient.objects.filter(is_active=True).order_by('first_name', 'last_name')
+        doctors = Doctor.objects.filter(is_active=True).order_by('name')
+    
     services = Service.objects.filter(is_active=True).order_by('name')
     
     context = {
@@ -296,6 +443,7 @@ def appointment_edit(request, pk):
         'patients': patients,
         'doctors': doctors,
         'services': services,
+        'is_doctor': is_doctor(request.user),
     }
     return render(request, 'appointments/appointment_edit.html', context)
 
@@ -304,9 +452,18 @@ def appointment_edit(request, pk):
 def appointment_delete(request, pk):
     """Delete an appointment"""
     appointment = get_object_or_404(Appointment, pk=pk)
+    user_profile = request.user.profile
+    
+    # ✅ Check if doctor has access to this appointment
+    if is_doctor(request.user):
+        doctor = user_profile.doctor
+        if doctor and appointment.doctor != doctor:
+            messages.error(request, '❌ You do not have access to this appointment.')
+            return redirect('appointments:list')
+    
     if request.method == 'POST':
         appointment.delete()
-        messages.success(request, 'Appointment deleted successfully!')
+        messages.success(request, '✅ Appointment deleted successfully!')
         return redirect('appointments:list')
     return render(request, 'appointments/appointment_delete.html', {'appointment': appointment})
 
@@ -314,7 +471,22 @@ def appointment_delete(request, pk):
 @login_required
 def calendar_view(request):
     """Calendar view for appointments"""
-    return render(request, 'appointments/calendar.html')
+    user_profile = request.user.profile
+    
+    # ✅ Get appointments based on role
+    if is_doctor(request.user):
+        doctor = user_profile.doctor
+        if doctor:
+            appointments = Appointment.objects.filter(doctor=doctor)
+        else:
+            appointments = Appointment.objects.none()
+    else:
+        appointments = Appointment.objects.all()
+    
+    return render(request, 'appointments/calendar.html', {
+        'appointments': appointments,
+        'is_doctor': is_doctor(request.user),
+    })
 
 
 # ====================
@@ -323,14 +495,22 @@ def calendar_view(request):
 
 @login_required
 def service_list(request):
-    """List all services"""
+    """List all services - All users can view"""
     services = Service.objects.filter(is_active=True).order_by('name')
-    return render(request, 'appointments/services.html', {'services': services})
+    return render(request, 'appointments/services.html', {
+        'services': services,
+        'is_doctor': is_doctor(request.user),
+    })
 
 
 @login_required
 def service_add(request):
-    """Add a new service"""
+    """Add a new service - PREVENT doctors from adding"""
+    # ✅ PREVENT doctors from adding services
+    if is_doctor(request.user):
+        messages.error(request, '❌ Doctors are not allowed to add services.')
+        return redirect('appointments:services')
+    
     if request.method == 'POST':
         try:
             service = Service.objects.create(
@@ -339,16 +519,21 @@ def service_add(request):
                 price=request.POST.get('price'),
                 duration_minutes=request.POST.get('duration_minutes', 30)
             )
-            messages.success(request, f'Service "{service.name}" added successfully!')
+            messages.success(request, f'✅ Service "{service.name}" added successfully!')
             return redirect('appointments:services')
         except Exception as e:
-            messages.error(request, f'Error adding service: {str(e)}')
+            messages.error(request, f'❌ Error adding service: {str(e)}')
     return render(request, 'appointments/service_add.html')
 
 
 @login_required
 def service_edit(request, pk):
-    """Edit a service"""
+    """Edit a service - PREVENT doctors from editing"""
+    # ✅ PREVENT doctors from editing services
+    if is_doctor(request.user):
+        messages.error(request, '❌ Doctors are not allowed to edit services.')
+        return redirect('appointments:services')
+    
     service = get_object_or_404(Service, pk=pk)
     if request.method == 'POST':
         try:
@@ -357,21 +542,26 @@ def service_edit(request, pk):
             service.price = request.POST.get('price')
             service.duration_minutes = request.POST.get('duration_minutes', 30)
             service.save()
-            messages.success(request, f'Service "{service.name}" updated successfully!')
+            messages.success(request, f'✅ Service "{service.name}" updated successfully!')
             return redirect('appointments:services')
         except Exception as e:
-            messages.error(request, f'Error updating service: {str(e)}')
+            messages.error(request, f'❌ Error updating service: {str(e)}')
     return render(request, 'appointments/service_edit.html', {'service': service})
 
 
 @login_required
 def service_delete(request, pk):
-    """Delete a service"""
+    """Delete a service - PREVENT doctors from deleting"""
+    # ✅ PREVENT doctors from deleting services
+    if is_doctor(request.user):
+        messages.error(request, '❌ Doctors are not allowed to delete services.')
+        return redirect('appointments:services')
+    
     service = get_object_or_404(Service, pk=pk)
     if request.method == 'POST':
         service.is_active = False
         service.save()
-        messages.success(request, f'Service "{service.name}" removed successfully!')
+        messages.success(request, f'✅ Service "{service.name}" removed successfully!')
         return redirect('appointments:services')
     return render(request, 'appointments/service_delete.html', {'service': service})
 
@@ -382,51 +572,87 @@ def service_delete(request, pk):
 
 @login_required
 def doctor_list(request):
+    """List all doctors - All users can view"""
     doctors = Doctor.objects.filter(is_active=True).order_by('name')
-    return render(request, 'appointments/doctors.html', {'doctors': doctors})
+    return render(request, 'appointments/doctors.html', {
+        'doctors': doctors,
+        'is_doctor': is_doctor(request.user),
+    })
 
 
 @login_required
 def doctor_add(request):
+    """Add a new doctor - PREVENT doctors from adding"""
+    # ✅ PREVENT doctors from adding doctors
+    if is_doctor(request.user):
+        messages.error(request, '❌ Doctors are not allowed to add new doctors.')
+        return redirect('appointments:doctors')
+    
     if request.method == 'POST':
         try:
+            # Clean name - remove any "Dr." prefixes
+            import re
+            name = request.POST.get('name', '').strip()
+            name = re.sub(r'^Dr\.\s*', '', name, flags=re.IGNORECASE)
+            name = re.sub(r'\s+Dr\.\s*', ' ', name, flags=re.IGNORECASE)
+            name = ' '.join(name.split())
+            
             doctor = Doctor.objects.create(
-                name=request.POST.get('name'),
+                name=name,
                 specialization=request.POST.get('specialization'),
                 phone=request.POST.get('phone'),
                 email=request.POST.get('email')
             )
-            messages.success(request, f'Dr. {doctor.name} added successfully!')
+            messages.success(request, f'✅ Dr. {doctor.name} added successfully!')
             return redirect('appointments:doctors')
         except Exception as e:
-            messages.error(request, f'Error adding doctor: {str(e)}')
+            messages.error(request, f'❌ Error adding doctor: {str(e)}')
     return render(request, 'appointments/doctor_add.html')
 
 
 @login_required
 def doctor_edit(request, pk):
+    """Edit a doctor - PREVENT doctors from editing"""
+    # ✅ PREVENT doctors from editing doctors
+    if is_doctor(request.user):
+        messages.error(request, '❌ Doctors are not allowed to edit doctor profiles.')
+        return redirect('appointments:doctors')
+    
     doctor = get_object_or_404(Doctor, pk=pk)
     if request.method == 'POST':
         try:
-            doctor.name = request.POST.get('name')
+            # Clean name - remove any "Dr." prefixes
+            import re
+            name = request.POST.get('name', '').strip()
+            name = re.sub(r'^Dr\.\s*', '', name, flags=re.IGNORECASE)
+            name = re.sub(r'\s+Dr\.\s*', ' ', name, flags=re.IGNORECASE)
+            name = ' '.join(name.split())
+            
+            doctor.name = name
             doctor.specialization = request.POST.get('specialization')
             doctor.phone = request.POST.get('phone')
             doctor.email = request.POST.get('email')
             doctor.save()
-            messages.success(request, f'Dr. {doctor.name} updated successfully!')
+            messages.success(request, f'✅ Dr. {doctor.name} updated successfully!')
             return redirect('appointments:doctors')
         except Exception as e:
-            messages.error(request, f'Error updating doctor: {str(e)}')
+            messages.error(request, f'❌ Error updating doctor: {str(e)}')
     return render(request, 'appointments/doctor_edit.html', {'doctor': doctor})
 
 
 @login_required
 def doctor_delete(request, pk):
+    """Delete a doctor - PREVENT doctors from deleting"""
+    # ✅ PREVENT doctors from deleting doctors
+    if is_doctor(request.user):
+        messages.error(request, '❌ Doctors are not allowed to delete doctors.')
+        return redirect('appointments:doctors')
+    
     doctor = get_object_or_404(Doctor, pk=pk)
     if request.method == 'POST':
         doctor.is_active = False
         doctor.save()
-        messages.success(request, f'Dr. {doctor.name} removed successfully!')
+        messages.success(request, f'✅ Dr. {doctor.name} removed successfully!')
         return redirect('appointments:doctors')
     return render(request, 'appointments/doctor_delete.html', {'doctor': doctor})
 
