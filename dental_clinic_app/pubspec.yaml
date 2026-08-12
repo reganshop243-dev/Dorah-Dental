@@ -1,0 +1,44 @@
+name: dental_clinic_app
+description: "Dental Clinic Management App"
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.12.2
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # HTTP for API calls
+  http: ^1.1.0
+  
+  # State management
+  provider: ^6.1.1
+  
+  # Local storage for token
+  shared_preferences: ^2.2.3
+  
+  # Date formatting
+  intl: ^0.19.0
+  
+  # Image picker
+  image_picker: ^1.0.7
+  
+  # Loading indicators
+  flutter_spinkit: ^5.2.0
+  
+  # Toast messages
+  fluttertoast: ^8.2.5
+  
+  # Cupertino icons for iOS style
+  cupertino_icons: ^1.0.6
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+
+  flutter_lints: ^3.0.0
+
+flutter:
+  uses-material-design: true
