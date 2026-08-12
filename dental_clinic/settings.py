@@ -31,26 +31,11 @@ DATA_DIR.mkdir(exist_ok=True)
 
 SECRET_KEY = os.environ.get('SECRET_KEY', 'django-insecure-dental-clinic-standalone-key')
 
-# Debug mode - False on Railway, True locally
-if os.environ.get('RAILWAY_ENVIRONMENT'):
-    DEBUG = False
-else:
-    DEBUG = True
+# Force DEBUG on Railway for now to fix redirect loop
+DEBUG = True  # ✅ Set to True to see what's happening
 
-# Allowed hosts
-if DEBUG:
-    ALLOWED_HOSTS = ['*']
-else:
-    railway_domain = os.environ.get('RAILWAY_PUBLIC_DOMAIN', '')
-    ALLOWED_HOSTS = [
-        'localhost',
-        '127.0.0.1',
-        '.railway.app',
-        '.up.railway.app',
-        'dorah-dental-production.up.railway.app',
-    ]
-    if railway_domain:
-        ALLOWED_HOSTS.append(railway_domain)
+# Allow all hosts
+ALLOWED_HOSTS = ['*']
 
 # CSRF Trusted Origins
 CSRF_TRUSTED_ORIGINS = [
@@ -62,7 +47,7 @@ CSRF_TRUSTED_ORIGINS = [
 ]
 
 # CORS settings for mobile apps
-CORS_ALLOW_ALL_ORIGINS = True  # For development only
+CORS_ALLOW_ALL_ORIGINS = True
 CORS_ALLOW_CREDENTIALS = True
 
 CORS_ALLOW_METHODS = [
@@ -122,7 +107,7 @@ INSTALLED_APPS = [
 # =======================
 
 MIDDLEWARE = [
-    'corsheaders.middleware.CorsMiddleware',  # Must be at the top
+    'corsheaders.middleware.CorsMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
@@ -285,27 +270,21 @@ LOGGING = {
 }
 
 # =======================
-# SECURITY SETTINGS (Production)
+# SECURITY SETTINGS - DISABLED FOR RAILWAY
 # =======================
 
-if not DEBUG:
-    SECURE_SSL_REDIRECT = True
-    SESSION_COOKIE_SECURE = True
-    CSRF_COOKIE_SECURE = True
-    SECURE_BROWSER_XSS_FILTER = True
-    SECURE_CONTENT_TYPE_NOSNIFF = True
-    SECURE_HSTS_SECONDS = 31536000  # 1 year
-    SECURE_HSTS_INCLUDE_SUBDOMAINS = True
-    SECURE_HSTS_PRELOAD = True
-else:
-    SECURE_SSL_REDIRECT = False
-    SESSION_COOKIE_SECURE = False
-    CSRF_COOKIE_SECURE = False
-    SECURE_BROWSER_XSS_FILTER = False
-    SECURE_CONTENT_TYPE_NOSNIFF = False
-    SECURE_HSTS_SECONDS = 0
-    SECURE_HSTS_INCLUDE_SUBDOMAINS = False
-    SECURE_HSTS_PRELOAD = False
+# ✅ DISABLE ALL SECURE SETTINGS for Railway
+SECURE_SSL_REDIRECT = False
+SESSION_COOKIE_SECURE = False
+CSRF_COOKIE_SECURE = False
+SECURE_BROWSER_XSS_FILTER = False
+SECURE_CONTENT_TYPE_NOSNIFF = False
+SECURE_HSTS_SECONDS = 0
+SECURE_HSTS_INCLUDE_SUBDOMAINS = False
+SECURE_HSTS_PRELOAD = False
+SECURE_PROXY_SSL_HEADER = None
+USE_X_FORWARDED_HOST = False
+USE_X_FORWARDED_PORT = False
 
 # =======================
 # STARTUP MESSAGE
