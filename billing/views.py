@@ -749,27 +749,34 @@ def expense_delete(request, pk):
 def balance_sheet(request):
     """Generate balance sheet report"""
     from django.db.models import Sum
-    from datetime import datetime
+    from datetime import datetime, date
     
     # Get date range from request
-    start_date = request.GET.get('start_date', '')
-    end_date = request.GET.get('end_date', '')
+    start_date_str = request.GET.get('start_date', '')
+    end_date_str = request.GET.get('end_date', '')
     
     # Default to current month
-    if not start_date and not end_date:
-        today = timezone.now().date()
-        start_date = today.replace(day=1).isoformat()
-        end_date = today.isoformat()
+    today = date.today()
+    if not start_date_str and not end_date_str:
+        start_date = today.replace(day=1)
+        end_date = today
+    else:
+        try:
+            start_date = datetime.strptime(start_date_str, '%Y-%m-%d').date() if start_date_str else today.replace(day=1)
+            end_date = datetime.strptime(end_date_str, '%Y-%m-%d').date() if end_date_str else today
+        except ValueError:
+            start_date = today.replace(day=1)
+            end_date = today
     
-    # Filter invoices
+    # ✅ FIXED: Removed __date lookup since issue_date is DateField
     invoices = Invoice.objects.all()
     expenses = Expense.objects.all()
     
     if start_date:
-        invoices = invoices.filter(issue_date__date__gte=start_date)
+        invoices = invoices.filter(issue_date__gte=start_date)  # ✅ Fixed
         expenses = expenses.filter(expense_date__gte=start_date)
     if end_date:
-        invoices = invoices.filter(issue_date__date__lte=end_date)
+        invoices = invoices.filter(issue_date__lte=end_date)  # ✅ Fixed
         expenses = expenses.filter(expense_date__lte=end_date)
     
     # Revenue calculations
@@ -790,9 +797,17 @@ def balance_sheet(request):
         total=Sum('total_amount')
     ).order_by('-total')
     
+    # Format dates for display
+    start_date_display = start_date.strftime('%b %d, %Y')
+    end_date_display = end_date.strftime('%b %d, %Y')
+    
     context = {
         'start_date': start_date,
         'end_date': end_date,
+        'start_date_display': start_date_display,
+        'end_date_display': end_date_display,
+        'start_date_str': start_date.strftime('%Y-%m-%d'),
+        'end_date_str': end_date.strftime('%Y-%m-%d'),
         'total_invoices': total_invoices,
         'total_revenue': total_revenue,
         'paid_amount': paid_amount,
@@ -801,5 +816,7 @@ def balance_sheet(request):
         'net_profit': net_profit,
         'expenses_by_category': expenses_by_category,
         'revenue_by_method': revenue_by_method,
+        'paid_invoices': Invoice.objects.filter(status='paid').count(),  # Add this
+        'pending_invoices': Invoice.objects.filter(status__in=['draft', 'sent', 'partially_paid']).count(),  # Add this
     }
     return render(request, 'billing/balance_sheet.html', context)

@@ -6,252 +6,437 @@
 
 {% block extra_css %}
 <style>
-    .report-header {
-        background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
-        color: white;
-        padding: 20px;
-        border-radius: 12px;
-        margin-bottom: 20px;
+    .balance-sheet-container {
+        background: #f8f9fa;
+        min-height: 100vh;
+        padding: 20px 0;
     }
-    .report-header h3 {
+    
+    .balance-sheet-header {
+        background: white;
+        border-radius: 16px;
+        padding: 25px 30px;
+        margin-bottom: 25px;
+        box-shadow: 0 2px 15px rgba(0,0,0,0.05);
+    }
+    
+    .balance-sheet-header h3 {
+        font-family: 'Playfair Display', serif;
+        color: #2d3436;
         margin: 0;
     }
-    .report-header small {
-        opacity: 0.8;
+    
+    .balance-sheet-header .subtitle {
+        color: #636e72;
+        font-size: 14px;
     }
-    .summary-card {
+    
+    .filter-card {
         background: white;
-        border-radius: 12px;
-        padding: 20px;
-        box-shadow: 0 2px 10px rgba(0,0,0,0.05);
-        text-align: center;
+        border-radius: 16px;
+        padding: 20px 25px;
+        margin-bottom: 25px;
+        box-shadow: 0 2px 15px rgba(0,0,0,0.05);
+    }
+    
+    .filter-card .btn-group .btn {
+        border-radius: 8px;
+        padding: 8px 20px;
+        font-weight: 500;
+    }
+    
+    .filter-card .btn-group .btn.active {
+        background: linear-gradient(135deg, #667eea, #764ba2);
+        color: white;
+        border-color: #667eea;
+    }
+    
+    .stat-card {
+        background: white;
+        border-radius: 16px;
+        padding: 20px 25px;
+        box-shadow: 0 2px 15px rgba(0,0,0,0.05);
         height: 100%;
+        transition: all 0.3s;
+        border-left: 4px solid #667eea;
     }
-    .summary-card .amount {
-        font-size: 2rem;
+    
+    .stat-card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 8px 30px rgba(0,0,0,0.1);
+    }
+    
+    .stat-card .stat-label {
+        color: #636e72;
+        font-size: 13px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        font-weight: 600;
+    }
+    
+    .stat-card .stat-value {
+        font-size: 28px;
         font-weight: 700;
+        margin: 5px 0;
+        color: #2d3436;
     }
-    .summary-card .label {
-        color: #7f8c8d;
-        font-size: 0.9rem;
-        margin-top: 5px;
+    
+    .stat-card .stat-sub {
+        color: #b2bec3;
+        font-size: 12px;
     }
-    .summary-card.revenue .amount { color: #2ecc71; }
-    .summary-card.expenses .amount { color: #e74c3c; }
-    .summary-card.profit .amount { color: #3498db; }
-    .summary-card.pending .amount { color: #f39c12; }
-    .profit-positive { color: #2ecc71; }
-    .profit-negative { color: #e74c3c; }
-    .filter-form {
-        background: #f8f9fa;
-        padding: 15px;
-        border-radius: 10px;
-        margin-bottom: 20px;
+    
+    .stat-card.revenue { border-left-color: #00b894; }
+    .stat-card.revenue .stat-value { color: #00b894; }
+    
+    .stat-card.expenses { border-left-color: #e74c3c; }
+    .stat-card.expenses .stat-value { color: #e74c3c; }
+    
+    .stat-card.profit { border-left-color: #667eea; }
+    .stat-card.profit .stat-value { color: #667eea; }
+    
+    .stat-card.pending { border-left-color: #fdcb6e; }
+    .stat-card.pending .stat-value { color: #fdcb6e; }
+    
+    .stat-card.paid { border-left-color: #2ecc71; }
+    .stat-card.paid .stat-value { color: #2ecc71; }
+    
+    .stat-card.invoices { border-left-color: #0984e3; }
+    .stat-card.invoices .stat-value { color: #0984e3; }
+    
+    .detail-card {
+        background: white;
+        border-radius: 16px;
+        box-shadow: 0 2px 15px rgba(0,0,0,0.05);
+        overflow: hidden;
+        margin-bottom: 25px;
     }
-    .category-badge {
-        display: inline-block;
-        padding: 3px 10px;
+    
+    .detail-card .card-header {
+        background: white;
+        padding: 15px 25px;
+        border-bottom: 2px solid #f0f2f5;
+        font-weight: 600;
+        font-size: 16px;
+        color: #2d3436;
+    }
+    
+    .detail-card .card-header i {
+        margin-right: 10px;
+        color: #667eea;
+    }
+    
+    .detail-card .card-body {
+        padding: 20px 25px;
+    }
+    
+    .summary-table {
+        width: 100%;
+    }
+    
+    .summary-table tr td {
+        padding: 12px 0;
+        border-bottom: 1px solid #f0f2f5;
+    }
+    
+    .summary-table tr:last-child td {
+        border-bottom: none;
+    }
+    
+    .summary-table .label {
+        color: #636e72;
+        font-weight: 500;
+    }
+    
+    .summary-table .value {
+        font-weight: 600;
+        text-align: right;
+    }
+    
+    .summary-table .value.positive { color: #00b894; }
+    .summary-table .value.negative { color: #e74c3c; }
+    .summary-table .value.total { color: #667eea; font-size: 18px; }
+    
+    .badge-status {
+        padding: 4px 12px;
         border-radius: 20px;
-        font-size: 0.75rem;
-        background: #e9ecef;
-        color: #495057;
+        font-size: 12px;
+        font-weight: 500;
+    }
+    .badge-status.paid { background: #e8f5e9; color: #2e7d32; }
+    .badge-status.partially_paid { background: #fff3e0; color: #e65100; }
+    .badge-status.draft { background: #f5f5f5; color: #616161; }
+    .badge-status.sent { background: #e3f2fd; color: #1976d2; }
+    .badge-status.overdue { background: #fce4ec; color: #c62828; }
+    
+    .period-badge {
+        background: linear-gradient(135deg, #667eea, #764ba2);
+        color: white;
+        padding: 5px 15px;
+        border-radius: 20px;
+        font-size: 13px;
+        font-weight: 500;
+    }
+    
+    .print-btn {
+        background: #2d3436;
+        color: white;
+        border: none;
+        padding: 8px 20px;
+        border-radius: 8px;
+        font-weight: 500;
+        transition: all 0.3s;
+    }
+    
+    .print-btn:hover {
+        background: #1a1a2e;
+        color: white;
+    }
+    
+    @media print {
+        .no-print { display: none !important; }
+        .balance-sheet-container { background: white !important; padding: 0 !important; }
+        .stat-card { box-shadow: none !important; border: 1px solid #ddd !important; }
+        .detail-card { box-shadow: none !important; border: 1px solid #ddd !important; }
+        .filter-card { box-shadow: none !important; border: 1px solid #ddd !important; }
     }
 </style>
 {% endblock %}
 
 {% block content %}
-<!-- Header -->
-<div class="report-header">
-    <div class="d-flex justify-content-between align-items-center">
-        <div>
-            <h3><i class="fas fa-balance-scale"></i> Balance Sheet</h3>
-            <small>{{ start_date }} to {{ end_date }}</small>
-        </div>
-        <div>
-            <button onclick="window.print()" class="btn btn-light">
-                <i class="fas fa-print"></i> Print
-            </button>
-            <a href="?export=csv" class="btn btn-success">
-                <i class="fas fa-file-csv"></i> Export CSV
-            </a>
-        </div>
-    </div>
-</div>
-
-<!-- Filter Form -->
-<div class="filter-form">
-    <form method="get" class="row g-3">
-        <div class="col-md-4">
-            <label class="form-label">Start Date</label>
-            <input type="date" class="form-control" name="start_date" value="{{ start_date }}">
-        </div>
-        <div class="col-md-4">
-            <label class="form-label">End Date</label>
-            <input type="date" class="form-control" name="end_date" value="{{ end_date }}">
-        </div>
-        <div class="col-md-4 d-flex align-items-end">
-            <button type="submit" class="btn btn-primary w-100">
-                <i class="fas fa-filter"></i> Filter
-            </button>
-        </div>
-    </form>
-</div>
-
-<!-- Summary Cards -->
-<div class="row mb-4">
-    <div class="col-md-3">
-        <div class="summary-card revenue">
-            <div class="amount">UGX {{ total_revenue|floatformat:0|intcomma }}</div>
-            <div class="label">Total Revenue</div>
-            <small class="text-muted">{{ total_invoices }} invoices</small>
-        </div>
-    </div>
-    <div class="col-md-3">
-        <div class="summary-card expenses">
-            <div class="amount">UGX {{ total_expenses|floatformat:0|intcomma }}</div>
-            <div class="label">Total Expenses</div>
-            <small class="text-muted">All categories</small>
-        </div>
-    </div>
-    <div class="col-md-3">
-        <div class="summary-card profit">
-            <div class="amount {% if net_profit >= 0 %}profit-positive{% else %}profit-negative{% endif %}">
-                UGX {{ net_profit|floatformat:0|intcomma }}
+<div class="balance-sheet-container">
+    <!-- Header -->
+    <div class="balance-sheet-header">
+        <div class="d-flex justify-content-between align-items-center flex-wrap">
+            <div>
+                <h3><i class="fas fa-balance-scale text-primary"></i> Balance Sheet</h3>
+                <div class="subtitle">
+                    <i class="fas fa-calendar-alt me-1"></i>
+                    {{ start_date_display }} - {{ end_date_display }}
+                </div>
             </div>
-            <div class="label">Net Profit / Loss</div>
-            <small class="text-muted">Revenue - Expenses</small>
-        </div>
-    </div>
-    <div class="col-md-3">
-        <div class="summary-card pending">
-            <div class="amount">UGX {{ pending_amount|floatformat:0|intcomma }}</div>
-            <div class="label">Pending Payments</div>
-            <small class="text-muted">Outstanding balance</small>
-        </div>
-    </div>
-</div>
-
-<!-- Revenue & Expenses Breakdown -->
-<div class="row mb-4">
-    <div class="col-md-6">
-        <div class="card">
-            <div class="card-header">
-                <i class="fas fa-chart-pie text-success"></i> Revenue by Payment Method
+            <div>
+                <button onclick="window.print()" class="print-btn no-print">
+                    <i class="fas fa-print"></i> Print
+                </button>
+                <a href="{% url 'billing:balance_sheet' %}" class="btn btn-secondary no-print ms-2">
+                    <i class="fas fa-redo"></i> Reset
+                </a>
             </div>
-            <div class="card-body">
-                {% if revenue_by_method %}
-                    <div class="table-responsive">
-                        <table class="table table-sm">
-                            <thead>
-                                <tr>
-                                    <th>Method</th>
-                                    <th>Amount</th>
-                                    <th>%</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for method in revenue_by_method %}
-                                <tr>
-                                    <td>{{ method.payment_method|title|default:"N/A" }}</td>
-                                    <td><strong>UGX {{ method.total|floatformat:0|intcomma }}</strong></td>
-                                    <td>
-                                        {% widthratio method.total total_revenue 100 %}%
-                                    </td>
-                                </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
+        </div>
+    </div>
+    
+    <!-- Filter -->
+    <div class="filter-card no-print">
+        <div class="row align-items-center">
+            <div class="col-md-3">
+                <strong><i class="fas fa-calendar-range"></i> Date Range:</strong>
+            </div>
+            <div class="col-md-9">
+                <form method="get" class="row g-2">
+                    <div class="col-md-4">
+                        <input type="date" class="form-control" name="start_date" value="{{ start_date_str }}">
                     </div>
-                {% else %}
-                    <p class="text-muted text-center py-3">No revenue data available</p>
-                {% endif %}
-            </div>
-        </div>
-    </div>
-    <div class="col-md-6">
-        <div class="card">
-            <div class="card-header">
-                <i class="fas fa-chart-pie text-danger"></i> Expenses by Category
-            </div>
-            <div class="card-body">
-                {% if expenses_by_category %}
-                    <div class="table-responsive">
-                        <table class="table table-sm">
-                            <thead>
-                                <tr>
-                                    <th>Category</th>
-                                    <th>Amount</th>
-                                    <th>%</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for expense in expenses_by_category %}
-                                <tr>
-                                    <td>
-                                        <span class="category-badge">
-                                            {{ expense.category|title }}
-                                        </span>
-                                    </td>
-                                    <td><strong>UGX {{ expense.total|floatformat:0|intcomma }}</strong></td>
-                                    <td>
-                                        {% widthratio expense.total total_expenses 100 %}%
-                                    </td>
-                                </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
+                    <div class="col-md-4">
+                        <input type="date" class="form-control" name="end_date" value="{{ end_date_str }}">
                     </div>
-                {% else %}
-                    <p class="text-muted text-center py-3">No expense data available</p>
-                {% endif %}
+                    <div class="col-md-4">
+                        <button type="submit" class="btn btn-primary w-100">
+                            <i class="fas fa-filter"></i> Apply Filter
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+        <div class="row mt-2">
+            <div class="col-md-12">
+                <span class="period-badge">
+                    <i class="fas fa-calendar-check"></i> 
+                    {{ start_date_display }} - {{ end_date_display }}
+                </span>
+                <a href="{% url 'billing:balance_sheet' %}" class="btn btn-sm btn-secondary ms-2 no-print">
+                    <i class="fas fa-times"></i> Clear
+                </a>
             </div>
         </div>
     </div>
-</div>
-
-<!-- Summary Table -->
-<div class="card">
-    <div class="card-header">
-        <i class="fas fa-list"></i> Financial Summary
+    
+    <!-- Statistics Cards -->
+    <div class="row g-3 mb-4">
+        <div class="col-md-3 col-6">
+            <div class="stat-card revenue">
+                <div class="stat-label"><i class="fas fa-arrow-up"></i> Total Revenue</div>
+                <div class="stat-value">UGX {{ total_revenue|floatformat:0|intcomma }}</div>
+                <div class="stat-sub">{{ total_invoices }} invoices</div>
+            </div>
+        </div>
+        <div class="col-md-3 col-6">
+            <div class="stat-card paid">
+                <div class="stat-label"><i class="fas fa-check-circle"></i> Paid Amount</div>
+                <div class="stat-value">UGX {{ paid_amount|floatformat:0|intcomma }}</div>
+                <div class="stat-sub">Completed payments</div>
+            </div>
+        </div>
+        <div class="col-md-3 col-6">
+            <div class="stat-card pending">
+                <div class="stat-label"><i class="fas fa-clock"></i> Outstanding</div>
+                <div class="stat-value">UGX {{ pending_amount|floatformat:0|intcomma }}</div>
+                <div class="stat-sub">Pending balance</div>
+            </div>
+        </div>
+        <div class="col-md-3 col-6">
+            <div class="stat-card expenses">
+                <div class="stat-label"><i class="fas fa-arrow-down"></i> Total Expenses</div>
+                <div class="stat-value">UGX {{ total_expenses|floatformat:0|intcomma }}</div>
+                <div class="stat-sub">Operating costs</div>
+            </div>
+        </div>
     </div>
-    <div class="card-body">
-        <div class="table-responsive">
-            <table class="table table-bordered">
-                <thead class="table-light">
-                    <tr>
-                        <th>Description</th>
-                        <th>Amount</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr>
-                        <td><strong>Total Revenue</strong></td>
-                        <td class="text-success"><strong>UGX {{ total_revenue|floatformat:0|intcomma }}</strong></td>
-                    </tr>
-                    <tr>
-                        <td><strong>Total Expenses</strong></td>
-                        <td class="text-danger"><strong>UGX {{ total_expenses|floatformat:0|intcomma }}</strong></td>
-                    </tr>
-                    <tr class="table-success">
-                        <td><strong>Net Profit / Loss</strong></td>
-                        <td>
-                            <strong class="{% if net_profit >= 0 %}text-success{% else %}text-danger{% endif %}">
+    
+    <!-- Net Profit -->
+    <div class="row g-3 mb-4">
+        <div class="col-md-12">
+            <div class="stat-card profit">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <div class="stat-label"><i class="fas fa-chart-line"></i> Net Profit / Loss</div>
+                        <div class="stat-value">UGX {{ net_profit|floatformat:0|intcomma }}</div>
+                        <div class="stat-sub">Revenue - Expenses</div>
+                    </div>
+                    <div>
+                        <span class="badge {% if net_profit >= 0 %}bg-success{% else %}bg-danger{% endif %}" style="font-size: 16px; padding: 8px 20px;">
+                            {% if net_profit >= 0 %}
+                                <i class="fas fa-arrow-up"></i> Profit
+                            {% else %}
+                                <i class="fas fa-arrow-down"></i> Loss
+                            {% endif %}
+                        </span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Detailed Breakdown -->
+    <div class="row g-3">
+        <!-- Financial Summary -->
+        <div class="col-md-6">
+            <div class="detail-card">
+                <div class="card-header">
+                    <i class="fas fa-file-invoice-dollar"></i> Financial Summary
+                </div>
+                <div class="card-body">
+                    <table class="summary-table">
+                        <tr>
+                            <td class="label">Total Revenue</td>
+                            <td class="value positive">UGX {{ total_revenue|floatformat:0|intcomma }}</td>
+                        </tr>
+                        <tr>
+                            <td class="label">Total Expenses</td>
+                            <td class="value negative">UGX {{ total_expenses|floatformat:0|intcomma }}</td>
+                        </tr>
+                        <tr>
+                            <td class="label">Paid Amount</td>
+                            <td class="value positive">UGX {{ paid_amount|floatformat:0|intcomma }}</td>
+                        </tr>
+                        <tr>
+                            <td class="label">Outstanding Balance</td>
+                            <td class="value negative">UGX {{ pending_amount|floatformat:0|intcomma }}</td>
+                        </tr>
+                        <tr style="border-top: 2px solid #667eea;">
+                            <td class="label" style="font-weight: 700;">Net Profit / Loss</td>
+                            <td class="value total {% if net_profit >= 0 %}positive{% else %}negative{% endif %}">
                                 UGX {{ net_profit|floatformat:0|intcomma }}
-                            </strong>
-                        </td>
-                    </tr>
-                </tbody>
-                <tfoot>
-                    <tr>
-                        <td><strong>Pending Payments (Outstanding)</strong></td>
-                        <td class="text-warning"><strong>UGX {{ pending_amount|floatformat:0|intcomma }}</strong></td>
-                    </tr>
-                    <tr>
-                        <td><strong>Paid Amount</strong></td>
-                        <td class="text-success"><strong>UGX {{ paid_amount|floatformat:0|intcomma }}</strong></td>
-                    </tr>
-                </tfoot>
-            </table>
+                            </td>
+                        </tr>
+                    </table>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Revenue by Payment Method -->
+        <div class="col-md-6">
+            <div class="detail-card">
+                <div class="card-header">
+                    <i class="fas fa-credit-card"></i> Revenue by Payment Method
+                </div>
+                <div class="card-body">
+                    {% if revenue_by_method %}
+                        <table class="summary-table">
+                            {% for method in revenue_by_method %}
+                            <tr>
+                                <td class="label">
+                                    <i class="fas fa-circle" style="color: #667eea; font-size: 10px;"></i>
+                                    {{ method.get_payment_method_display|default:"Not specified" }}
+                                </td>
+                                <td class="value">UGX {{ method.total|floatformat:0|intcomma }}</td>
+                            </tr>
+                            {% endfor %}
+                            <tr style="border-top: 2px solid #667eea;">
+                                <td class="label" style="font-weight: 700;">Total</td>
+                                <td class="value total">UGX {{ total_revenue|floatformat:0|intcomma }}</td>
+                            </tr>
+                        </table>
+                    {% else %}
+                        <p class="text-muted text-center py-3">No payment data available.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        
+        <!-- Expenses by Category -->
+        <div class="col-md-6">
+            <div class="detail-card">
+                <div class="card-header">
+                    <i class="fas fa-receipt"></i> Expenses by Category
+                </div>
+                <div class="card-body">
+                    {% if expenses_by_category %}
+                        <table class="summary-table">
+                            {% for expense in expenses_by_category %}
+                            <tr>
+                                <td class="label">
+                                    <i class="fas fa-circle" style="color: #e74c3c; font-size: 10px;"></i>
+                                    {{ expense.get_category_display }}
+                                </td>
+                                <td class="value negative">UGX {{ expense.total|floatformat:0|intcomma }}</td>
+                            </tr>
+                            {% endfor %}
+                            <tr style="border-top: 2px solid #667eea;">
+                                <td class="label" style="font-weight: 700;">Total Expenses</td>
+                                <td class="value total">UGX {{ total_expenses|floatformat:0|intcomma }}</td>
+                            </tr>
+                        </table>
+                    {% else %}
+                        <p class="text-muted text-center py-3">No expense data available.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        
+        <!-- Invoice Status Summary -->
+        <div class="col-md-6">
+            <div class="detail-card">
+                <div class="card-header">
+                    <i class="fas fa-file-invoice"></i> Invoice Status Summary
+                </div>
+                <div class="card-body">
+                    <div class="row text-center">
+                        <div class="col-4">
+                            <h4 class="text-primary">{{ total_invoices }}</h4>
+                            <small class="text-muted">Total</small>
+                        </div>
+                        <div class="col-4">
+                            <h4 class="text-success">{{ paid_invoices|default:0 }}</h4>
+                            <small class="text-muted">Paid</small>
+                        </div>
+                        <div class="col-4">
+                            <h4 class="text-warning">{{ pending_invoices|default:0 }}</h4>
+                            <small class="text-muted">Pending</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 </div>
