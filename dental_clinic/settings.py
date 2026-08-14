@@ -31,11 +31,23 @@ DATA_DIR.mkdir(exist_ok=True)
 
 SECRET_KEY = os.environ.get('SECRET_KEY', 'django-insecure-dental-clinic-standalone-key')
 
-# Force DEBUG on Railway for now to fix redirect loop
-DEBUG = True  # ✅ Set to True to see what's happening
+# Debug mode - False on Railway, True locally
+if os.environ.get('RAILWAY_ENVIRONMENT'):
+    DEBUG = False
+else:
+    DEBUG = True
 
-# Allow all hosts
-ALLOWED_HOSTS = ['*']
+# Allowed hosts
+if DEBUG:
+    ALLOWED_HOSTS = ['*']
+else:
+    ALLOWED_HOSTS = [
+        'localhost',
+        '127.0.0.1',
+        '.railway.app',
+        '.up.railway.app',
+        'dorah-dental-production.up.railway.app',
+    ]
 
 # CSRF Trusted Origins
 CSRF_TRUSTED_ORIGINS = [
@@ -83,6 +95,7 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'django.contrib.humanize',
+
     
     # Third-party apps
     'crispy_forms',
@@ -100,6 +113,7 @@ INSTALLED_APPS = [
     'notifications',
     'patient_portal',
     'api',
+    'reports',
 ]
 
 # =======================
@@ -122,31 +136,22 @@ ROOT_URLCONF = 'dental_clinic.urls'
 WSGI_APPLICATION = 'dental_clinic.wsgi.application'
 
 # =======================
-# DATABASE - Auto-detect environment
+# DATABASE - PostgreSQL on Railway
 # =======================
 
-if os.environ.get('RAILWAY_ENVIRONMENT'):
-    # Production - PostgreSQL on Railway
-    DATABASE_URL = "postgresql://postgres:yMgKMbELWuRVkvCumYxKoBzGgRmZHoJb@altaria.proxy.rlwy.net:15815/railway"
-    DATABASES = {
-        'default': dj_database_url.parse(DATABASE_URL, conn_max_age=600)
-    }
-    print("🔵 Using PostgreSQL (Production)")
-else:
-    # Local Development - SQLite
-    DATABASES = {
-        'default': {
-            'ENGINE': 'django.db.backends.sqlite3',
-            'NAME': BASE_DIR / 'db.sqlite3',
-        }
-    }
-    print("🟢 Using SQLite (Development)")
+DATABASE_URL = "postgresql://postgres:yMgKMbELWuRVkvCumYxKoBzGgRmZHoJb@altaria.proxy.rlwy.net:15815/railway"
+
+DATABASES = {
+    'default': dj_database_url.parse(DATABASE_URL, conn_max_age=600)
+}
 
 print("=" * 50)
 print("🦷 DATABASE CONNECTION")
 print("=" * 50)
-print(f"Engine: {DATABASES['default']['ENGINE']}")
-print(f"Name: {DATABASES['default']['NAME']}")
+print(f"Host: {DATABASES['default']['HOST']}")
+print(f"Port: {DATABASES['default']['PORT']}")
+print(f"Database: {DATABASES['default']['NAME']}")
+print(f"User: {DATABASES['default']['USER']}")
 print("=" * 50)
 
 # =======================
@@ -270,21 +275,27 @@ LOGGING = {
 }
 
 # =======================
-# SECURITY SETTINGS - DISABLED FOR RAILWAY
+# SECURITY SETTINGS
 # =======================
 
-# ✅ DISABLE ALL SECURE SETTINGS for Railway
-SECURE_SSL_REDIRECT = False
-SESSION_COOKIE_SECURE = False
-CSRF_COOKIE_SECURE = False
-SECURE_BROWSER_XSS_FILTER = False
-SECURE_CONTENT_TYPE_NOSNIFF = False
-SECURE_HSTS_SECONDS = 0
-SECURE_HSTS_INCLUDE_SUBDOMAINS = False
-SECURE_HSTS_PRELOAD = False
-SECURE_PROXY_SSL_HEADER = None
-USE_X_FORWARDED_HOST = False
-USE_X_FORWARDED_PORT = False
+if not DEBUG:
+    SECURE_SSL_REDIRECT = True
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
+    SECURE_BROWSER_XSS_FILTER = True
+    SECURE_CONTENT_TYPE_NOSNIFF = True
+    SECURE_HSTS_SECONDS = 31536000
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+    SECURE_HSTS_PRELOAD = True
+else:
+    SECURE_SSL_REDIRECT = False
+    SESSION_COOKIE_SECURE = False
+    CSRF_COOKIE_SECURE = False
+    SECURE_BROWSER_XSS_FILTER = False
+    SECURE_CONTENT_TYPE_NOSNIFF = False
+    SECURE_HSTS_SECONDS = 0
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = False
+    SECURE_HSTS_PRELOAD = False
 
 # =======================
 # STARTUP MESSAGE

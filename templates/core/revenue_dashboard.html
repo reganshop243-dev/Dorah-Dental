@@ -74,6 +74,50 @@
         font-size: 13px;
         font-weight: 500;
     }
+    .chart-bar {
+        background: linear-gradient(180deg, #667eea, #764ba2);
+        border-radius: 8px 8px 0 0;
+        transition: all 0.3s;
+        position: relative;
+        min-height: 5px;
+        width: 100%;
+    }
+    .chart-bar:hover {
+        opacity: 0.8;
+        transform: scaleY(1.05);
+        transform-origin: bottom;
+    }
+    .chart-container {
+        height: 300px;
+        display: flex;
+        align-items: flex-end;
+        gap: 10px;
+        padding: 20px 0;
+    }
+    .chart-item {
+        flex: 1;
+        text-align: center;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: flex-end;
+        height: 100%;
+    }
+    .chart-value {
+        font-size: 11px;
+        color: #2d3436;
+        font-weight: 600;
+        margin-bottom: 4px;
+    }
+    .chart-label {
+        margin-top: 8px;
+        font-size: 11px;
+        color: #636e72;
+    }
+    .badge-bronze {
+        background: #cd7f32;
+        color: white;
+    }
 </style>
 {% endblock %}
 
@@ -221,8 +265,8 @@
                         <p class="text-muted"><i class="fas fa-check-circle text-success"></i> Paid</p>
                     </div>
                     <div class="col-md-3 text-center">
-                        <h3 class="text-warning">{{ pending_invoices }}</h3>
-                        <p class="text-muted"><i class="fas fa-clock text-warning"></i> Pending</p>
+                        <h3 class="text-warning">{{ partially_paid_invoices }}</h3>
+                        <p class="text-muted"><i class="fas fa-clock text-warning"></i> Partially Paid</p>
                     </div>
                     <div class="col-md-3 text-center">
                         <h3 class="text-danger">{{ overdue_invoices }}</h3>
@@ -242,31 +286,25 @@
                 <i class="fas fa-chart-bar text-primary"></i> Monthly Revenue (Last 12 Months)
             </div>
             <div class="card-body">
-                <div style="height: 300px; display: flex; align-items: flex-end; gap: 10px; padding: 20px 0;">
-                    {% for data in monthly_data %}
-                    <div style="flex: 1; text-align: center;">
-                        <div style="background: linear-gradient(180deg, #667eea, #764ba2); 
-                                    height: {% widthratio data.revenue monthly_revenue 100 %}%;
-                                    min-height: 5px;
-                                    max-height: 280px;
-                                    border-radius: 8px 8px 0 0;
-                                    transition: all 0.3s;
-                                    position: relative;
-                                    {% if data.revenue == 0 %}opacity: 0.3;{% endif %}"
-                             title="UGX {{ data.revenue|floatformat:0|intcomma }}">
+                {% if monthly_data %}
+                    <div class="chart-container">
+                        {% for data in monthly_data %}
+                        <div class="chart-item">
                             {% if data.revenue > 0 %}
-                            <span style="position: absolute; top: -22px; left: 50%; transform: translateX(-50%); 
-                                       font-size: 11px; color: #2d3436; font-weight: 600;">
-                                UGX {{ data.revenue|floatformat:0|intcomma }}
-                            </span>
+                            <div class="chart-value">UGX {{ data.revenue|floatformat:0|intcomma }}</div>
                             {% endif %}
+                            <div class="chart-bar" 
+                                 style="height: {% widthratio data.revenue max_monthly_revenue 100 %}%;
+                                        {% if data.revenue == 0 %}opacity: 0.3;{% endif %}"
+                                 title="UGX {{ data.revenue|floatformat:0|intcomma }}">
+                            </div>
+                            <div class="chart-label">{{ data.month|slice:":3" }} {{ data.year|slice:"-2:" }}</div>
                         </div>
-                        <div style="margin-top: 8px; font-size: 11px; color: #636e72;">
-                            {{ data.month|slice:":3" }} {{ data.year }}
-                        </div>
+                        {% endfor %}
                     </div>
-                    {% endfor %}
-                </div>
+                {% else %}
+                    <p class="text-muted text-center py-4">No monthly data available.</p>
+                {% endif %}
             </div>
         </div>
     </div>
@@ -297,7 +335,7 @@
                             <tbody>
                                 {% for payment in recent_payments %}
                                 <tr>
-                                    <td>{{ payment.payment_date|date:"M d, H:i" }}</td>
+                                    <td>{{ payment.payment_date|date:"M d, Y" }}</td>
                                     <td>{{ payment.invoice.patient_name }}</td>
                                     <td>
                                         <a href="{% url 'billing:detail' payment.invoice.pk %}">
@@ -316,7 +354,10 @@
                         </table>
                     </div>
                 {% else %}
-                    <p class="text-muted text-center py-3">No recent payments in this period.</p>
+                    <div class="text-center py-4">
+                        <i class="fas fa-credit-card fa-3x text-muted mb-3"></i>
+                        <p class="text-muted">No payments recorded in this period.</p>
+                    </div>
                 {% endif %}
             </div>
         </div>
@@ -335,12 +376,12 @@
                     {% for patient in top_patients %}
                         <div class="list-group-item d-flex justify-content-between align-items-center">
                             <div>
-                                <span class="badge {% if forloop.counter == 1 %}bg-warning{% elif forloop.counter == 2 %}bg-secondary{% elif forloop.counter == 3 %}bg-bronze{% else %}bg-light text-dark{% endif %} me-2">
+                                <span class="badge {% if forloop.counter == 1 %}bg-warning{% elif forloop.counter == 2 %}bg-secondary{% elif forloop.counter == 3 %}badge-bronze{% else %}bg-light text-dark{% endif %} me-2">
                                     {{ forloop.counter }}
                                 </span>
                                 <strong>{{ patient.patient__first_name }} {{ patient.patient__last_name }}</strong>
                                 <br>
-                                <small class="text-muted">{{ patient.visit_count }} visits</small>
+                                <small class="text-muted">{{ patient.visit_count }} visit{{ patient.visit_count|pluralize }}</small>
                             </div>
                             <span class="badge bg-success">
                                 UGX {{ patient.total_spent|floatformat:0|intcomma }}
@@ -349,8 +390,42 @@
                     {% endfor %}
                     </div>
                 {% else %}
-                    <p class="text-muted text-center py-3">No patient data in this period.</p>
+                    <div class="text-center py-4">
+                        <i class="fas fa-users fa-3x text-muted mb-3"></i>
+                        <p class="text-muted">No patient data in this period.</p>
+                    </div>
                 {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Summary Cards Footer -->
+<div class="row mt-4">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header">
+                <i class="fas fa-info-circle text-primary"></i> Quick Summary
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-3 text-center">
+                        <h4 class="text-primary">{{ total_invoices }}</h4>
+                        <small class="text-muted">Invoices</small>
+                    </div>
+                    <div class="col-md-3 text-center">
+                        <h4 class="text-success">{{ paid_invoices }}</h4>
+                        <small class="text-muted">Paid</small>
+                    </div>
+                    <div class="col-md-3 text-center">
+                        <h4 class="text-warning">{{ partially_paid_invoices }}</h4>
+                        <small class="text-muted">Partially Paid</small>
+                    </div>
+                    <div class="col-md-3 text-center">
+                        <h4 class="text-danger">{{ overdue_invoices }}</h4>
+                        <small class="text-muted">Overdue</small>
+                    </div>
+                </div>
             </div>
         </div>
     </div>

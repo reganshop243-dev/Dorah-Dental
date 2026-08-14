@@ -3,6 +3,7 @@ from django.core.validators import MinValueValidator, MaxValueValidator
 from django.utils import timezone
 from patients.models import Patient
 from appointments.models import Appointment, Service, Doctor
+from datetime import date
 
 
 class Invoice(models.Model):
@@ -33,10 +34,10 @@ class Invoice(models.Model):
     patient_name = models.CharField(max_length=255)
     patient_phone = models.CharField(max_length=50)
     
-    # Invoice details - allow backdating
-    issue_date = models.DateTimeField(default=timezone.now)
+    # ✅ FIX: Changed DateTimeField to DateField to avoid timezone warnings
+    issue_date = models.DateField(default=date.today)  # Changed from DateTimeField
     due_date = models.DateField(null=True, blank=True)
-    payment_date = models.DateTimeField(null=True, blank=True)
+    payment_date = models.DateField(null=True, blank=True)  # Changed from DateTimeField
     
     # Financial fields with proper decimal places
     subtotal = models.DecimalField(max_digits=12, decimal_places=2, default=0.00)
@@ -113,7 +114,7 @@ class Payment(models.Model):
     
     invoice = models.ForeignKey(Invoice, on_delete=models.CASCADE, related_name='payments')
     amount = models.DecimalField(max_digits=12, decimal_places=2)
-    payment_date = models.DateTimeField(null=True, blank=True)  # Allow custom payment date
+    payment_date = models.DateField(default=date.today)  # Changed from DateTimeField
     payment_method = models.CharField(max_length=50, choices=Invoice.PAYMENT_METHOD_CHOICES)
     transaction_id = models.CharField(max_length=100, blank=True, null=True)
     reference = models.CharField(max_length=100, blank=True, null=True)
@@ -129,9 +130,9 @@ class Payment(models.Model):
         return f"Payment {self.id} - {self.invoice.invoice_number} - {self.amount}"
     
     def save(self, *args, **kwargs):
-        # If payment_date is not set, use current time
+        # If payment_date is not set, use today
         if not self.payment_date:
-            self.payment_date = timezone.now()
+            self.payment_date = date.today()
         super().save(*args, **kwargs)
         # Update invoice amount paid
         self.invoice.amount_paid = self.invoice.payments.filter(status='completed').aggregate(
@@ -169,7 +170,7 @@ class Expense(models.Model):
     description = models.CharField(max_length=255)
     category = models.CharField(max_length=20, choices=EXPENSE_CATEGORIES)
     amount = models.DecimalField(max_digits=12, decimal_places=2)
-    expense_date = models.DateField(default=timezone.now)  # Allow backdating
+    expense_date = models.DateField(default=date.today)  # Changed from DateTimeField
     payment_method = models.CharField(max_length=20, choices=PAYMENT_METHOD_CHOICES, default='cash')
     reference_number = models.CharField(max_length=100, blank=True, null=True)
     receipt = models.FileField(upload_to='expenses/receipts/', blank=True, null=True)

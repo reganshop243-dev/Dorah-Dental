@@ -1,0 +1,233 @@
+{% extends 'base.html' %}
+{% load static %}
+{% load humanize %}
+
+{% block page_title %}Patient Visit Report{% endblock %}
+
+{% block extra_css %}
+<style>
+    .report-container {
+        background: #f8f9fa;
+        min-height: 100vh;
+        padding: 20px 0;
+    }
+    
+    .report-header {
+        background: white;
+        border-radius: 16px;
+        padding: 25px 30px;
+        margin-bottom: 25px;
+        box-shadow: 0 2px 15px rgba(0,0,0,0.05);
+    }
+    
+    .stat-card {
+        background: white;
+        border-radius: 16px;
+        padding: 20px 25px;
+        box-shadow: 0 2px 15px rgba(0,0,0,0.05);
+        height: 100%;
+        border-left: 4px solid #667eea;
+        transition: all 0.3s;
+    }
+    
+    .stat-card:hover { transform: translateY(-3px); }
+    .stat-card .stat-value { font-size: 28px; font-weight: 700; }
+    .stat-card .stat-label { color: #636e72; font-size: 13px; text-transform: uppercase; font-weight: 600; }
+    .stat-card.blue { border-left-color: #0984e3; }
+    .stat-card.blue .stat-value { color: #0984e3; }
+    .stat-card.green { border-left-color: #00b894; }
+    .stat-card.green .stat-value { color: #00b894; }
+    .stat-card.orange { border-left-color: #fdcb6e; }
+    .stat-card.orange .stat-value { color: #fdcb6e; }
+    .stat-card.purple { border-left-color: #6c5ce7; }
+    .stat-card.purple .stat-value { color: #6c5ce7; }
+    
+    .visit-table th {
+        background: #f8f9fa;
+        padding: 12px 15px;
+        font-weight: 600;
+        border-bottom: 2px solid #dee2e6;
+    }
+    .visit-table td { padding: 12px 15px; border-bottom: 1px solid #f0f2f5; }
+    
+    .gender-badge {
+        padding: 4px 12px;
+        border-radius: 20px;
+        font-size: 12px;
+    }
+    .gender-badge.male { background: #e3f2fd; color: #1976d2; }
+    .gender-badge.female { background: #fce4ec; color: #c62828; }
+    
+    .trend-up { color: #00b894; font-weight: 600; }
+    .trend-down { color: #e74c3c; font-weight: 600; }
+    .trend-flat { color: #636e72; font-weight: 600; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="report-container">
+    <!-- Header -->
+    <div class="report-header">
+        <div class="d-flex justify-content-between align-items-center flex-wrap">
+            <div>
+                <h3><i class="fas fa-users text-primary"></i> Patient Visit Report</h3>
+                <div class="text-muted">{{ start_date_display }} - {{ end_date_display }}</div>
+            </div>
+            <div>
+                <button onclick="window.print()" class="btn btn-secondary">
+                    <i class="fas fa-print"></i> Print
+                </button>
+                <button onclick="exportCSV()" class="btn btn-primary ms-2">
+                    <i class="fas fa-download"></i> Export CSV
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Filter -->
+    <div class="card mb-3">
+        <div class="card-body">
+            <form method="get" class="row g-2">
+                <div class="col-md-3">
+                    <input type="date" class="form-control" name="start_date" value="{{ start_date_str }}">
+                </div>
+                <div class="col-md-3">
+                    <input type="date" class="form-control" name="end_date" value="{{ end_date_str }}">
+                </div>
+                <div class="col-md-2">
+                    <button type="submit" class="btn btn-primary w-100">
+                        <i class="fas fa-filter"></i> Apply
+                    </button>
+                </div>
+                <div class="col-md-2">
+                    <a href="{% url 'reports:patient_visits' %}" class="btn btn-secondary w-100">
+                        <i class="fas fa-redo"></i> Reset
+                    </a>
+                </div>
+                <div class="col-md-2">
+                    <span class="badge bg-info p-2 w-100">
+                        {{ total_visits }} total visits
+                    </span>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <!-- Summary Stats -->
+    <div class="row g-3 mb-4">
+        <div class="col-md-3 col-6">
+            <div class="stat-card blue">
+                <div class="stat-label">Total Patients</div>
+                <div class="stat-value">{{ total_patients }}</div>
+                <small class="text-muted">Active patients</small>
+            </div>
+        </div>
+        <div class="col-md-3 col-6">
+            <div class="stat-card green">
+                <div class="stat-label">Total Visits</div>
+                <div class="stat-value">{{ total_visits }}</div>
+                <small class="text-muted">Appointments</small>
+            </div>
+        </div>
+        <div class="col-md-3 col-6">
+            <div class="stat-card orange">
+                <div class="stat-label">New Patients</div>
+                <div class="stat-value">{{ new_patients }}</div>
+                <small class="text-muted">First time visitors</small>
+            </div>
+        </div>
+        <div class="col-md-3 col-6">
+            <div class="stat-card purple">
+                <div class="stat-label">Returning Patients</div>
+                <div class="stat-value">{{ returning_patients }}</div>
+                <small class="text-muted">Repeat visitors</small>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Patient List -->
+    <div class="card">
+        <div class="card-header">
+            <i class="fas fa-list"></i> Patient Visit Details
+            <span class="badge bg-primary ms-2">{{ patients|length }} patients</span>
+        </div>
+        <div class="card-body">
+            {% if patients %}
+                <div class="table-responsive">
+                    <table class="visit-table table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Patient</th>
+                                <th>Phone</th>
+                                <th>Gender</th>
+                                <th>Visits</th>
+                                <th>Total Spent</th>
+                                <th>Avg per Visit</th>
+                                <th>First Visit</th>
+                                <th>Last Visit</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for patient in patients %}
+                            <tr>
+                                <td>
+                                    <a href="{% url 'patients:detail' patient.id %}" class="fw-bold text-decoration-none">
+                                        {{ patient.full_name }}
+                                    </a>
+                                </td>
+                                <td>{{ patient.phone }}</td>
+                                <td>
+                                    <span class="gender-badge {{ patient.gender|lower }}">
+                                        {{ patient.get_gender_display }}
+                                    </span>
+                                </td>
+                                <td>
+                                    <span class="badge bg-primary">{{ patient.visit_count }}</span>
+                                    {% if patient.visit_count > 5 %}
+                                        <span class="trend-up">⭐</span>
+                                    {% endif %}
+                                </td>
+                                <td class="fw-bold">UGX {{ patient.total_spent|floatformat:0|intcomma }}</td>
+                                <td>
+                                    {% if patient.visit_count > 0 %}
+                                        UGX {{ patient.avg_per_visit|floatformat:0|intcomma }}
+                                    {% else %}
+                                        -
+                                    {% endif %}
+                                </td>
+                                <td>{{ patient.first_visit|date:"M d, Y"|default:"-" }}</td>
+                                <td>{{ patient.last_visit|date:"M d, Y"|default:"-" }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                <p class="text-muted text-center py-4">No patient visits in this period.</p>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<script>
+    function exportCSV() {
+        var csv = 'Patient,Phone,Gender,Visits,Total Spent,Avg per Visit,First Visit,Last Visit\n';
+        var rows = document.querySelectorAll('.visit-table tbody tr');
+        rows.forEach(function(row) {
+            var cols = row.querySelectorAll('td');
+            if (cols.length > 0) {
+                var rowData = [];
+                cols.forEach(function(col) {
+                    rowData.push('"' + col.textContent.trim() + '"');
+                });
+                csv += rowData.join(',') + '\n';
+            }
+        });
+        var blob = new Blob([csv], { type: 'text/csv' });
+        var link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.download = 'patient_visits_report.csv';
+        link.click();
+    }
+</script>
+{% endblock %}

@@ -31,7 +31,7 @@
                     <div class="col-md-6 text-end">
                         <h6>Invoice Details</h6>
                         <p>
-                            <strong>Date:</strong> {{ invoice.issue_date|date:"M d, Y H:i" }}<br>
+                           <strong>Date:</strong> {{ invoice.issue_date|date:"M d, Y" }}<br>
                             <strong>Due Date:</strong> {{ invoice.due_date|date:"M d, Y"|default:"N/A" }}<br>
                             <strong>Status:</strong> 
                             <span class="badge {% if invoice.status == 'paid' %}bg-success{% elif invoice.status == 'draft' %}bg-secondary{% elif invoice.status == 'sent' %}bg-primary{% elif invoice.status == 'partially_paid' %}bg-warning{% elif invoice.status == 'overdue' %}bg-danger{% else %}bg-info{% endif %}">

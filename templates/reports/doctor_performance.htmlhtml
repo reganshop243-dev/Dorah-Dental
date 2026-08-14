@@ -1,0 +1,245 @@
+{% extends 'base.html' %}
+{% load static %}
+{% load humanize %}
+
+{% block page_title %}Doctor Performance Report{% endblock %}
+
+{% block extra_css %}
+<style>
+    .report-container {
+        background: #f8f9fa;
+        min-height: 100vh;
+        padding: 20px 0;
+    }
+    
+    .report-header {
+        background: white;
+        border-radius: 16px;
+        padding: 25px 30px;
+        margin-bottom: 25px;
+        box-shadow: 0 2px 15px rgba(0,0,0,0.05);
+    }
+    
+    .doctor-card {
+        background: white;
+        border-radius: 16px;
+        padding: 20px;
+        box-shadow: 0 2px 15px rgba(0,0,0,0.05);
+        margin-bottom: 20px;
+        transition: all 0.3s;
+        border-left: 4px solid #667eea;
+    }
+    
+    .doctor-card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 8px 30px rgba(0,0,0,0.1);
+    }
+    
+    .doctor-card .doctor-name {
+        font-size: 18px;
+        font-weight: 700;
+        color: #2d3436;
+    }
+    
+    .doctor-card .doctor-specialization {
+        color: #636e72;
+        font-size: 14px;
+    }
+    
+    .metric-box {
+        text-align: center;
+        padding: 10px;
+        background: #f8f9fa;
+        border-radius: 10px;
+    }
+    
+    .metric-box .metric-value {
+        font-size: 22px;
+        font-weight: 700;
+    }
+    
+    .metric-box .metric-label {
+        color: #636e72;
+        font-size: 12px;
+        text-transform: uppercase;
+    }
+    
+    .metric-box.revenue .metric-value { color: #00b894; }
+    .metric-box.patients .metric-value { color: #0984e3; }
+    .metric-box.appointments .metric-value { color: #6c5ce7; }
+    .metric-box.avg .metric-value { color: #fdcb6e; }
+    
+    .doctor-rank {
+        display: inline-block;
+        width: 30px;
+        height: 30px;
+        line-height: 30px;
+        text-align: center;
+        border-radius: 50%;
+        font-weight: 700;
+        font-size: 14px;
+        margin-right: 10px;
+    }
+    .rank-1 { background: #ffd700; color: #2d3436; }
+    .rank-2 { background: #c0c0c0; color: #2d3436; }
+    .rank-3 { background: #cd7f32; color: white; }
+    .rank-other { background: #dfe6e9; color: #2d3436; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="report-container">
+    <!-- Header -->
+    <div class="report-header">
+        <div class="d-flex justify-content-between align-items-center flex-wrap">
+            <div>
+                <h3><i class="fas fa-user-md text-primary"></i> Doctor Performance Report</h3>
+                <div class="text-muted">{{ start_date_display }} - {{ end_date_display }}</div>
+            </div>
+            <div>
+                <button onclick="window.print()" class="btn btn-secondary">
+                    <i class="fas fa-print"></i> Print
+                </button>
+                <button onclick="exportCSV()" class="btn btn-primary ms-2">
+                    <i class="fas fa-download"></i> Export CSV
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Filter -->
+    <div class="card mb-3">
+        <div class="card-body">
+            <form method="get" class="row g-2">
+                <div class="col-md-3">
+                    <input type="date" class="form-control" name="start_date" value="{{ start_date_str }}">
+                </div>
+                <div class="col-md-3">
+                    <input type="date" class="form-control" name="end_date" value="{{ end_date_str }}">
+                </div>
+                <div class="col-md-2">
+                    <button type="submit" class="btn btn-primary w-100">
+                        <i class="fas fa-filter"></i> Apply
+                    </button>
+                </div>
+                <div class="col-md-2">
+                    <a href="{% url 'reports:doctor_performance' %}" class="btn btn-secondary w-100">
+                        <i class="fas fa-redo"></i> Reset
+                    </a>
+                </div>
+                <div class="col-md-2">
+                    <span class="badge bg-info p-2 w-100">
+                        {{ doctors|length }} doctors
+                    </span>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <!-- Summary Stats -->
+    <div class="row g-3 mb-4">
+        <div class="col-md-3 col-6">
+            <div class="stat-card blue">
+                <div class="stat-label">Total Doctors</div>
+                <div class="stat-value">{{ doctors|length }}</div>
+            </div>
+        </div>
+        <div class="col-md-3 col-6">
+            <div class="stat-card green">
+                <div class="stat-label">Total Revenue</div>
+                <div class="stat-value">UGX {{ total_revenue|floatformat:0|intcomma }}</div>
+            </div>
+        </div>
+        <div class="col-md-3 col-6">
+            <div class="stat-card orange">
+                <div class="stat-label">Total Appointments</div>
+                <div class="stat-value">{{ total_appointments }}</div>
+            </div>
+        </div>
+        <div class="col-md-3 col-6">
+            <div class="stat-card purple">
+                <div class="stat-label">Total Patients</div>
+                <div class="stat-value">{{ total_patients }}</div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Doctor Cards -->
+    {% for doctor in doctors %}
+    <div class="doctor-card">
+        <div class="row align-items-center">
+            <div class="col-md-3">
+                <div class="d-flex align-items-center">
+                    <span class="doctor-rank rank-{% if forloop.counter == 1 %}1{% elif forloop.counter == 2 %}2{% elif forloop.counter == 3 %}3{% else %}other{% endif %}">
+                        {{ forloop.counter }}
+                    </span>
+                    <div>
+                        <div class="doctor-name">{{ doctor.name }}</div>
+                        <div class="doctor-specialization">{{ doctor.specialization|default:"General Dentistry" }}</div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-9">
+                <div class="row g-2">
+                    <div class="col-3">
+                        <div class="metric-box revenue">
+                            <div class="metric-value">UGX {{ doctor.total_revenue|floatformat:0|intcomma }}</div>
+                            <div class="metric-label">Revenue</div>
+                        </div>
+                    </div>
+                    <div class="col-3">
+                        <div class="metric-box patients">
+                            <div class="metric-value">{{ doctor.patient_count }}</div>
+                            <div class="metric-label">Patients</div>
+                        </div>
+                    </div>
+                    <div class="col-3">
+                        <div class="metric-box appointments">
+                            <div class="metric-value">{{ doctor.appointment_count }}</div>
+                            <div class="metric-label">Appointments</div>
+                        </div>
+                    </div>
+                    <div class="col-3">
+                        <div class="metric-box avg">
+                            <div class="metric-value">UGX {{ doctor.avg_per_patient|floatformat:0|intcomma }}</div>
+                            <div class="metric-label">Avg per Patient</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% empty %}
+    <div class="card">
+        <div class="card-body text-center py-4">
+            <i class="fas fa-user-md fa-3x text-muted mb-3 d-block"></i>
+            <p class="text-muted">No doctor data available for this period.</p>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+
+<script>
+    function exportCSV() {
+        var csv = 'Rank,Doctor,Specialization,Revenue,Patients,Appointments,Avg per Patient\n';
+        var rows = document.querySelectorAll('.doctor-card');
+        var rank = 1;
+        rows.forEach(function(card) {
+            var name = card.querySelector('.doctor-name')?.textContent || '';
+            var spec = card.querySelector('.doctor-specialization')?.textContent || '';
+            var metrics = card.querySelectorAll('.metric-box');
+            var revenue = metrics[0]?.querySelector('.metric-value')?.textContent || '0';
+            var patients = metrics[1]?.querySelector('.metric-value')?.textContent || '0';
+            var appointments = metrics[2]?.querySelector('.metric-value')?.textContent || '0';
+            var avg = metrics[3]?.querySelector('.metric-value')?.textContent || '0';
+            csv += rank + ',"' + name + '","' + spec + '","' + revenue + '","' + patients + '","' + appointments + '","' + avg + '"\n';
+            rank++;
+        });
+        var blob = new Blob([csv], { type: 'text/csv' });
+        var link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.download = 'doctor_performance_report.csv';
+        link.click();
+    }
+</script>
+{% endblock %}

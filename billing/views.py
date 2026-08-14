@@ -12,9 +12,84 @@ import json
 
 @login_required
 def invoice_list(request):
-    """List all invoices"""
+    """List all invoices with pagination and filtering"""
+    from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
+    from django.db.models import Q
+    
+    # Get all invoices
     invoices = Invoice.objects.all().order_by('-issue_date')
-    return render(request, 'billing/invoice_list.html', {'invoices': invoices})
+    
+    # ============================================================
+    # FILTERING
+    # ============================================================
+    
+    # Get filter parameters from request
+    search_query = request.GET.get('search', '').strip()
+    status_filter = request.GET.get('status', '')
+    payment_method_filter = request.GET.get('payment_method', '')
+    date_from = request.GET.get('date_from', '')
+    date_to = request.GET.get('date_to', '')
+    
+    # Apply filters
+    if search_query:
+        invoices = invoices.filter(
+            Q(invoice_number__icontains=search_query) |
+            Q(patient_name__icontains=search_query) |
+            Q(patient_phone__icontains=search_query) |
+            Q(patient__first_name__icontains=search_query) |
+            Q(patient__last_name__icontains=search_query)
+        )
+    
+    if status_filter:
+        invoices = invoices.filter(status=status_filter)
+    
+    if payment_method_filter:
+        invoices = invoices.filter(payment_method=payment_method_filter)
+    
+    if date_from:
+        invoices = invoices.filter(issue_date__gte=date_from)
+    
+    if date_to:
+        invoices = invoices.filter(issue_date__lte=date_to)
+    
+    # ============================================================
+    # PAGINATION
+    # ============================================================
+    
+    paginator = Paginator(invoices, 20)  # 20 invoices per page
+    page = request.GET.get('page', 1)
+    
+    try:
+        invoices_page = paginator.page(page)
+    except PageNotAnInteger:
+        invoices_page = paginator.page(1)
+    except EmptyPage:
+        invoices_page = paginator.page(paginator.num_pages)
+    
+    # ============================================================
+    # CONTEXT
+    # ============================================================
+    
+    context = {
+        'invoices': invoices_page,
+        'paginator': paginator,
+        'page_obj': invoices_page,
+        'is_paginated': invoices_page.has_other_pages(),
+        'total_count': invoices.count(),
+        
+        # Filter values for form persistence
+        'search_query': search_query,
+        'status_filter': status_filter,
+        'payment_method_filter': payment_method_filter,
+        'date_from': date_from,
+        'date_to': date_to,
+        
+        # Status and payment method choices for dropdowns
+        'status_choices': Invoice.STATUS_CHOICES,
+        'payment_method_choices': Invoice.PAYMENT_METHOD_CHOICES,
+    }
+    
+    return render(request, 'billing/invoice_list.html', context)
 
 
 @login_required
