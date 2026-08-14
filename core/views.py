@@ -8,6 +8,7 @@ from django.http import JsonResponse
 from .models import UserProfile
 from .otp_service import OTPService
 from datetime import timedelta
+import re
 
 
 # ====================
@@ -27,7 +28,6 @@ def clean_doctor_name(first_name, last_name, username=""):
         name = username or "Doctor"
     
     # Remove all "Dr." prefixes (case insensitive)
-    import re
     name = re.sub(r'^Dr\.\s*', '', name, flags=re.IGNORECASE)
     name = re.sub(r'\s+Dr\.\s*', ' ', name, flags=re.IGNORECASE)
     
@@ -264,7 +264,6 @@ def dashboard(request):
     """General dashboard for all users"""
     from patients.models import Patient
     from appointments.models import Appointment, Doctor, Service
-    from django.utils import timezone
     from datetime import date
     
     today = date.today()
@@ -335,19 +334,24 @@ def admin_dashboard(request):
         django_models.Sum('total_amount')
     )['total_amount__sum'] or 0
     
+    # ✅ FIXED: Removed __date lookup
     daily_revenue = Invoice.objects.filter(
         status='paid',
-        payment_date__date=today
+        payment_date=today
     ).aggregate(django_models.Sum('total_amount'))['total_amount__sum'] or 0
     
+    # ✅ FIXED: Removed __date lookup
     weekly_revenue = Invoice.objects.filter(
         status='paid',
-        payment_date__date__gte=start_of_week
+        payment_date__gte=start_of_week,
+        payment_date__lte=today
     ).aggregate(django_models.Sum('total_amount'))['total_amount__sum'] or 0
     
+    # ✅ FIXED: Removed __date lookup
     monthly_revenue = Invoice.objects.filter(
         status='paid',
-        payment_date__date__gte=start_of_month
+        payment_date__gte=start_of_month,
+        payment_date__lte=today
     ).aggregate(django_models.Sum('total_amount'))['total_amount__sum'] or 0
     
     total_invoices = Invoice.objects.count()
@@ -366,12 +370,15 @@ def admin_dashboard(request):
     ).select_related('invoice', 'invoice__patient').order_by('-payment_date')[:10]
     
     # ==================== PATIENT STATS ====================
+    # ✅ FIXED: Removed __date lookup
     new_patients_today = Patient.objects.filter(
-        registered_at__date=today
+        registered_at=today
     ).count()
     
+    # ✅ FIXED: Removed __date lookup
     new_patients_this_month = Patient.objects.filter(
-        registered_at__date__gte=start_of_month
+        registered_at__gte=start_of_month,
+        registered_at__lte=today
     ).count()
     
     recent_patients = Patient.objects.filter(
@@ -456,7 +463,6 @@ def admin_dashboard(request):
 def doctor_dashboard(request):
     """Doctor dashboard showing their appointments and patients"""
     from appointments.models import Appointment, Treatment
-    from django.utils import timezone
     from datetime import date
     
     today = date.today()
@@ -505,7 +511,6 @@ def receptionist_dashboard(request):
     """Receptionist dashboard for managing appointments and patients"""
     from patients.models import Patient
     from appointments.models import Appointment
-    from django.utils import timezone
     from datetime import date
     
     today = date.today()
@@ -515,9 +520,9 @@ def receptionist_dashboard(request):
         appointment_date=today
     ).order_by('appointment_time')
     
-    # New patients today
+    # ✅ FIXED: Removed __date lookup
     new_patients_today = Patient.objects.filter(
-        registered_at__date=today
+        registered_at=today
     ).count()
     
     # Walk-in appointments (no_show or scheduled today)
@@ -540,17 +545,17 @@ def receptionist_dashboard(request):
 def accountant_dashboard(request):
     """Accountant dashboard for financial management"""
     from billing.models import Invoice, Payment
-    from django.utils import timezone
     from datetime import date, timedelta
     from django.db.models import Sum
     
     today = date.today()
     start_of_month = today.replace(day=1)
     
-    # Monthly revenue
+    # ✅ FIXED: Removed __date lookup
     monthly_revenue = Invoice.objects.filter(
         status='paid',
-        payment_date__date__gte=start_of_month
+        payment_date__gte=start_of_month,
+        payment_date__lte=today
     ).aggregate(Sum('total_amount'))['total_amount__sum'] or 0
     
     # Pending payments
@@ -564,10 +569,10 @@ def accountant_dashboard(request):
         status='completed'
     ).order_by('-payment_date')[:10]
     
-    # Daily revenue
+    # ✅ FIXED: Removed __date lookup
     daily_revenue = Invoice.objects.filter(
         status='paid',
-        payment_date__date=today
+        payment_date=today
     ).aggregate(Sum('total_amount'))['total_amount__sum'] or 0
     
     context = {
@@ -684,7 +689,6 @@ def user_add(request):
             
             # If role is doctor, create a doctor profile
             if role == 'doctor':
-                # ✅ FIX: Clean the name before saving
                 clean_name = clean_doctor_name(first_name, last_name, username)
                 
                 doctor_option = request.POST.get('doctor_option', 'auto')
@@ -697,7 +701,7 @@ def user_add(request):
                             profile.doctor = doctor
                         except Doctor.DoesNotExist:
                             doctor = Doctor.objects.create(
-                                name=clean_name,  # ✅ FIXED: No "Dr." hardcoded
+                                name=clean_name,
                                 specialization=request.POST.get('specialization', 'General Dentistry'),
                                 phone=phone or '',
                                 email=email or '',
@@ -706,7 +710,7 @@ def user_add(request):
                             profile.doctor = doctor
                     else:
                         doctor = Doctor.objects.create(
-                            name=clean_name,  # ✅ FIXED: No "Dr." hardcoded
+                            name=clean_name,
                             specialization=request.POST.get('specialization', 'General Dentistry'),
                             phone=phone or '',
                             email=email or '',
@@ -715,7 +719,7 @@ def user_add(request):
                         profile.doctor = doctor
                 else:
                     doctor = Doctor.objects.create(
-                        name=clean_name,  # ✅ FIXED: No "Dr." hardcoded
+                        name=clean_name,
                         specialization=request.POST.get('specialization', 'General Dentistry'),
                         phone=phone or '',
                         email=email or '',
@@ -778,7 +782,6 @@ def user_edit(request, pk):
             
             # Optional: Handle doctor linking ONLY if role is doctor
             if new_role == 'doctor':
-                # ✅ FIX: Clean the name before saving
                 clean_name = clean_doctor_name(first_name, last_name, user.username)
                 
                 doctor_option = request.POST.get('doctor_option', 'auto')
@@ -792,7 +795,7 @@ def user_edit(request, pk):
                         except Doctor.DoesNotExist:
                             messages.warning(request, 'Selected doctor not found. Creating new one.')
                             doctor = Doctor.objects.create(
-                                name=clean_name,  # ✅ FIXED: No "Dr." hardcoded
+                                name=clean_name,
                                 phone=profile.phone or '',
                                 email=user.email or '',
                                 specialization=request.POST.get('specialization', 'General Dentistry'),
@@ -801,7 +804,7 @@ def user_edit(request, pk):
                             profile.doctor = doctor
                     else:
                         doctor = Doctor.objects.create(
-                            name=clean_name,  # ✅ FIXED: No "Dr." hardcoded
+                            name=clean_name,
                             phone=profile.phone or '',
                             email=user.email or '',
                             specialization=request.POST.get('specialization', 'General Dentistry'),
@@ -810,7 +813,7 @@ def user_edit(request, pk):
                         profile.doctor = doctor
                 else:
                     doctor = Doctor.objects.create(
-                        name=clean_name,  # ✅ FIXED: No "Dr." hardcoded
+                        name=clean_name,
                         phone=profile.phone or '',
                         email=user.email or '',
                         specialization=request.POST.get('specialization', 'General Dentistry'),
@@ -959,7 +962,6 @@ def role_management(request):
 def revenue_dashboard(request):
     """Financial dashboard showing revenue, payments, and reports with date filters"""
     from billing.models import Invoice, Payment
-    from appointments.models import Appointment
     from django.utils import timezone
     from datetime import date, timedelta, datetime
     from django.db.models import Sum, Count, Q
@@ -1085,7 +1087,7 @@ def revenue_dashboard(request):
     ).order_by('-total_spent')[:10]
     
     # ============================================================
-    # RECENT PAYMENTS - FIXED: removed __date lookup
+    # RECENT PAYMENTS
     # ============================================================
     recent_payments = Payment.objects.filter(
         payment_date__gte=start_date,
