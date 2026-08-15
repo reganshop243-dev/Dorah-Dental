@@ -34,7 +34,6 @@ def get_doctor_patients(doctor):
 # ====================
 # PATIENT LIST
 # ====================
-
 @login_required
 def patient_list(request):
     """Display all active patients with balances"""
@@ -73,8 +72,8 @@ def patient_list(request):
         'search_query': search,
         'is_doctor': is_doctor_user,
     }
-     return render(request, 'patients/list.html', context)
-
+    # ✅ REMOVED THE EXTRA SPACE - now properly indented with 4 spaces
+    return render(request, 'patients/list.html', context)
 
 
 # ====================
