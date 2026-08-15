@@ -73,7 +73,7 @@ def patient_list(request):
         'search_query': search,
         'is_doctor': is_doctor_user,
     }
-    
+     return render(request, 'patients/list.html', context)
 
 
 
