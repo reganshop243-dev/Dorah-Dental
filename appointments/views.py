@@ -683,3 +683,55 @@ def services_search_api(request):
         })
     
     return JsonResponse({'results': results})
+
+
+# ====================
+# CLINICAL NOTES VIEWS
+# ====================
+
+@login_required
+def add_clinical_note(request, pk):
+    """Add a clinical note to an appointment"""
+    appointment = get_object_or_404(Appointment, pk=pk)
+    
+    # Check access for doctors
+    if request.user.profile.role == 'doctor':
+        doctor = request.user.profile.doctor
+        if doctor and appointment.doctor != doctor:
+            messages.error(request, '❌ Access denied.')
+            return redirect('appointments:detail', pk=pk)
+    
+    if request.method == 'POST':
+        note_type = request.POST.get('note_type')
+        content = request.POST.get('content')
+        
+        if content:
+            from .models import ClinicalNote
+            ClinicalNote.objects.create(
+                appointment=appointment,
+                note_type=note_type,
+                content=content,
+                created_by=request.user
+            )
+            messages.success(request, '✅ Clinical note added successfully!')
+        else:
+            messages.error(request, '❌ Note content is required.')
+    
+    return redirect('appointments:detail', pk=pk)
+
+
+@login_required
+def delete_clinical_note(request, pk):
+    """Delete a clinical note"""
+    from .models import ClinicalNote
+    note = get_object_or_404(ClinicalNote, pk=pk)
+    appointment_pk = note.appointment.pk
+    
+    # Check permissions
+    if request.user != note.created_by and request.user.profile.role != 'admin':
+        messages.error(request, '❌ Access denied.')
+        return redirect('appointments:detail', pk=appointment_pk)
+    
+    note.delete()
+    messages.success(request, '✅ Note deleted successfully!')
+    return redirect('appointments:detail', pk=appointment_pk)

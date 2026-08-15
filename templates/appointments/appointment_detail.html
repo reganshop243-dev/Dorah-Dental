@@ -110,7 +110,77 @@
                         </p>
                     </div>
                 </div>
-                
+                <!-- Add this to appointment_detail.html after the appointment details -->
+
+<!-- Clinical Notes Section -->
+<div class="card mt-3">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <span><i class="fas fa-notes-medical text-primary"></i> Clinical Notes</span>
+        <button class="btn btn-sm btn-primary" data-bs-toggle="collapse" data-bs-target="#addNoteForm">
+            <i class="fas fa-plus"></i> Add Note
+        </button>
+    </div>
+    <div class="card-body">
+        <!-- Add Note Form -->
+        <div class="collapse mb-3" id="addNoteForm">
+            <div class="card card-body bg-light">
+                <form method="post" action="{% url 'appointments:add_clinical_note' appointment.pk %}">
+                    {% csrf_token %}
+                    <div class="row">
+                        <div class="col-md-4 mb-2">
+                            <label for="note_type" class="form-label">Note Type</label>
+                            <select class="form-select" name="note_type" id="note_type">
+                                <option value="history">History</option>
+                                <option value="examination">Examination</option>
+                                <option value="diagnosis">Diagnosis</option>
+                                <option value="treatment">Treatment Plan</option>
+                                <option value="procedure">Procedure</option>
+                                <option value="prescription">Prescription</option>
+                                <option value="referral">Referral</option>
+                                <option value="follow_up">Follow Up</option>
+                                <option value="general">General Note</option>
+                            </select>
+                        </div>
+                        <div class="col-md-8 mb-2">
+                            <label for="note_content" class="form-label">Note Content</label>
+                            <textarea class="form-control" name="content" id="note_content" rows="2" placeholder="Enter clinical note..." required></textarea>
+                        </div>
+                    </div>
+                    <button type="submit" class="btn btn-primary btn-sm">
+                        <i class="fas fa-save"></i> Save Note
+                    </button>
+                </form>
+            </div>
+        </div>
+        
+        <!-- Notes List -->
+        {% if appointment.clinical_notes.all %}
+            <div class="list-group">
+                {% for note in appointment.clinical_notes.all %}
+                <div class="list-group-item">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <span class="badge bg-info">{{ note.get_note_type_display }}</span>
+                            <span class="badge bg-secondary">{{ note.created_at|date:"M d, Y H:i" }}</span>
+                            <span class="badge bg-light text-dark">By: {{ note.created_by.get_full_name|default:note.created_by.username }}</span>
+                        </div>
+                        {% if user == note.created_by or user.profile.role == 'admin' %}
+                        <button class="btn btn-sm btn-outline-danger" onclick="if(confirm('Delete this note?')) window.location.href='{% url 'appointments:delete_clinical_note' note.pk %}'">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                        {% endif %}
+                    </div>
+                    <p class="mt-2 mb-0">{{ note.content|linebreaks }}</p>
+                </div>
+                {% endfor %}
+            </div>
+        {% else %}
+            <p class="text-muted text-center py-3">No clinical notes recorded for this appointment.</p>
+        {% endif %}
+    </div>
+</div>
+
+
                 <!-- Appointment Timeline -->
                 <div class="mt-4">
                     <h6><i class="fas fa-clock text-primary"></i> Appointment Timeline</h6>

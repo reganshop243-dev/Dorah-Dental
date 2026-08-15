@@ -147,3 +147,83 @@ class BookingRequest(models.Model):
         ordering = ['-created_at']
         verbose_name = "Booking Request"
         verbose_name_plural = "Booking Requests"
+
+
+        # Add to appointments/models.py
+
+class DentalChart(models.Model):
+    """Dental chart/odontogram for tracking tooth conditions"""
+    
+    TOOTH_CONDITION_CHOICES = [
+        ('healthy', 'Healthy'),
+        ('decay', 'Decay/Cavity'),
+        ('filling', 'Filling'),
+        ('crown', 'Crown'),
+        ('bridge', 'Bridge'),
+        ('extraction', 'Extraction'),
+        ('implant', 'Implant'),
+        ('root_canal', 'Root Canal'),
+        ('fracture', 'Fracture'),
+        ('missing', 'Missing'),
+        ('wear', 'Wear'),
+        ('stain', 'Stain'),
+        ('other', 'Other'),
+    ]
+    
+    SURFACE_CHOICES = [
+        ('occlusal', 'Occlusal'),
+        ('mesial', 'Mesial'),
+        ('distal', 'Distal'),
+        ('buccal', 'Buccal'),
+        ('lingual', 'Lingual'),
+        ('incisal', 'Incisal'),
+        ('labial', 'Labial'),
+        ('palatal', 'Palatal'),
+    ]
+    
+    patient = models.ForeignKey('patients.Patient', on_delete=models.CASCADE, related_name='dental_charts')
+    tooth_number = models.IntegerField(help_text="Universal tooth numbering system (1-32)")
+    tooth_name = models.CharField(max_length=50, blank=True, null=True)
+    surface = models.CharField(max_length=20, choices=SURFACE_CHOICES, blank=True, null=True)
+    condition = models.CharField(max_length=20, choices=TOOTH_CONDITION_CHOICES, default='healthy')
+    notes = models.TextField(blank=True, null=True)
+    created_by = models.ForeignKey('auth.User', on_delete=models.SET_NULL, null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        ordering = ['tooth_number']
+        verbose_name = "Dental Chart"
+        verbose_name_plural = "Dental Charts"
+    
+    def __str__(self):
+        return f"{self.patient.full_name} - Tooth #{self.tooth_number} - {self.get_condition_display()}"
+
+
+class ClinicalNote(models.Model):
+    """Clinical notes for appointments"""
+    
+    appointment = models.ForeignKey('Appointment', on_delete=models.CASCADE, related_name='clinical_notes')
+    note_type = models.CharField(max_length=50, choices=[
+        ('history', 'History'),
+        ('examination', 'Examination'),
+        ('diagnosis', 'Diagnosis'),
+        ('treatment', 'Treatment Plan'),
+        ('procedure', 'Procedure'),
+        ('prescription', 'Prescription'),
+        ('referral', 'Referral'),
+        ('follow_up', 'Follow Up'),
+        ('general', 'General Note'),
+    ], default='general')
+    content = models.TextField()
+    created_by = models.ForeignKey('auth.User', on_delete=models.SET_NULL, null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        ordering = ['-created_at']
+        verbose_name = "Clinical Note"
+        verbose_name_plural = "Clinical Notes"
+    
+    def __str__(self):
+        return f"{self.appointment.patient.full_name} - {self.get_note_type_display()} - {self.created_at.strftime('%Y-%m-%d %H:%M')}"

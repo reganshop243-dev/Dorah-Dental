@@ -73,7 +73,8 @@ def patient_list(request):
         'search_query': search,
         'is_doctor': is_doctor_user,
     }
-    return render(request, 'patients/list.html', context)
+    
+
 
 
 # ====================
@@ -600,3 +601,93 @@ def patient_search_api(request):
         import traceback
         traceback.print_exc()
         return JsonResponse({'results': [], 'error': str(e)}, status=500)
+
+
+
+        # Add to patients/views.py
+
+@login_required
+def dental_chart(request, pk):
+    """View and edit patient's dental chart"""
+    patient = get_object_or_404(Patient, pk=pk)
+    user_profile = request.user.profile
+    
+    # Check if doctor has access
+    if user_profile.role == 'doctor':
+        doctor = user_profile.doctor
+        if doctor:
+            has_access = Appointment.objects.filter(
+                patient=patient,
+                doctor=doctor
+            ).exists()
+            if not has_access:
+                messages.error(request, '❌ You do not have access to this patient.')
+                return redirect('patients:list')
+    
+    # Get existing chart records
+    chart_records = DentalChart.objects.filter(patient=patient)
+    
+    # Create a map of tooth records
+    tooth_map = {record.tooth_number: record for record in chart_records}
+    
+    if request.method == 'POST':
+        try:
+            tooth_number = request.POST.get('tooth_number')
+            condition = request.POST.get('condition')
+            surface = request.POST.get('surface')
+            notes = request.POST.get('notes', '')
+            
+            # Update or create record
+            record, created = DentalChart.objects.update_or_create(
+                patient=patient,
+                tooth_number=tooth_number,
+                defaults={
+                    'tooth_name': get_tooth_name(int(tooth_number)),
+                    'condition': condition,
+                    'surface': surface if surface else None,
+                    'notes': notes,
+                    'created_by': request.user
+                }
+            )
+            
+            if created:
+                messages.success(request, f'Tooth #{tooth_number} recorded as {dict(record._meta.get_field("condition").choices).get(condition)}')
+            else:
+                messages.success(request, f'Tooth #{tooth_number} updated successfully!')
+            
+            return redirect('patients:dental_chart', pk=patient.pk)
+            
+        except Exception as e:
+            messages.error(request, f'Error updating dental chart: {str(e)}')
+    
+    context = {
+        'patient': patient,
+        'tooth_map': tooth_map,
+        'is_doctor': user_profile.role == 'doctor',
+        'condition_choices': DentalChart.TOOTH_CONDITION_CHOICES,
+        'surface_choices': DentalChart.SURFACE_CHOICES,
+    }
+    return render(request, 'patients/dental_chart.html', context)
+
+
+def get_tooth_name(tooth_number):
+    """Get the name of a tooth based on universal numbering"""
+    tooth_names = {
+        1: 'Right Maxillary 3rd Molar', 2: 'Right Maxillary 2nd Molar',
+        3: 'Right Maxillary 1st Molar', 4: 'Right Maxillary 2nd Premolar',
+        5: 'Right Maxillary 1st Premolar', 6: 'Right Maxillary Canine',
+        7: 'Right Maxillary Lateral Incisor', 8: 'Right Maxillary Central Incisor',
+        9: 'Left Maxillary Central Incisor', 10: 'Left Maxillary Lateral Incisor',
+        11: 'Left Maxillary Canine', 12: 'Left Maxillary 1st Premolar',
+        13: 'Left Maxillary 2nd Premolar', 14: 'Left Maxillary 1st Molar',
+        15: 'Left Maxillary 2nd Molar', 16: 'Left Maxillary 3rd Molar',
+        17: 'Left Mandibular 3rd Molar', 18: 'Left Mandibular 2nd Molar',
+        19: 'Left Mandibular 1st Molar', 20: 'Left Mandibular 2nd Premolar',
+        21: 'Left Mandibular 1st Premolar', 22: 'Left Mandibular Canine',
+        23: 'Left Mandibular Lateral Incisor', 24: 'Left Mandibular Central Incisor',
+        25: 'Right Mandibular Central Incisor', 26: 'Right Mandibular Lateral Incisor',
+        27: 'Right Mandibular Canine', 28: 'Right Mandibular 1st Premolar',
+        29: 'Right Mandibular 2nd Premolar', 30: 'Right Mandibular 1st Molar',
+        31: 'Right Mandibular 2nd Molar', 32: 'Right Mandibular 3rd Molar'
+    }
+    return tooth_names.get(tooth_number, f'Tooth #{tooth_number}')

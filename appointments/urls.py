@@ -26,4 +26,6 @@ urlpatterns = [
     path('doctors/add/', views.doctor_add, name='doctor_add'),
     path('doctors/<int:pk>/edit/', views.doctor_edit, name='doctor_edit'),
     path('doctors/<int:pk>/delete/', views.doctor_delete, name='doctor_delete'),
+    path('<int:pk>/add-note/', views.add_clinical_note, name='add_clinical_note'),
+    path('note/<int:pk>/delete/', views.delete_clinical_note, name='delete_clinical_note'),
 ]

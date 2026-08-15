@@ -1,0 +1,322 @@
+{% extends 'base.html' %}
+{% load static %}
+{% load humanize %}
+
+{% block page_title %}Dental Chart - {{ patient.full_name }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .tooth-grid {
+        display: grid;
+        grid-template-columns: repeat(8, 1fr);
+        gap: 8px;
+        max-width: 800px;
+        margin: 0 auto;
+    }
+    
+    .tooth-card {
+        background: white;
+        border: 2px solid #dee2e6;
+        border-radius: 8px;
+        padding: 10px 5px;
+        text-align: center;
+        cursor: pointer;
+        transition: all 0.3s;
+        min-height: 70px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        position: relative;
+    }
+    
+    .tooth-card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    }
+    
+    .tooth-card .tooth-number {
+        font-size: 12px;
+        font-weight: 700;
+        color: #636e72;
+    }
+    
+    .tooth-card .tooth-icon {
+        font-size: 24px;
+        margin: 2px 0;
+    }
+    
+    .tooth-card.healthy { border-color: #00b894; background: #e8f5e9; }
+    .tooth-card.healthy .tooth-icon { color: #00b894; }
+    
+    .tooth-card.decay { border-color: #e74c3c; background: #fce4ec; }
+    .tooth-card.decay .tooth-icon { color: #e74c3c; }
+    
+    .tooth-card.filling { border-color: #fdcb6e; background: #fff3e0; }
+    .tooth-card.filling .tooth-icon { color: #fdcb6e; }
+    
+    .tooth-card.crown { border-color: #6c5ce7; background: #f3e5f5; }
+    .tooth-card.crown .tooth-icon { color: #6c5ce7; }
+    
+    .tooth-card.bridge { border-color: #0984e3; background: #e3f2fd; }
+    .tooth-card.bridge .tooth-icon { color: #0984e3; }
+    
+    .tooth-card.extraction { border-color: #e74c3c; background: #f5f5f5; opacity: 0.5; }
+    .tooth-card.extraction .tooth-icon { color: #e74c3c; }
+    
+    .tooth-card.implant { border-color: #00b894; background: #e0f2f1; }
+    .tooth-card.implant .tooth-icon { color: #00b894; }
+    
+    .tooth-card.root_canal { border-color: #e17055; background: #fce4ec; }
+    .tooth-card.root_canal .tooth-icon { color: #e17055; }
+    
+    .tooth-card.missing { border-color: #b2bec3; background: #f5f5f5; opacity: 0.4; }
+    .tooth-card.missing .tooth-icon { color: #b2bec3; }
+    
+    .tooth-card .condition-badge {
+        position: absolute;
+        top: -8px;
+        right: -8px;
+        font-size: 10px;
+        padding: 2px 8px;
+        border-radius: 10px;
+        background: white;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    }
+    
+    .tooth-card .surface-label {
+        font-size: 9px;
+        color: #636e72;
+        margin-top: 2px;
+    }
+    
+    .jaw-label {
+        text-align: center;
+        font-weight: 700;
+        color: #2d3436;
+        padding: 10px 0;
+        font-size: 16px;
+    }
+    
+    .legend {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        justify-content: center;
+        padding: 15px;
+        background: #f8f9fa;
+        border-radius: 10px;
+        margin: 15px 0;
+    }
+    
+    .legend-item {
+        display: flex;
+        align-items: center;
+        gap: 5px;
+        font-size: 12px;
+    }
+    
+    .legend-dot {
+        width: 16px;
+        height: 16px;
+        border-radius: 50%;
+        border: 1px solid #dee2e6;
+    }
+    
+    .modal-tooth-preview {
+        width: 60px;
+        height: 60px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 30px;
+        margin: 0 auto 10px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <!-- Header -->
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <div>
+                <h4><i class="fas fa-tooth text-primary me-2"></i> Dental Chart</h4>
+                <p class="text-muted mb-0">{{ patient.full_name }} - Patient ID: {{ patient.id }}</p>
+            </div>
+            <div>
+                <a href="{% url 'patients:detail' patient.pk %}" class="btn btn-secondary">
+                    <i class="fas fa-arrow-left"></i> Back to Patient
+                </a>
+            </div>
+        </div>
+        
+        <!-- Legend -->
+        <div class="legend">
+            <span class="legend-item"><span class="legend-dot" style="background: #e8f5e9; border-color: #00b894;"></span> Healthy</span>
+            <span class="legend-item"><span class="legend-dot" style="background: #fce4ec; border-color: #e74c3c;"></span> Decay</span>
+            <span class="legend-item"><span class="legend-dot" style="background: #fff3e0; border-color: #fdcb6e;"></span> Filling</span>
+            <span class="legend-item"><span class="legend-dot" style="background: #f3e5f5; border-color: #6c5ce7;"></span> Crown</span>
+            <span class="legend-item"><span class="legend-dot" style="background: #e3f2fd; border-color: #0984e3;"></span> Bridge</span>
+            <span class="legend-item"><span class="legend-dot" style="background: #f5f5f5; border-color: #e74c3c;"></span> Extraction</span>
+            <span class="legend-item"><span class="legend-dot" style="background: #e0f2f1; border-color: #00b894;"></span> Implant</span>
+            <span class="legend-item"><span class="legend-dot" style="background: #f5f5f5; border-color: #b2bec3;"></span> Missing</span>
+        </div>
+        
+        <!-- Tooth Grid -->
+        <div class="card">
+            <div class="card-header">
+                <i class="fas fa-tooth text-primary"></i> Tooth Chart - Universal Numbering System
+            </div>
+            <div class="card-body">
+                <!-- Upper Jaw -->
+                <div class="jaw-label">Upper Jaw (Maxilla)</div>
+                <div class="tooth-grid">
+                    {% for tooth_num in "16,15,14,13,12,11,21,22,23,24,25,26"|split:"," %}
+                        {% with tooth_num|add:"0" as tooth_int %}
+                        <div class="tooth-card {% if tooth_int in tooth_map %}{{ tooth_map|get_item:tooth_int.condition }}{% else %}empty{% endif %}"
+                             onclick="openToothModal('{{ patient.id }}', '{{ tooth_int }}', '{{ tooth_map|get_item:tooth_int.condition|default:'' }}', '{{ tooth_map|get_item:tooth_int.surface|default:'' }}', '{{ tooth_map|get_item:tooth_int.notes|default:'' }}')"
+                             style="cursor: pointer;">
+                            <div class="tooth-number">{{ tooth_int }}</div>
+                            <div class="tooth-icon">🦷</div>
+                            {% if tooth_int in tooth_map %}
+                                <span class="badge bg-primary condition-badge">{{ tooth_map|get_item:tooth_int.get_condition_display|default:"Healthy" }}</span>
+                            {% endif %}
+                        </div>
+                        {% endwith %}
+                    {% endfor %}
+                </div>
+                
+                <!-- Lower Jaw -->
+                <div class="jaw-label mt-4">Lower Jaw (Mandible)</div>
+                <div class="tooth-grid">
+                    {% for tooth_num in "18,17,27,28,29,30,31,32,41,42,43,44,45,46,47,48"|split:"," %}
+                        {% with tooth_num|add:"0" as tooth_int %}
+                        <div class="tooth-card {% if tooth_int in tooth_map %}{{ tooth_map|get_item:tooth_int.condition }}{% else %}empty{% endif %}"
+                             onclick="openToothModal('{{ patient.id }}', '{{ tooth_int }}', '{{ tooth_map|get_item:tooth_int.condition|default:'' }}', '{{ tooth_map|get_item:tooth_int.surface|default:'' }}', '{{ tooth_map|get_item:tooth_int.notes|default:'' }}')"
+                             style="cursor: pointer;">
+                            <div class="tooth-number">{{ tooth_int }}</div>
+                            <div class="tooth-icon">🦷</div>
+                            {% if tooth_int in tooth_map %}
+                                <span class="badge bg-primary condition-badge">{{ tooth_map|get_item:tooth_int.get_condition_display|default:"Healthy" }}</span>
+                            {% endif %}
+                        </div>
+                        {% endwith %}
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Tooth Modal -->
+<div class="modal fade" id="toothModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form method="post" id="toothForm">
+                {% csrf_token %}
+                <div class="modal-header">
+                    <h5 class="modal-title" id="toothModalTitle">Tooth Record</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <input type="hidden" id="toothNumber" name="tooth_number">
+                    
+                    <div class="text-center mb-3">
+                        <div id="toothPreview" class="modal-tooth-preview" style="background: #e8f5e9; border: 2px solid #00b894;">
+                            🦷
+                        </div>
+                        <h5 id="toothNameDisplay">Tooth #16 - Right Maxillary 3rd Molar</h5>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="condition" class="form-label">Condition <span class="text-danger">*</span></label>
+                        <select class="form-select" id="condition" name="condition" required>
+                            <option value="">Select Condition</option>
+                            {% for value, label in condition_choices %}
+                            <option value="{{ value }}">{{ label }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="surface" class="form-label">Surface</label>
+                        <select class="form-select" id="surface" name="surface">
+                            <option value="">No Surface</option>
+                            {% for value, label in surface_choices %}
+                            <option value="{{ value }}">{{ label }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="notes" class="form-label">Notes</label>
+                        <textarea class="form-control" id="notes" name="notes" rows="3" placeholder="Add clinical notes for this tooth..."></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-save"></i> Save Record
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+    function openToothModal(patientId, toothNumber, currentCondition, currentSurface, currentNotes) {
+        document.getElementById('toothNumber').value = toothNumber;
+        document.getElementById('condition').value = currentCondition || '';
+        document.getElementById('surface').value = currentSurface || '';
+        document.getElementById('notes').value = currentNotes || '';
+        
+        // Update tooth name
+        const toothNames = {
+            1: 'Right Maxillary 3rd Molar', 2: 'Right Maxillary 2nd Molar',
+            3: 'Right Maxillary 1st Molar', 4: 'Right Maxillary 2nd Premolar',
+            5: 'Right Maxillary 1st Premolar', 6: 'Right Maxillary Canine',
+            7: 'Right Maxillary Lateral Incisor', 8: 'Right Maxillary Central Incisor',
+            9: 'Left Maxillary Central Incisor', 10: 'Left Maxillary Lateral Incisor',
+            11: 'Left Maxillary Canine', 12: 'Left Maxillary 1st Premolar',
+            13: 'Left Maxillary 2nd Premolar', 14: 'Left Maxillary 1st Molar',
+            15: 'Left Maxillary 2nd Molar', 16: 'Left Maxillary 3rd Molar',
+            17: 'Left Mandibular 3rd Molar', 18: 'Left Mandibular 2nd Molar',
+            19: 'Left Mandibular 1st Molar', 20: 'Left Mandibular 2nd Premolar',
+            21: 'Left Mandibular 1st Premolar', 22: 'Left Mandibular Canine',
+            23: 'Left Mandibular Lateral Incisor', 24: 'Left Mandibular Central Incisor',
+            25: 'Right Mandibular Central Incisor', 26: 'Right Mandibular Lateral Incisor',
+            27: 'Right Mandibular Canine', 28: 'Right Mandibular 1st Premolar',
+            29: 'Right Mandibular 2nd Premolar', 30: 'Right Mandibular 1st Molar',
+            31: 'Right Mandibular 2nd Molar', 32: 'Right Mandibular 3rd Molar'
+        };
+        
+        document.getElementById('toothNameDisplay').textContent = `Tooth #${toothNumber} - ${toothNames[toothNumber] || 'Unknown'}`;
+        
+        // Update preview color based on condition
+        const preview = document.getElementById('toothPreview');
+        const colors = {
+            'healthy': { bg: '#e8f5e9', border: '#00b894' },
+            'decay': { bg: '#fce4ec', border: '#e74c3c' },
+            'filling': { bg: '#fff3e0', border: '#fdcb6e' },
+            'crown': { bg: '#f3e5f5', border: '#6c5ce7' },
+            'bridge': { bg: '#e3f2fd', border: '#0984e3' },
+            'extraction': { bg: '#f5f5f5', border: '#e74c3c' },
+            'implant': { bg: '#e0f2f1', border: '#00b894' },
+            'root_canal': { bg: '#fce4ec', border: '#e17055' },
+            'missing': { bg: '#f5f5f5', border: '#b2bec3' },
+        };
+        
+        const color = colors[currentCondition] || { bg: '#e8f5e9', border: '#00b894' };
+        preview.style.background = color.bg;
+        preview.style.border = `2px solid ${color.border}`;
+        
+        document.getElementById('toothForm').action = `/patients/${patientId}/dental-chart/`;
+        
+        const modal = new bootstrap.Modal(document.getElementById('toothModal'));
+        modal.show();
+    }
+</script>
+{% endblock %}
