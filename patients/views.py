@@ -11,7 +11,7 @@ from appointments.models import Appointment, Treatment
 from billing.models import Invoice
 from patient_portal.models import PatientPortalAccess  # ✅ ADD THIS IMPORT
 import random  # ✅ ADD THIS IMPORT
-
+from appointments.models import DentalChart
 
 # ====================
 # HELPER: Check if user is doctor
