@@ -168,15 +168,17 @@
                 <div class="jaw-label">Upper Jaw (Maxilla)</div>
                 <div class="tooth-grid">
                     {% for tooth_num in tooth_numbers_upper %}
-                        <div class="tooth-card {% if tooth_num in tooth_map %}{{ tooth_map|get_item:tooth_num.condition }}{% else %}empty{% endif %}"
-                             onclick="openToothModal('{{ patient.id }}', '{{ tooth_num }}', '{{ tooth_map|get_item:tooth_num.condition|default:'' }}', '{{ tooth_map|get_item:tooth_num.surface|default:'' }}', '{{ tooth_map|get_item:tooth_num.notes|default:'' }}')"
+                        {% with tooth_record=tooth_map|get:tooth_num %}
+                        <div class="tooth-card {% if tooth_record %}{{ tooth_record.condition }}{% else %}empty{% endif %}"
+                             onclick="openToothModal('{{ patient.id }}', '{{ tooth_num }}', '{% if tooth_record %}{{ tooth_record.condition }}{% endif %}', '{% if tooth_record %}{{ tooth_record.surface }}{% endif %}', '{% if tooth_record %}{{ tooth_record.notes }}{% endif %}')"
                              style="cursor: pointer;">
                             <div class="tooth-number">{{ tooth_num }}</div>
                             <div class="tooth-icon">🦷</div>
-                            {% if tooth_num in tooth_map %}
-                                <span class="badge bg-primary condition-badge">{{ tooth_map|get_item:tooth_num.get_condition_display|default:"Healthy" }}</span>
+                            {% if tooth_record %}
+                                <span class="badge bg-primary condition-badge">{{ tooth_record.get_condition_display }}</span>
                             {% endif %}
                         </div>
+                        {% endwith %}
                     {% endfor %}
                 </div>
                 
@@ -184,15 +186,17 @@
                 <div class="jaw-label mt-4">Lower Jaw (Mandible)</div>
                 <div class="tooth-grid">
                     {% for tooth_num in tooth_numbers_lower %}
-                        <div class="tooth-card {% if tooth_num in tooth_map %}{{ tooth_map|get_item:tooth_num.condition }}{% else %}empty{% endif %}"
-                             onclick="openToothModal('{{ patient.id }}', '{{ tooth_num }}', '{{ tooth_map|get_item:tooth_num.condition|default:'' }}', '{{ tooth_map|get_item:tooth_num.surface|default:'' }}', '{{ tooth_map|get_item:tooth_num.notes|default:'' }}')"
+                        {% with tooth_record=tooth_map|get:tooth_num %}
+                        <div class="tooth-card {% if tooth_record %}{{ tooth_record.condition }}{% else %}empty{% endif %}"
+                             onclick="openToothModal('{{ patient.id }}', '{{ tooth_num }}', '{% if tooth_record %}{{ tooth_record.condition }}{% endif %}', '{% if tooth_record %}{{ tooth_record.surface }}{% endif %}', '{% if tooth_record %}{{ tooth_record.notes }}{% endif %}')"
                              style="cursor: pointer;">
                             <div class="tooth-number">{{ tooth_num }}</div>
                             <div class="tooth-icon">🦷</div>
-                            {% if tooth_num in tooth_map %}
-                                <span class="badge bg-primary condition-badge">{{ tooth_map|get_item:tooth_num.get_condition_display|default:"Healthy" }}</span>
+                            {% if tooth_record %}
+                                <span class="badge bg-primary condition-badge">{{ tooth_record.get_condition_display }}</span>
                             {% endif %}
                         </div>
+                        {% endwith %}
                     {% endfor %}
                 </div>
             </div>
