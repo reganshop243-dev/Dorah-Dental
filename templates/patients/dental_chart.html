@@ -84,12 +84,6 @@
         box-shadow: 0 2px 5px rgba(0,0,0,0.1);
     }
     
-    .tooth-card .surface-label {
-        font-size: 9px;
-        color: #636e72;
-        margin-top: 2px;
-    }
-    
     .jaw-label {
         text-align: center;
         font-weight: 700;
@@ -173,36 +167,32 @@
                 <!-- Upper Jaw -->
                 <div class="jaw-label">Upper Jaw (Maxilla)</div>
                 <div class="tooth-grid">
-                    {% for tooth_num in "16,15,14,13,12,11,21,22,23,24,25,26"|split:"," %}
-                        {% with tooth_num|add:"0" as tooth_int %}
-                        <div class="tooth-card {% if tooth_int in tooth_map %}{{ tooth_map|get_item:tooth_int.condition }}{% else %}empty{% endif %}"
-                             onclick="openToothModal('{{ patient.id }}', '{{ tooth_int }}', '{{ tooth_map|get_item:tooth_int.condition|default:'' }}', '{{ tooth_map|get_item:tooth_int.surface|default:'' }}', '{{ tooth_map|get_item:tooth_int.notes|default:'' }}')"
+                    {% for tooth_num in tooth_numbers_upper %}
+                        <div class="tooth-card {% if tooth_num in tooth_map %}{{ tooth_map|get_item:tooth_num.condition }}{% else %}empty{% endif %}"
+                             onclick="openToothModal('{{ patient.id }}', '{{ tooth_num }}', '{{ tooth_map|get_item:tooth_num.condition|default:'' }}', '{{ tooth_map|get_item:tooth_num.surface|default:'' }}', '{{ tooth_map|get_item:tooth_num.notes|default:'' }}')"
                              style="cursor: pointer;">
-                            <div class="tooth-number">{{ tooth_int }}</div>
+                            <div class="tooth-number">{{ tooth_num }}</div>
                             <div class="tooth-icon">🦷</div>
-                            {% if tooth_int in tooth_map %}
-                                <span class="badge bg-primary condition-badge">{{ tooth_map|get_item:tooth_int.get_condition_display|default:"Healthy" }}</span>
+                            {% if tooth_num in tooth_map %}
+                                <span class="badge bg-primary condition-badge">{{ tooth_map|get_item:tooth_num.get_condition_display|default:"Healthy" }}</span>
                             {% endif %}
                         </div>
-                        {% endwith %}
                     {% endfor %}
                 </div>
                 
                 <!-- Lower Jaw -->
                 <div class="jaw-label mt-4">Lower Jaw (Mandible)</div>
                 <div class="tooth-grid">
-                    {% for tooth_num in "18,17,27,28,29,30,31,32,41,42,43,44,45,46,47,48"|split:"," %}
-                        {% with tooth_num|add:"0" as tooth_int %}
-                        <div class="tooth-card {% if tooth_int in tooth_map %}{{ tooth_map|get_item:tooth_int.condition }}{% else %}empty{% endif %}"
-                             onclick="openToothModal('{{ patient.id }}', '{{ tooth_int }}', '{{ tooth_map|get_item:tooth_int.condition|default:'' }}', '{{ tooth_map|get_item:tooth_int.surface|default:'' }}', '{{ tooth_map|get_item:tooth_int.notes|default:'' }}')"
+                    {% for tooth_num in tooth_numbers_lower %}
+                        <div class="tooth-card {% if tooth_num in tooth_map %}{{ tooth_map|get_item:tooth_num.condition }}{% else %}empty{% endif %}"
+                             onclick="openToothModal('{{ patient.id }}', '{{ tooth_num }}', '{{ tooth_map|get_item:tooth_num.condition|default:'' }}', '{{ tooth_map|get_item:tooth_num.surface|default:'' }}', '{{ tooth_map|get_item:tooth_num.notes|default:'' }}')"
                              style="cursor: pointer;">
-                            <div class="tooth-number">{{ tooth_int }}</div>
+                            <div class="tooth-number">{{ tooth_num }}</div>
                             <div class="tooth-icon">🦷</div>
-                            {% if tooth_int in tooth_map %}
-                                <span class="badge bg-primary condition-badge">{{ tooth_map|get_item:tooth_int.get_condition_display|default:"Healthy" }}</span>
+                            {% if tooth_num in tooth_map %}
+                                <span class="badge bg-primary condition-badge">{{ tooth_map|get_item:tooth_num.get_condition_display|default:"Healthy" }}</span>
                             {% endif %}
                         </div>
-                        {% endwith %}
                     {% endfor %}
                 </div>
             </div>
@@ -227,7 +217,7 @@
                         <div id="toothPreview" class="modal-tooth-preview" style="background: #e8f5e9; border: 2px solid #00b894;">
                             🦷
                         </div>
-                        <h5 id="toothNameDisplay">Tooth #16 - Right Maxillary 3rd Molar</h5>
+                        <h5 id="toothNameDisplay">Tooth #16</h5>
                     </div>
                     
                     <div class="mb-3">
