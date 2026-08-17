@@ -1,4 +1,4 @@
-from rest_framework import serializers
+﻿from rest_framework import serializers
 from patients.models import Patient, DentalImage
 from appointments.models import Appointment, Service, Doctor
 from billing.models import Invoice
@@ -48,11 +48,7 @@ class ServiceSerializer(serializers.ModelSerializer):
 
 # ==================== DOCTOR SERIALIZERS ====================
 
-class DoctorSerializer(serializers.ModelSerializer):
-    """Doctor information"""
-    display_name = serializers.CharField(source='display_name')
-    
-    class Meta:
+class Meta:
         model = Doctor
         fields = ['id', 'name', 'display_name', 'specialization', 'phone', 'email', 'is_active']
 
@@ -154,3 +150,32 @@ class BookingRequestSerializer(serializers.ModelSerializer):
         model = BookingRequest
         fields = ['first_name', 'last_name', 'phone', 'email', 'service_requested', 
                   'dental_issue', 'preferred_date', 'preferred_time']
+
+# ==================== DOCTOR SERIALIZER ====================
+class DoctorSerializer(serializers.ModelSerializer):
+    display_name = serializers.SerializerMethodField()
+    
+    class Meta:
+        model = Doctor
+        fields = ['id', 'name', 'display_name', 'specialization', 'phone', 'email', 'is_active']
+    
+    def get_display_name(self, obj):
+        return obj.display_name if hasattr(obj, 'display_name') else obj.name
+
+# ==================== INVENTORY SERIALIZER ====================
+class InventoryItemSerializer(serializers.ModelSerializer):
+    category_name = serializers.CharField(source='category.name', read_only=True)
+    
+    class Meta:
+        from inventory.models import InventoryItem
+        model = InventoryItem
+        fields = ['id', 'name', 'description', 'category', 'category_name', 
+                  'quantity', 'unit', 'min_quantity', 'unit_cost', 'selling_price', 
+                  'status', 'is_active', 'supplier', 'supplier_contact']
+
+# ==================== COMPANY SETTINGS SERIALIZER ====================
+class CompanySettingsSerializer(serializers.ModelSerializer):
+    class Meta:
+        from core.models import CompanySettings
+        model = CompanySettings
+        fields = '__all__'

@@ -1,52 +1,67 @@
-import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
-import '../providers/auth_provider.dart';
+﻿import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import '../api/api_service.dart';
+import 'dashboard_screen.dart';
 
 class LoginScreen extends StatefulWidget {
-  const LoginScreen({super.key});
-
   @override
-  State<LoginScreen> createState() => _LoginScreenState();
+  _LoginScreenState createState() => _LoginScreenState();
 }
 
 class _LoginScreenState extends State<LoginScreen> {
-  final _formKey = GlobalKey<FormState>();
-  final _usernameController = TextEditingController();
-  final _passwordController = TextEditingController();
-  bool _obscurePassword = true;
+  final TextEditingController _usernameController = TextEditingController();
+  final TextEditingController _passwordController = TextEditingController();
   bool _isLoading = false;
-
-  @override
-  void dispose() {
-    _usernameController.dispose();
-    _passwordController.dispose();
-    super.dispose();
-  }
+  String _errorMessage = '';
 
   Future<void> _login() async {
-    if (!_formKey.currentState!.validate()) return;
+    final username = _usernameController.text.trim();
+    final password = _passwordController.text.trim();
 
-    setState(() => _isLoading = true);
+    if (username.isEmpty || password.isEmpty) {
+      setState(() {
+        _errorMessage = 'Please enter username and password';
+      });
+      return;
+    }
+
+    setState(() {
+      _isLoading = true;
+      _errorMessage = '';
+    });
 
     try {
-      await Provider.of<AuthProvider>(context, listen: false).login(
-        _usernameController.text.trim(),
-        _passwordController.text.trim(),
-      );
+      print('🔐 Attempting login for: ');
       
-      if (mounted) {
-        Navigator.pushReplacementNamed(context, '/dashboard');
+      final response = await ApiService.post('login/', {
+        'username': username,
+        'password': password,
+      });
+      
+      print('✅ Login successful! Response: ');
+      
+      if (response != null && response['token'] != null) {
+        await ApiService.setToken(response['token']);
+        
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => DashboardScreen()),
+        );
+      } else {
+        setState(() {
+          _errorMessage = 'Invalid response from server';
+        });
       }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(e.toString().replaceAll('Exception: ', '')),
-          backgroundColor: Colors.red,
-        ),
-      );
-    } finally {
-      if (mounted) setState(() => _isLoading = false);
+      print('❌ Login error: ');
+      setState(() {
+        _errorMessage = e.toString().replaceAll('Exception:', '');
+      });
     }
+
+    setState(() {
+      _isLoading = false;
+    });
   }
 
   @override
@@ -57,135 +72,110 @@ class _LoginScreenState extends State<LoginScreen> {
           gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
-            colors: [
-              Colors.blue.shade900,
-              Colors.purple.shade700,
-            ],
+            colors: [Color(0xFF1a5276), Color(0xFF2980b9)],
           ),
         ),
         child: Center(
           child: SingleChildScrollView(
-            padding: const EdgeInsets.all(24.0),
+            padding: EdgeInsets.all(24),
             child: Card(
               elevation: 8,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(16),
               ),
               child: Padding(
-                padding: const EdgeInsets.all(32.0),
-                child: Form(
-                  key: _formKey,
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        Icons.medical_services,
-                        size: 64,
-                        color: Colors.blue.shade700,
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        'Dental Clinic',
-                        style: TextStyle(
-                          fontSize: 24,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.blue.shade900,
+                padding: EdgeInsets.all(32),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.health_and_safety, size: 60, color: Color(0xFF1a5276)),
+                    SizedBox(height: 16),
+                    Text(
+                      "Dora's Dental Gem",
+                      style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Color(0xFF1a5276)),
+                    ),
+                    Text(
+                      "Clinic Management System",
+                      style: TextStyle(fontSize: 14, color: Colors.grey[600]),
+                    ),
+                    SizedBox(height: 24),
+                    
+                    if (_errorMessage.isNotEmpty)
+                      Container(
+                        padding: EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Colors.red[50],
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: Colors.red[300]!),
+                        ),
+                        child: Text(
+                          _errorMessage,
+                          style: TextStyle(color: Colors.red[800]),
+                          textAlign: TextAlign.center,
                         ),
                       ),
-                      const SizedBox(height: 4),
-                      Text(
-                        'Dora\'s Dental Gem',
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: Colors.grey.shade600,
+                    
+                    SizedBox(height: 16),
+                    
+                    TextField(
+                      controller: _usernameController,
+                      decoration: InputDecoration(
+                        labelText: 'Username',
+                        prefixIcon: Icon(Icons.person),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8),
                         ),
                       ),
-                      const SizedBox(height: 32),
-                      
-                      TextFormField(
-                        controller: _usernameController,
-                        decoration: InputDecoration(
-                          labelText: 'Username',
-                          prefixIcon: const Icon(Icons.person),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
+                    ),
+                    SizedBox(height: 16),
+                    
+                    TextField(
+                      controller: _passwordController,
+                      obscureText: true,
+                      decoration: InputDecoration(
+                        labelText: 'Password',
+                        prefixIcon: Icon(Icons.lock),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                      ),
+                      onSubmitted: (_) => _login(),
+                    ),
+                    SizedBox(height: 24),
+                    
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton(
+                        onPressed: _isLoading ? null : _login,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Color(0xFF1a5276),
+                          padding: EdgeInsets.symmetric(vertical: 16),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
                           ),
                         ),
-                        validator: (value) {
-                          if (value == null || value.isEmpty) {
-                            return 'Please enter your username';
-                          }
-                          return null;
-                        },
-                      ),
-                      const SizedBox(height: 16),
-                      
-                      TextFormField(
-                        controller: _passwordController,
-                        obscureText: _obscurePassword,
-                        decoration: InputDecoration(
-                          labelText: 'Password',
-                          prefixIcon: const Icon(Icons.lock),
-                          suffixIcon: IconButton(
-                            icon: Icon(
-                              _obscurePassword
-                                  ? Icons.visibility
-                                  : Icons.visibility_off,
-                            ),
-                            onPressed: () {
-                              setState(() {
-                                _obscurePassword = !_obscurePassword;
-                              });
-                            },
-                          ),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                        ),
-                        validator: (value) {
-                          if (value == null || value.isEmpty) {
-                            return 'Please enter your password';
-                          }
-                          return null;
-                        },
-                        onFieldSubmitted: (_) => _login(),
-                      ),
-                      const SizedBox(height: 24),
-                      
-                      SizedBox(
-                        width: double.infinity,
-                        height: 50,
                         child: _isLoading
-                            ? const Center(
+                            ? SizedBox(
+                                height: 20,
+                                width: 20,
                                 child: CircularProgressIndicator(
-                                  color: Colors.white,
+                                  strokeWidth: 2,
+                                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
                                 ),
                               )
-                            : ElevatedButton(
-                                onPressed: _login,
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: Colors.blue.shade700,
-                                  foregroundColor: Colors.white,
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                                ),
-                                child: const Text(
-                                  'Login',
-                                  style: TextStyle(fontSize: 16),
-                                ),
+                            : Text(
+                                'Login',
+                                style: TextStyle(fontSize: 16, color: Colors.white),
                               ),
                       ),
-                      const SizedBox(height: 16),
-                      
-                      TextButton(
-                        onPressed: () {
-                          Navigator.pushNamed(context, '/register');
-                        },
-                        child: const Text('Don\'t have an account? Register'),
-                      ),
-                    ],
-                  ),
+                    ),
+                    
+                    SizedBox(height: 12),
+                    Text(
+                      'Default: admin / password',
+                      style: TextStyle(fontSize: 12, color: Colors.grey[500]),
+                    ),
+                  ],
                 ),
               ),
             ),

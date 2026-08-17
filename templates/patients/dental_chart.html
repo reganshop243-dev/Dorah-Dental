@@ -48,40 +48,30 @@
     
     .tooth-card.healthy { border-color: #00b894; background: #e8f5e9; }
     .tooth-card.healthy .tooth-icon { color: #00b894; }
-    
     .tooth-card.decay { border-color: #e74c3c; background: #fce4ec; }
     .tooth-card.decay .tooth-icon { color: #e74c3c; }
-    
     .tooth-card.filling { border-color: #fdcb6e; background: #fff3e0; }
     .tooth-card.filling .tooth-icon { color: #fdcb6e; }
-    
     .tooth-card.crown { border-color: #6c5ce7; background: #f3e5f5; }
     .tooth-card.crown .tooth-icon { color: #6c5ce7; }
-    
     .tooth-card.bridge { border-color: #0984e3; background: #e3f2fd; }
     .tooth-card.bridge .tooth-icon { color: #0984e3; }
-    
     .tooth-card.extraction { border-color: #e74c3c; background: #f5f5f5; opacity: 0.5; }
     .tooth-card.extraction .tooth-icon { color: #e74c3c; }
-    
     .tooth-card.implant { border-color: #00b894; background: #e0f2f1; }
     .tooth-card.implant .tooth-icon { color: #00b894; }
-    
     .tooth-card.root_canal { border-color: #e17055; background: #fce4ec; }
     .tooth-card.root_canal .tooth-icon { color: #e17055; }
-    
     .tooth-card.missing { border-color: #b2bec3; background: #f5f5f5; opacity: 0.4; }
     .tooth-card.missing .tooth-icon { color: #b2bec3; }
     
-    .tooth-card .condition-badge {
-        position: absolute;
-        top: -8px;
-        right: -8px;
-        font-size: 10px;
-        padding: 2px 8px;
-        border-radius: 10px;
-        background: white;
-        box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    .tooth-card.empty {
+        opacity: 0.5;
+        border-style: dashed;
+    }
+    
+    .tooth-card.empty:hover {
+        opacity: 0.8;
     }
     
     .jaw-label {
@@ -115,6 +105,17 @@
         height: 16px;
         border-radius: 50%;
         border: 1px solid #dee2e6;
+    }
+    
+    .condition-badge {
+        position: absolute;
+        top: -8px;
+        right: -8px;
+        font-size: 10px;
+        padding: 2px 8px;
+        border-radius: 10px;
+        background: white;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.1);
     }
     
     .modal-tooth-preview {
@@ -167,38 +168,53 @@
                 <!-- Upper Jaw -->
                 <div class="jaw-label">Upper Jaw (Maxilla)</div>
                 <div class="tooth-grid">
-                    {% for tooth_num in tooth_numbers_upper %}
-                        {% with tooth_record=tooth_map|get:tooth_num %}
-                        <div class="tooth-card {% if tooth_record %}{{ tooth_record.condition }}{% else %}empty{% endif %}"
-                             onclick="openToothModal('{{ patient.id }}', '{{ tooth_num }}', '{% if tooth_record %}{{ tooth_record.condition }}{% endif %}', '{% if tooth_record %}{{ tooth_record.surface }}{% endif %}', '{% if tooth_record %}{{ tooth_record.notes }}{% endif %}')"
+                    {% for tooth in tooth_numbers_upper %}
+                        <div class="tooth-card empty"
+                             onclick="openToothModal('{{ patient.id }}', '{{ tooth }}', '', '', '')"
                              style="cursor: pointer;">
-                            <div class="tooth-number">{{ tooth_num }}</div>
+                            <div class="tooth-number">{{ tooth }}</div>
                             <div class="tooth-icon">🦷</div>
-                            {% if tooth_record %}
-                                <span class="badge bg-primary condition-badge">{{ tooth_record.get_condition_display }}</span>
-                            {% endif %}
                         </div>
-                        {% endwith %}
                     {% endfor %}
                 </div>
                 
                 <!-- Lower Jaw -->
                 <div class="jaw-label mt-4">Lower Jaw (Mandible)</div>
                 <div class="tooth-grid">
-                    {% for tooth_num in tooth_numbers_lower %}
-                        {% with tooth_record=tooth_map|get:tooth_num %}
-                        <div class="tooth-card {% if tooth_record %}{{ tooth_record.condition }}{% else %}empty{% endif %}"
-                             onclick="openToothModal('{{ patient.id }}', '{{ tooth_num }}', '{% if tooth_record %}{{ tooth_record.condition }}{% endif %}', '{% if tooth_record %}{{ tooth_record.surface }}{% endif %}', '{% if tooth_record %}{{ tooth_record.notes }}{% endif %}')"
+                    {% for tooth in tooth_numbers_lower %}
+                        <div class="tooth-card empty"
+                             onclick="openToothModal('{{ patient.id }}', '{{ tooth }}', '', '', '')"
                              style="cursor: pointer;">
-                            <div class="tooth-number">{{ tooth_num }}</div>
+                            <div class="tooth-number">{{ tooth }}</div>
                             <div class="tooth-icon">🦷</div>
-                            {% if tooth_record %}
-                                <span class="badge bg-primary condition-badge">{{ tooth_record.get_condition_display }}</span>
-                            {% endif %}
                         </div>
-                        {% endwith %}
                     {% endfor %}
                 </div>
+            </div>
+        </div>
+        
+        <!-- Tooth Data Preview -->
+        <div class="card mt-3">
+            <div class="card-header">
+                <i class="fas fa-info-circle text-primary"></i> Recorded Teeth
+            </div>
+            <div class="card-body">
+                {% if tooth_data %}
+                    <div class="row">
+                        {% for data in tooth_data %}
+                            <div class="col-md-2 col-3 mb-2">
+                                <span class="badge {% if data.has_record %}bg-success{% else %}bg-secondary{% endif %}">
+                                    Tooth #{{ data.number }}
+                                    {% if data.has_record %}
+                                        - {{ data.condition_display }}
+                                    {% endif %}
+                                </span>
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <p class="text-muted">No teeth recorded yet. Click on a tooth to add a record.</p>
+                {% endif %}
             </div>
         </div>
     </div>

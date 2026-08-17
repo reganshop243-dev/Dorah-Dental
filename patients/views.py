@@ -85,111 +85,127 @@ def patient_add(request):
     """Add a new patient - Doctors are NOT allowed"""
     user_profile = request.user.profile
     
-    # ✅ PREVENT doctors from adding patients
+    # PREVENT doctors from adding patients
     if user_profile.role == 'doctor':
         messages.error(request, '❌ Doctors are not allowed to add patients.')
         return redirect('patients:list')
     
+    # Initialize form data with default values
+    form_data = {
+        'first_name': '',
+        'last_name': '',
+        'date_of_birth': '',
+        'age_years': '',
+        'gender': '',
+        'phone': '',
+        'email': '',
+        'address': '',
+        'next_of_kin': '',
+        'next_of_kin_contact': '',
+        'under_physician': '',
+        'physician_details': '',
+        'allergies': '',
+        'current_medications': '',
+        'dental_discomfort': '',
+        'discomfort_details': '',
+        'previous_surgery': '',
+        'surgery_details': '',
+        'reason_for_visit': '',
+        'last_dental_visit': '',
+        'registered_at': '',
+        'image_type': 'clinical',
+        'image_description': '',
+    }
+    
     if request.method == 'POST':
         try:
-            # Personal Information
-            first_name = request.POST.get('first_name', '').strip()
-            last_name = request.POST.get('last_name', '').strip()
-            date_of_birth = request.POST.get('date_of_birth')
-            age_years = request.POST.get('age_years', '')
-            gender = request.POST.get('gender')
-            
-            # Contact Information
-            phone = request.POST.get('phone', '').strip()
-            email = request.POST.get('email', '').strip()
-            address = request.POST.get('address', '').strip()
-            
-            # Emergency Contact / Next of Kin
-            next_of_kin = request.POST.get('next_of_kin', '').strip()
-            next_of_kin_contact = request.POST.get('next_of_kin_contact', '').strip()
-            
-            # Medical History
-            under_physician = request.POST.get('under_physician', '')
-            physician_details = request.POST.get('physician_details', '').strip()
-            allergies = request.POST.get('allergies', '').strip()
-            current_medications = request.POST.get('current_medications', '').strip()
-            
-            # Dental History
-            dental_discomfort = request.POST.get('dental_discomfort', '')
-            discomfort_details = request.POST.get('discomfort_details', '').strip()
-            previous_surgery = request.POST.get('previous_surgery', '')
-            surgery_details = request.POST.get('surgery_details', '').strip()
-            reason_for_visit = request.POST.get('reason_for_visit', '').strip()
-            last_dental_visit = request.POST.get('last_dental_visit', '')
-            
-            # Backdated registration date
-            registered_at = request.POST.get('registered_at', '')
+            # Get all form data
+            form_data = {
+                'first_name': request.POST.get('first_name', '').strip(),
+                'last_name': request.POST.get('last_name', '').strip(),
+                'date_of_birth': request.POST.get('date_of_birth', ''),
+                'age_years': request.POST.get('age_years', ''),
+                'gender': request.POST.get('gender', ''),
+                'phone': request.POST.get('phone', '').strip(),
+                'email': request.POST.get('email', '').strip(),
+                'address': request.POST.get('address', '').strip(),
+                'next_of_kin': request.POST.get('next_of_kin', '').strip(),
+                'next_of_kin_contact': request.POST.get('next_of_kin_contact', '').strip(),
+                'under_physician': request.POST.get('under_physician', ''),
+                'physician_details': request.POST.get('physician_details', '').strip(),
+                'allergies': request.POST.get('allergies', '').strip(),
+                'current_medications': request.POST.get('current_medications', '').strip(),
+                'dental_discomfort': request.POST.get('dental_discomfort', ''),
+                'discomfort_details': request.POST.get('discomfort_details', '').strip(),
+                'previous_surgery': request.POST.get('previous_surgery', ''),
+                'surgery_details': request.POST.get('surgery_details', '').strip(),
+                'reason_for_visit': request.POST.get('reason_for_visit', '').strip(),
+                'last_dental_visit': request.POST.get('last_dental_visit', ''),
+                'registered_at': request.POST.get('registered_at', ''),
+                'image_type': request.POST.get('image_type', 'clinical'),
+                'image_description': request.POST.get('image_description', '').strip(),
+            }
             
             # Validate required fields
-            if not first_name:
-                messages.error(request, 'First name is required')
-                return render(request, 'patients/add.html')
+            errors = []
             
-            if not last_name:
-                messages.error(request, 'Last name is required')
-                return render(request, 'patients/add.html')
-            
-            if not gender:
-                messages.error(request, 'Gender is required')
-                return render(request, 'patients/add.html')
-            
-            if not phone:
-                messages.error(request, 'Phone number is required')
-                return render(request, 'patients/add.html')
-            
-            if not reason_for_visit:
-                messages.error(request, 'Reason for visit is required')
-                return render(request, 'patients/add.html')
+            if not form_data['first_name']:
+                errors.append('First name is required')
+            if not form_data['last_name']:
+                errors.append('Last name is required')
+            if not form_data['gender']:
+                errors.append('Gender is required')
+            if not form_data['phone']:
+                errors.append('Phone number is required')
+            if not form_data['reason_for_visit']:
+                errors.append('Reason for visit is required')
             
             # Validate date of birth OR age
-            if not date_of_birth and not age_years:
-                messages.error(request, 'Either Date of Birth or Age in Years is required')
-                return render(request, 'patients/add.html')
+            if not form_data['date_of_birth'] and not form_data['age_years']:
+                errors.append('Either Date of Birth or Age in Years is required')
+            
+            # If there are errors, show them and re-render with data
+            if errors:
+                for error in errors:
+                    messages.error(request, f'❌ {error}')
+                return render(request, 'patients/add.html', {'form_data': form_data})
             
             # Convert age to years if provided
-            if age_years:
+            age_years = None
+            if form_data['age_years']:
                 try:
-                    age_years = int(age_years)
+                    age_years = int(form_data['age_years'])
                     if age_years < 0 or age_years > 150:
                         messages.error(request, 'Please enter a valid age between 0 and 150')
-                        return render(request, 'patients/add.html')
+                        return render(request, 'patients/add.html', {'form_data': form_data})
                 except ValueError:
                     messages.error(request, 'Please enter a valid number for age')
-                    return render(request, 'patients/add.html')
-            else:
-                age_years = None
+                    return render(request, 'patients/add.html', {'form_data': form_data})
             
             # Create patient
             patient = Patient.objects.create(
-                first_name=first_name,
-                last_name=last_name,
-                date_of_birth=date_of_birth or None,
+                first_name=form_data['first_name'],
+                last_name=form_data['last_name'],
+                date_of_birth=form_data['date_of_birth'] or None,
                 age_years=age_years,
-                gender=gender,
-                phone=phone,
-                email=email or None,
-                address=address or None,
-                next_of_kin=next_of_kin or None,
-                next_of_kin_contact=next_of_kin_contact or None,
-                under_physician=under_physician or None,
-                physician_details=physician_details or None,
-                allergies=allergies or '',
-                current_medications=current_medications or None,
-                reason_for_visit=reason_for_visit or None,
-                dental_discomfort=dental_discomfort or None,
-                discomfort_details=discomfort_details or None,
-                last_dental_visit=last_dental_visit or None,
+                gender=form_data['gender'],
+                phone=form_data['phone'],
+                email=form_data['email'] or None,
+                address=form_data['address'] or None,
+                next_of_kin=form_data['next_of_kin'] or None,
+                next_of_kin_contact=form_data['next_of_kin_contact'] or None,
+                under_physician=form_data['under_physician'] or None,
+                physician_details=form_data['physician_details'] or None,
+                allergies=form_data['allergies'] or '',
+                current_medications=form_data['current_medications'] or None,
+                reason_for_visit=form_data['reason_for_visit'] or None,
+                dental_discomfort=form_data['dental_discomfort'] or None,
+                discomfort_details=form_data['discomfort_details'] or None,
+                last_dental_visit=form_data['last_dental_visit'] or None,
                 is_active=True
             )
             
-            # ✅ ============================================================
-            # ✅ GENERATE PORTAL ACCESS PIN FOR THE PATIENT
-            # ✅ ============================================================
+            # Generate Portal PIN
             portal_pin = f"{random.randint(100000, 999999)}"
             PatientPortalAccess.objects.create(
                 patient=patient,
@@ -198,19 +214,19 @@ def patient_add(request):
             )
             
             # Handle backdated registration date
-            if registered_at:
+            if form_data['registered_at']:
                 try:
-                    registered_datetime = datetime.strptime(registered_at, '%Y-%m-%d')
+                    registered_datetime = datetime.strptime(form_data['registered_at'], '%Y-%m-%d')
                     patient.registered_at = registered_datetime
                     patient.save()
                 except ValueError:
-                    pass  # If invalid format, keep the default (now)
+                    pass
             
             # Handle dental images
             image_files = request.FILES.getlist('dental_images')
             if image_files:
-                image_type = request.POST.get('image_type', 'clinical')
-                image_description = request.POST.get('image_description', '')
+                image_type = form_data['image_type']
+                image_description = form_data['image_description']
                 
                 for image_file in image_files:
                     DentalImage.objects.create(
@@ -221,28 +237,26 @@ def patient_add(request):
                         uploaded_by=request.user
                     )
             
-            # ✅ SUCCESS MESSAGE WITH PORTAL PIN
             messages.success(
                 request, 
                 f'✅ Patient {patient.full_name} registered successfully!\n'
-                f'🔑 Portal PIN: {portal_pin}\n'
-                f'🔗 Login: Patient ID ({patient.id}) or Phone ({patient.phone}) + PIN'
+                f'🔑 Portal PIN: {portal_pin}'
             )
             
-            # Store PIN in session to display on the detail page
+            # Store PIN in session
             request.session['new_patient_pin'] = portal_pin
             request.session['new_patient_id'] = patient.id
             
             return redirect('patients:detail', pk=patient.pk)
             
         except Exception as e:
-            messages.error(request, f'Error adding patient: {str(e)}')
+            messages.error(request, f'❌ Error adding patient: {str(e)}')
             import traceback
             traceback.print_exc()
-            return render(request, 'patients/add.html')
+            return render(request, 'patients/add.html', {'form_data': form_data})
     
-    return render(request, 'patients/add.html')
-
+    # GET request - empty form
+    return render(request, 'patients/add.html', {'form_data': form_data})
 
 # ====================
 # PATIENT DETAIL (UPDATED WITH PORTAL PIN)
@@ -602,12 +616,12 @@ def patient_search_api(request):
         return JsonResponse({'results': [], 'error': str(e)}, status=500)
 
 
-
-        # Add to patients/views.py
-
 @login_required
 def dental_chart(request, pk):
     """View and edit patient's dental chart"""
+    from appointments.models import DentalChart
+    from django.contrib.auth.models import User
+    
     patient = get_object_or_404(Patient, pk=pk)
     user_profile = request.user.profile
     
@@ -629,6 +643,17 @@ def dental_chart(request, pk):
     # Create a map of tooth records
     tooth_map = {record.tooth_number: record for record in chart_records}
     
+    # Build tooth data list
+    all_tooth_numbers = [16, 15, 14, 13, 12, 11, 21, 22, 23, 24, 25, 26, 32, 31, 30, 29, 28, 27, 26, 25, 24, 23, 22, 21, 20, 19, 18, 17]
+    tooth_data = []
+    for num in all_tooth_numbers:
+        record = tooth_map.get(num)
+        tooth_data.append({
+            'number': num,
+            'has_record': bool(record),
+            'condition_display': record.get_condition_display() if record else None,
+        })
+    
     if request.method == 'POST':
         try:
             tooth_number = request.POST.get('tooth_number')
@@ -636,10 +661,14 @@ def dental_chart(request, pk):
             surface = request.POST.get('surface')
             notes = request.POST.get('notes', '')
             
+            if not tooth_number or not condition:
+                messages.error(request, 'Tooth number and condition are required.')
+                return redirect('patients:dental_chart', pk=patient.pk)
+            
             # Update or create record
             record, created = DentalChart.objects.update_or_create(
                 patient=patient,
-                tooth_number=tooth_number,
+                tooth_number=int(tooth_number),
                 defaults={
                     'tooth_name': get_tooth_name(int(tooth_number)),
                     'condition': condition,
@@ -650,21 +679,24 @@ def dental_chart(request, pk):
             )
             
             if created:
-                messages.success(request, f'Tooth #{tooth_number} recorded as {dict(record._meta.get_field("condition").choices).get(condition)}')
+                messages.success(request, f'✅ Tooth #{tooth_number} recorded as {record.get_condition_display()}!')
             else:
-                messages.success(request, f'Tooth #{tooth_number} updated successfully!')
+                messages.success(request, f'✅ Tooth #{tooth_number} updated to {record.get_condition_display()}!')
             
             return redirect('patients:dental_chart', pk=patient.pk)
             
         except Exception as e:
-            messages.error(request, f'Error updating dental chart: {str(e)}')
+            messages.error(request, f'❌ Error updating dental chart: {str(e)}')
     
     context = {
         'patient': patient,
+        'tooth_data': tooth_data,
         'tooth_map': tooth_map,
         'is_doctor': user_profile.role == 'doctor',
         'condition_choices': DentalChart.TOOTH_CONDITION_CHOICES,
         'surface_choices': DentalChart.SURFACE_CHOICES,
+        'tooth_numbers_upper': [16, 15, 14, 13, 12, 11, 21, 22, 23, 24, 25, 26],
+        'tooth_numbers_lower': [32, 31, 30, 29, 28, 27, 26, 25, 24, 23, 22, 21, 20, 19, 18, 17],
     }
     return render(request, 'patients/dental_chart.html', context)
 

@@ -57,6 +57,14 @@
         gap: 20px;
         padding-top: 5px;
     }
+    .error-border {
+        border-color: #e74c3c !important;
+    }
+    .error-text {
+        color: #e74c3c;
+        font-size: 0.8rem;
+        margin-top: 3px;
+    }
 </style>
 {% endblock %}
 
@@ -82,27 +90,31 @@
                                     First Name <span class="required">*</span>
                                 </label>
                                 <input type="text" class="form-control" id="first_name" name="first_name" 
-                                       placeholder="Enter first name" required>
+                                       placeholder="Enter first name" required
+                                       value="{{ form_data.first_name|default:'' }}">
                             </div>
                             <div class="col-md-6 mb-3">
                                 <label for="last_name" class="form-label">
                                     Last Name <span class="required">*</span>
                                 </label>
                                 <input type="text" class="form-control" id="last_name" name="last_name" 
-                                       placeholder="Enter last name" required>
+                                       placeholder="Enter last name" required
+                                       value="{{ form_data.last_name|default:'' }}">
                             </div>
                         </div>
                         
                         <div class="row">
                             <div class="col-md-4 mb-3">
                                 <label for="date_of_birth" class="form-label">Date of Birth</label>
-                                <input type="date" class="form-control" id="date_of_birth" name="date_of_birth">
+                                <input type="date" class="form-control" id="date_of_birth" name="date_of_birth"
+                                       value="{{ form_data.date_of_birth|default:'' }}">
                                 <div class="help-text">Leave blank if unknown</div>
                             </div>
                             <div class="col-md-4 mb-3">
                                 <label for="age_years" class="form-label">Age in Years</label>
                                 <input type="number" class="form-control" id="age_years" name="age_years" 
-                                       placeholder="e.g., 35" min="0" max="150">
+                                       placeholder="e.g., 35" min="0" max="150"
+                                       value="{{ form_data.age_years|default:'' }}">
                                 <div class="help-text">Use this if date of birth is unknown</div>
                             </div>
                             <div class="col-md-4 mb-3">
@@ -111,9 +123,9 @@
                                 </label>
                                 <select class="form-select" id="gender" name="gender" required>
                                     <option value="">Select Gender</option>
-                                    <option value="M">Male</option>
-                                    <option value="F">Female</option>
-                                    <option value="O">Other</option>
+                                    <option value="M" {% if form_data.gender == 'M' %}selected{% endif %}>Male</option>
+                                    <option value="F" {% if form_data.gender == 'F' %}selected{% endif %}>Female</option>
+                                    <option value="O" {% if form_data.gender == 'O' %}selected{% endif %}>Other</option>
                                 </select>
                             </div>
                         </div>
@@ -127,13 +139,14 @@
                         <div class="row">
                             <div class="col-md-6 mb-3">
                                 <label for="registered_at" class="form-label">Registration Date</label>
-                                <input type="date" class="form-control" id="registered_at" name="registered_at">
+                                <input type="date" class="form-control" id="registered_at" name="registered_at"
+                                       value="{{ form_data.registered_at|default:'' }}">
                                 <div class="help-text">Leave blank for today's date. Use this to backdate registration.</div>
                             </div>
                         </div>
                     </div>
                     
-                    <!-- ✅ PORTAL ACCESS INFORMATION - ADD THIS SECTION -->
+                    <!-- Portal Access Information -->
                     <div class="form-section" style="border-left-color: #2ecc71;">
                         <div class="section-title">
                             <i class="fas fa-key" style="color: #2ecc71;"></i> Patient Portal Access
@@ -171,12 +184,14 @@
                                     Phone Number <span class="required">*</span>
                                 </label>
                                 <input type="text" class="form-control" id="phone" name="phone" 
-                                       placeholder="+256 700 000 000" required>
+                                       placeholder="+256 700 000 000" required
+                                       value="{{ form_data.phone|default:'' }}">
                             </div>
                             <div class="col-md-6 mb-3">
                                 <label for="email" class="form-label">Email Address</label>
                                 <input type="email" class="form-control" id="email" name="email" 
-                                       placeholder="patient@email.com">
+                                       placeholder="patient@email.com"
+                                       value="{{ form_data.email|default:'' }}">
                                 <div class="help-text">Optional but recommended for reminders</div>
                             </div>
                         </div>
@@ -184,7 +199,7 @@
                         <div class="mb-3">
                             <label for="address" class="form-label">Physical Address</label>
                             <textarea class="form-control" id="address" name="address" rows="2" 
-                                      placeholder="Enter full address"></textarea>
+                                      placeholder="Enter full address">{{ form_data.address|default:'' }}</textarea>
                         </div>
                     </div>
                     
@@ -197,12 +212,14 @@
                             <div class="col-md-6 mb-3">
                                 <label for="next_of_kin" class="form-label">Next of Kin Name</label>
                                 <input type="text" class="form-control" id="next_of_kin" name="next_of_kin" 
-                                       placeholder="Full name of next of kin">
+                                       placeholder="Full name of next of kin"
+                                       value="{{ form_data.next_of_kin|default:'' }}">
                             </div>
                             <div class="col-md-6 mb-3">
                                 <label for="next_of_kin_contact" class="form-label">Next of Kin Contact</label>
                                 <input type="text" class="form-control" id="next_of_kin_contact" name="next_of_kin_contact" 
-                                       placeholder="Phone number of next of kin">
+                                       placeholder="Phone number of next of kin"
+                                       value="{{ form_data.next_of_kin_contact|default:'' }}">
                             </div>
                         </div>
                     </div>
@@ -217,34 +234,37 @@
                             <label class="form-label">Are you currently under the care of a physician?</label>
                             <div class="radio-group">
                                 <div class="form-check">
-                                    <input class="form-check-input" type="radio" name="under_physician" id="physician_yes" value="yes">
+                                    <input class="form-check-input" type="radio" name="under_physician" id="physician_yes" value="yes"
+                                           {% if form_data.under_physician == 'yes' %}checked{% endif %}>
                                     <label class="form-check-label" for="physician_yes">Yes</label>
                                 </div>
                                 <div class="form-check">
-                                    <input class="form-check-input" type="radio" name="under_physician" id="physician_no" value="no" checked>
+                                    <input class="form-check-input" type="radio" name="under_physician" id="physician_no" value="no"
+                                           {% if form_data.under_physician != 'yes' %}checked{% endif %}>
                                     <label class="form-check-label" for="physician_no">No</label>
                                 </div>
                             </div>
                         </div>
                         
-                        <div class="mb-3" id="physician_details_wrapper" style="display: none;">
+                        <div class="mb-3" id="physician_details_wrapper" style="{% if form_data.under_physician != 'yes' %}display: none;{% endif %}">
                             <label for="physician_details" class="form-label">Physician Details</label>
                             <input type="text" class="form-control" id="physician_details" name="physician_details" 
-                                   placeholder="Physician's name and contact information">
+                                   placeholder="Physician's name and contact information"
+                                   value="{{ form_data.physician_details|default:'' }}">
                             <div class="help-text">Please provide your physician's name and contact details</div>
                         </div>
                         
                         <div class="mb-3">
                             <label for="allergies" class="form-label">Allergies</label>
                             <textarea class="form-control" id="allergies" name="allergies" rows="2" 
-                                      placeholder="List any allergies (e.g., medication, latex, food allergies)"></textarea>
+                                      placeholder="List any allergies (e.g., medication, latex, food allergies)">{{ form_data.allergies|default:'' }}</textarea>
                             <div class="help-text">Please list all known allergies</div>
                         </div>
                         
                         <div class="mb-3">
                             <label for="current_medications" class="form-label">Current Medications</label>
                             <textarea class="form-control" id="current_medications" name="current_medications" rows="3" 
-                                      placeholder="List any medications you are currently taking (include dosage if known)"></textarea>
+                                      placeholder="List any medications you are currently taking (include dosage if known)">{{ form_data.current_medications|default:'' }}</textarea>
                             <div class="help-text">Please list all current medications, including over-the-counter and supplements</div>
                         </div>
                     </div>
@@ -261,7 +281,7 @@
                                 Reason for Visit Today <span class="required">*</span>
                             </label>
                             <textarea class="form-control" id="reason_for_visit" name="reason_for_visit" rows="3" 
-                                      placeholder="Please describe the reason for your visit today" required></textarea>
+                                      placeholder="Please describe the reason for your visit today" required>{{ form_data.reason_for_visit|default:'' }}</textarea>
                             <div class="help-text">e.g., toothache, cleaning, checkup, cosmetic, etc.</div>
                         </div>
                         
@@ -270,20 +290,22 @@
                             <label class="form-label">Have you experienced any dental pain or discomfort recently?</label>
                             <div class="radio-group">
                                 <div class="form-check">
-                                    <input class="form-check-input" type="radio" name="dental_discomfort" id="discomfort_yes" value="yes">
+                                    <input class="form-check-input" type="radio" name="dental_discomfort" id="discomfort_yes" value="yes"
+                                           {% if form_data.dental_discomfort == 'yes' %}checked{% endif %}>
                                     <label class="form-check-label" for="discomfort_yes">Yes</label>
                                 </div>
                                 <div class="form-check">
-                                    <input class="form-check-input" type="radio" name="dental_discomfort" id="discomfort_no" value="no" checked>
+                                    <input class="form-check-input" type="radio" name="dental_discomfort" id="discomfort_no" value="no"
+                                           {% if form_data.dental_discomfort != 'yes' %}checked{% endif %}>
                                     <label class="form-check-label" for="discomfort_no">No</label>
                                 </div>
                             </div>
                         </div>
                         
-                        <div class="mb-3" id="discomfort_details_wrapper" style="display: none;">
+                        <div class="mb-3" id="discomfort_details_wrapper" style="{% if form_data.dental_discomfort != 'yes' %}display: none;{% endif %}">
                             <label for="discomfort_details" class="form-label">Describe the discomfort</label>
                             <textarea class="form-control" id="discomfort_details" name="discomfort_details" rows="3" 
-                                      placeholder="Please describe any pain, sensitivity, bleeding, swelling, or other discomfort"></textarea>
+                                      placeholder="Please describe any pain, sensitivity, bleeding, swelling, or other discomfort">{{ form_data.discomfort_details|default:'' }}</textarea>
                             <div class="help-text">Include details about location, duration, and severity</div>
                         </div>
                         
@@ -292,27 +314,30 @@
                             <label class="form-label">Have you had any dental procedures or surgeries in the past?</label>
                             <div class="radio-group">
                                 <div class="form-check">
-                                    <input class="form-check-input" type="radio" name="previous_surgery" id="surgery_yes" value="yes">
+                                    <input class="form-check-input" type="radio" name="previous_surgery" id="surgery_yes" value="yes"
+                                           {% if form_data.previous_surgery == 'yes' %}checked{% endif %}>
                                     <label class="form-check-label" for="surgery_yes">Yes</label>
                                 </div>
                                 <div class="form-check">
-                                    <input class="form-check-input" type="radio" name="previous_surgery" id="surgery_no" value="no" checked>
+                                    <input class="form-check-input" type="radio" name="previous_surgery" id="surgery_no" value="no"
+                                           {% if form_data.previous_surgery != 'yes' %}checked{% endif %}>
                                     <label class="form-check-label" for="surgery_no">No</label>
                                 </div>
                             </div>
                         </div>
                         
-                        <div class="mb-3" id="surgery_details_wrapper" style="display: none;">
+                        <div class="mb-3" id="surgery_details_wrapper" style="{% if form_data.previous_surgery != 'yes' %}display: none;{% endif %}">
                             <label for="surgery_details" class="form-label">Describe the procedures/surgeries</label>
                             <textarea class="form-control" id="surgery_details" name="surgery_details" rows="3" 
-                                      placeholder="Please describe any previous dental procedures or surgeries"></textarea>
+                                      placeholder="Please describe any previous dental procedures or surgeries">{{ form_data.surgery_details|default:'' }}</textarea>
                             <div class="help-text">Include dates and details of procedures</div>
                         </div>
                         
                         <!-- Question 4: Last Dental Visit -->
                         <div class="mb-3">
                             <label for="last_dental_visit" class="form-label">When was your last dental visit?</label>
-                            <input type="date" class="form-control" id="last_dental_visit" name="last_dental_visit">
+                            <input type="date" class="form-control" id="last_dental_visit" name="last_dental_visit"
+                                   value="{{ form_data.last_dental_visit|default:'' }}">
                             <div class="help-text">If you haven't visited a dentist before, leave blank</div>
                         </div>
                     </div>
@@ -332,13 +357,13 @@
                         <div class="mb-3">
                             <label for="image_type" class="form-label">Image Type</label>
                             <select class="form-select" id="image_type" name="image_type">
-                                <option value="clinical">Clinical Photo</option>
-                                <option value="xray">X-Ray</option>
-                                <option value="treatment">Treatment Photo</option>
-                                <option value="before">Before Treatment</option>
-                                <option value="after">After Treatment</option>
-                                <option value="surgery">Surgery Photo</option>
-                                <option value="other">Other</option>
+                                <option value="clinical" {% if form_data.image_type == 'clinical' %}selected{% endif %}>Clinical Photo</option>
+                                <option value="xray" {% if form_data.image_type == 'xray' %}selected{% endif %}>X-Ray</option>
+                                <option value="treatment" {% if form_data.image_type == 'treatment' %}selected{% endif %}>Treatment Photo</option>
+                                <option value="before" {% if form_data.image_type == 'before' %}selected{% endif %}>Before Treatment</option>
+                                <option value="after" {% if form_data.image_type == 'after' %}selected{% endif %}>After Treatment</option>
+                                <option value="surgery" {% if form_data.image_type == 'surgery' %}selected{% endif %}>Surgery Photo</option>
+                                <option value="other" {% if form_data.image_type == 'other' %}selected{% endif %}>Other</option>
                             </select>
                         </div>
                         
@@ -352,7 +377,7 @@
                         <div class="mb-3">
                             <label for="image_description" class="form-label">Image Description</label>
                             <textarea class="form-control" id="image_description" name="image_description" rows="2" 
-                                      placeholder="Describe what the images show (e.g., 'Upper right molar cavity', 'Before treatment - tooth 23')"></textarea>
+                                      placeholder="Describe what the images show (e.g., 'Upper right molar cavity', 'Before treatment - tooth 23')">{{ form_data.image_description|default:'' }}</textarea>
                         </div>
                         
                         <!-- Image Preview -->
@@ -453,8 +478,11 @@
         document.getElementById('date_of_birth').max = today;
         document.getElementById('last_dental_visit').max = today;
         
-        // Set default registration date to today
-        document.getElementById('registered_at').value = today;
+        // Set default registration date to today if not set
+        const registeredAt = document.getElementById('registered_at');
+        if (!registeredAt.value) {
+            registeredAt.value = today;
+        }
     });
 </script>
 {% endblock %}

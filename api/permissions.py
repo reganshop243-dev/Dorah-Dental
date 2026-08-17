@@ -25,7 +25,14 @@ class IsPatient(permissions.BasePermission):
         return request.user.is_authenticated and request.user.profile.role == 'patient'
 
 
+from rest_framework import permissions
+
 class IsAdminOrReceptionist(permissions.BasePermission):
     """Permission for admin or receptionist"""
     def has_permission(self, request, view):
-        return request.user.is_authenticated and request.user.profile.role in ['admin', 'receptionist']
+        if not request.user.is_authenticated:
+            return False
+        # Check if user has a profile with role
+        if hasattr(request.user, 'profile'):
+            return request.user.profile.role in ['admin', 'receptionist']
+        return False

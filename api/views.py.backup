@@ -1,0 +1,796 @@
+﻿from rest_framework import viewsets, generics, permissions, status
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from rest_framework.authtoken.models import Token
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import IsAuthenticated, AllowAny, IsAdminUser
+from django.contrib.auth import authenticate
+from django.contrib.auth.models import User
+from django.views.decorators.csrf import csrf_exempt
+from django.utils.decorators import method_decorator
+from patients.models import Patient
+from appointments.models import Appointment, Service, Doctor, BookingRequest
+from billing.models import Invoice
+from inventory.models import InventoryItem
+from core.models import CompanySettings
+from .serializers import (
+    PatientSerializer,
+    PatientDetailSerializer,
+    ServiceSerializer,
+    DoctorSerializer,
+    AppointmentSerializer,
+    AppointmentCreateSerializer,
+    InvoiceSerializer,
+    LoginSerializer,
+    UserProfileSerializer,
+    BookingRequestSerializer,
+    InventoryItemSerializer,
+    CompanySettingsSerializer,
+)
+from .permissions import IsPatient, IsDoctor, IsAdmin, IsReceptionist
+# ==================== PUBLIC ENDPOINTS ====================
+
+class PublicServiceListView(generics.ListAPIView):
+    queryset = Service.objects.filter(is_active=True)
+    serializer_class = ServiceSerializer
+    permission_classes = [AllowAny]
+
+
+class PublicDoctorListView(generics.ListAPIView):
+    queryset = Doctor.objects.filter(is_active=True)
+    serializer_class = DoctorSerializer
+    permission_classes = [AllowAny]
+
+
+class PublicBookAppointmentView(generics.CreateAPIView):
+    serializer_class = AppointmentCreateSerializer
+    permission_classes = [AllowAny]
+
+
+class PublicBookingRequestView(generics.CreateAPIView):
+    serializer_class = BookingRequestSerializer
+    permission_classes = [AllowAny]
+
+
+# ==================== AUTHENTICATION ENDPOINTS ====================
+
+@method_decorator(csrf_exempt, name='dispatch')
+class LoginView(APIView):
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        try:
+            username = request.data.get('username')
+            password = request.data.get('password')
+            
+            print(f"🔐 Login attempt: {username}")
+            
+            if not username or not password:
+                return Response(
+                    {'error': 'Username and password required'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+            user = authenticate(username=username, password=password)
+            
+            if user is not None:
+                token, created = Token.objects.get_or_create(user=user)
+                
+                # Get user profile
+                try:
+                    profile = user.profile
+                    role = profile.role if hasattr(profile, 'role') else 'user'
+                    phone = profile.phone if hasattr(profile, 'phone') else ''
+                except:
+                    role = 'user'
+                    phone = ''
+                
+                return Response({
+                    'token': token.key,
+                    'user': {
+                        'id': user.id,
+                        'username': user.username,
+                        'email': user.email,
+                        'first_name': user.first_name,
+                        'last_name': user.last_name,
+                        'role': role,
+                        'phone': phone,
+                    }
+                }, status=status.HTTP_200_OK)
+            else:
+                print(f"❌ Login failed: {username}")
+                return Response(
+                    {'error': 'Invalid credentials'},
+                    status=status.HTTP_401_UNAUTHORIZED
+                )
+        except Exception as e:
+            print(f"❌ Login error: {e}")
+            return Response(
+                {'error': str(e)},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+
+class RegisterView(APIView):
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        username = request.data.get('username')
+        password = request.data.get('password')
+        email = request.data.get('email', '')
+        phone = request.data.get('phone', '')
+
+        if not username or not password:
+            return Response(
+                {'error': 'Username and password required'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        if User.objects.filter(username=username).exists():
+            return Response(
+                {'error': 'Username already exists'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        user = User.objects.create_user(
+            username=username,
+            password=password,
+            email=email
+        )
+        
+        try:
+            profile = user.profile
+            profile.phone = phone
+            profile.role = 'patient'
+            profile.save()
+        except:
+            pass
+
+        token, created = Token.objects.get_or_create(user=user)
+
+        return Response({
+            'token': token.key,
+            'user': {
+                'id': user.id,
+                'username': user.username,
+                'full_name': user.get_full_name(),
+                'role': 'patient',
+                'phone': phone,
+            }
+        }, status=status.HTTP_201_CREATED)
+
+
+# ==================== PATIENT ENDPOINTS ====================
+
+class PatientProfileView(generics.RetrieveAPIView):
+    serializer_class = PatientDetailSerializer
+    permission_classes = [AllowAny]
+
+    def get_object(self):
+        try:
+            return Patient.objects.get(user=self.request.user)
+        except Patient.DoesNotExist:
+            return None
+
+
+class PatientAppointmentsView(generics.ListAPIView):
+    serializer_class = AppointmentSerializer
+    permission_classes = [AllowAny]
+
+    def get_queryset(self):
+        try:
+            patient = Patient.objects.get(user=self.request.user)
+            return Appointment.objects.filter(
+                patient=patient
+            ).order_by('-appointment_date')
+        except Patient.DoesNotExist:
+            return Appointment.objects.none()
+
+
+class PatientInvoicesView(generics.ListAPIView):
+    serializer_class = InvoiceSerializer
+    permission_classes = [AllowAny]
+
+    def get_queryset(self):
+        try:
+            patient = Patient.objects.get(user=self.request.user)
+            return Invoice.objects.filter(
+                patient=patient
+            ).order_by('-issue_date')
+        except Patient.DoesNotExist:
+            return Invoice.objects.none()
+
+
+class PatientAppointmentCreateView(generics.CreateAPIView):
+    serializer_class = AppointmentCreateSerializer
+    permission_classes = [AllowAny]
+
+    def perform_create(self, serializer):
+        try:
+            patient = Patient.objects.get(user=self.request.user)
+            serializer.save(patient=patient)
+        except Patient.DoesNotExist:
+            patient = Patient.objects.create(
+                first_name=self.request.user.first_name or self.request.user.username,
+                last_name=self.request.user.last_name or '',
+                phone=self.request.user.profile.phone or '',
+                email=self.request.user.email,
+                user=self.request.user,
+                is_active=True
+            )
+            serializer.save(patient=patient)
+
+
+# ==================== ADMIN/STAFF ENDPOINTS ====================
+
+class AllAppointmentsView(generics.ListAPIView):
+    serializer_class = AppointmentSerializer
+    permission_classes = [AllowAny]
+
+    def get_queryset(self):
+        return Appointment.objects.all().order_by('-appointment_date')
+
+
+class AllPatientsView(generics.ListAPIView):
+    serializer_class = PatientSerializer
+    permission_classes = [AllowAny]
+
+    def get_queryset(self):
+        return Patient.objects.filter(is_active=True)
+
+
+class DashboardStatsView(APIView):
+    permission_classes = [AllowAny]
+
+    def get(self, request):
+        from datetime import date
+        from django.db.models import Sum, Q
+        from patients.models import Patient
+        from appointments.models import Appointment, Service, Doctor
+        from billing.models import Invoice
+
+        today = date.today()
+        
+        total_patients = Patient.objects.filter(is_active=True).count()
+        total_appointments_today = Appointment.objects.filter(
+            appointment_date=today
+        ).count()
+        total_services = Service.objects.filter(is_active=True).count()
+        total_doctors = Doctor.objects.filter(is_active=True).count()
+        
+        revenue_today = Invoice.objects.filter(
+            status='paid',
+            payment_date=today
+        ).aggregate(Sum('total_amount'))['total_amount__sum'] or 0
+        
+        return Response({
+            'total_patients': total_patients,
+            'total_appointments_today': total_appointments_today,
+            'total_services': total_services,
+            'total_doctors': total_doctors,
+            'revenue_today': revenue_today,
+        })
+
+
+# ==================== PUBLIC STATS ====================
+
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def public_stats(request):
+    from datetime import date
+    from django.db.models import Sum, Q
+    from patients.models import Patient
+    from appointments.models import Appointment, Service, Doctor
+    from billing.models import Invoice
+    
+    today = date.today()
+    
+    return Response({
+        'total_patients': Patient.objects.filter(is_active=True).count(),
+        'total_appointments_today': Appointment.objects.filter(appointment_date=today).count(),
+        'total_services': Service.objects.filter(is_active=True).count(),
+        'total_doctors': Doctor.objects.filter(is_active=True).count(),
+        'revenue_today': Invoice.objects.filter(
+            status='paid',
+            payment_date=today
+        ).aggregate(Sum('total_amount'))['total_amount__sum'] or 0,
+        'message': 'Public stats - working!'
+    })
+
+# ==================== DIRECT STATS - NO PERMISSIONS ====================
+def simple_stats_direct(request):
+    from django.http import JsonResponse
+    from django.db.models import Sum, Q
+    from datetime import date
+    from patients.models import Patient
+    from appointments.models import Appointment, Service, Doctor
+    from billing.models import Invoice
+    
+    today = date.today()
+    
+    data = {
+        'total_patients': Patient.objects.filter(is_active=True).count(),
+        'total_appointments_today': Appointment.objects.filter(appointment_date=today).count(),
+        'total_services': Service.objects.filter(is_active=True).count(),
+        'total_doctors': Doctor.objects.filter(is_active=True).count(),
+        'revenue_today': Invoice.objects.filter(
+            status='paid',
+            payment_date=today
+        ).aggregate(Sum('total_amount'))['total_amount__sum'] or 0,
+        'message': 'Stats working!'
+    }
+    return JsonResponse(data)
+
+# ==================== INVOICE LIST VIEW ====================
+class InvoiceListView(generics.ListAPIView):
+    serializer_class = InvoiceSerializer
+    permission_classes = [AllowAny]
+
+    def get_queryset(self):
+        return Invoice.objects.all().order_by('-issue_date')
+
+# ==================== DOCTOR LIST VIEW ====================
+class DoctorListView(generics.ListAPIView):
+    serializer_class = DoctorSerializer
+    permission_classes = [AllowAny]
+    
+    def get_queryset(self):
+        from appointments.models import Doctor
+        return Doctor.objects.filter(is_active=True)
+
+# ==================== INVENTORY LIST VIEW ====================
+class InventoryListView(generics.ListAPIView):
+    serializer_class = InventoryItemSerializer
+    permission_classes = [AllowAny]
+    
+    def get_queryset(self):
+        from inventory.models import InventoryItem
+        return InventoryItem.objects.filter(is_active=True)
+
+# ==================== SETTINGS VIEW ====================
+class SettingsView(generics.RetrieveUpdateAPIView):
+    serializer_class = CompanySettingsSerializer
+    permission_classes = [AllowAny]
+    
+    def get_object(self):
+        from core.models import CompanySettings
+        return CompanySettings.get_settings()
+
+# ==================== AGING REPORT VIEW ====================
+class AgingReportView(APIView):
+    permission_classes = [AllowAny]
+    
+    def get(self, request):
+        from datetime import date, timedelta
+        from django.db.models import Sum, Q, Q
+        from billing.models import Invoice
+        
+        end_date = date.today()
+        start_date = end_date - timedelta(days=365)
+        
+        invoices = Invoice.objects.filter(
+            Q(status='partially_paid') | Q(status='overdue') | Q(status='sent') | Q(status='draft')
+        )
+        
+        aging_data = {
+            'zero_thirty': 0,
+            'thirty_sixty': 0,
+            'sixty_ninety': 0,
+            'over_90': 0,
+            'zero_thirty_count': 0,
+            'thirty_sixty_count': 0,
+            'sixty_ninety_count': 0,
+            'over_90_count': 0,
+            'invoices': [],
+            'total_outstanding': 0,
+            'total_amount': 0,
+            'total_paid': 0,
+            'invoices_count': 0,
+        }
+        
+        for invoice in invoices:
+            if invoice.issue_date:
+                age_days = (end_date - invoice.issue_date).days
+                balance = invoice.balance_due or 0
+                
+                if balance > 0:
+                    invoice.age_days = age_days
+                    invoice.patient_name = invoice.patient_name
+                    invoice.patient_phone = invoice.patient_phone
+                    
+                    aging_data['invoices'].append({
+                        'id': invoice.id,
+                        'invoice_number': invoice.invoice_number,
+                        'patient_name': invoice.patient_name,
+                        'patient_phone': invoice.patient_phone,
+                        'issue_date': invoice.issue_date,
+                        'due_date': invoice.due_date,
+                        'age_days': age_days,
+                        'total_amount': float(invoice.total_amount),
+                        'amount_paid': float(invoice.amount_paid),
+                        'balance_due': float(invoice.balance_due),
+                        'status': invoice.status,
+                    })
+                    aging_data['total_amount'] += float(invoice.total_amount)
+                    aging_data['total_paid'] += float(invoice.amount_paid)
+                    aging_data['total_outstanding'] += balance
+                    aging_data['invoices_count'] += 1
+                    
+                    if age_days <= 30:
+                        aging_data['zero_thirty'] += balance
+                        aging_data['zero_thirty_count'] += 1
+                    elif age_days <= 60:
+                        aging_data['thirty_sixty'] += balance
+                        aging_data['thirty_sixty_count'] += 1
+                    elif age_days <= 90:
+                        aging_data['sixty_ninety'] += balance
+                        aging_data['sixty_ninety_count'] += 1
+                    else:
+                        aging_data['over_90'] += balance
+                        aging_data['over_90_count'] += 1
+        
+        return Response({'aging_data': aging_data})
+
+# ==================== PATIENT VISITS VIEW ====================
+class PatientVisitsView(APIView):
+    permission_classes = [AllowAny]
+    
+    def get(self, request):
+        from datetime import date, timedelta
+        from django.db.models import Sum, Q, Count
+        from patients.models import Patient
+        from appointments.models import Appointment
+        
+        end_date = date.today()
+        start_date = end_date - timedelta(days=30)
+        
+        appointments = Appointment.objects.filter(
+            appointment_date__gte=start_date,
+            appointment_date__lte=end_date,
+            status='completed'
+        )
+        
+        patient_ids = appointments.values_list('patient_id', flat=True).distinct()
+        patients = Patient.objects.filter(id__in=patient_ids, is_active=True)
+        
+        patient_data = []
+        total_patients = patients.count()
+        total_visits = appointments.count()
+        new_patients = 0
+        returning_patients = 0
+        
+        for patient in patients:
+            patient_appointments = appointments.filter(patient=patient)
+            visit_count = patient_appointments.count()
+            
+            first_visit = patient_appointments.order_by('appointment_date').first()
+            last_visit = patient_appointments.order_by('-appointment_date').first()
+            
+            previous_visits = Appointment.objects.filter(
+                patient=patient,
+                appointment_date__lt=start_date
+            ).exists()
+            
+            if not previous_visits and visit_count > 0:
+                new_patients += 1
+            else:
+                returning_patients += 1
+            
+            patient_data.append({
+                'id': patient.id,
+                'full_name': patient.full_name,
+                'phone': patient.phone,
+                'gender': patient.gender,
+                'visit_count': visit_count,
+                'total_spent': 0,
+                'avg_per_visit': 0,
+                'first_visit': first_visit.appointment_date if first_visit else None,
+                'last_visit': last_visit.appointment_date if last_visit else None,
+            })
+        
+        patient_data.sort(key=lambda x: x['visit_count'], reverse=True)
+        
+        return Response({
+            'patients': patient_data,
+            'total_patients': total_patients,
+            'total_visits': total_visits,
+            'new_patients': new_patients,
+            'returning_patients': returning_patients,
+        })
+
+# ==================== DOCTOR PERFORMANCE VIEW ====================
+class DoctorPerformanceView(APIView):
+    permission_classes = [AllowAny]
+    
+    def get(self, request):
+        from datetime import date, timedelta
+        from django.db.models import Sum, Q, Count
+        from appointments.models import Doctor, Appointment
+        
+        end_date = date.today()
+        start_date = end_date - timedelta(days=30)
+        
+        doctors = Doctor.objects.filter(is_active=True)
+        
+        doctor_data = []
+        total_revenue = 0
+        total_appointments = 0
+        total_patients = 0
+        
+        for doctor in doctors:
+            appointments = Appointment.objects.filter(
+                doctor=doctor,
+                appointment_date__gte=start_date,
+                appointment_date__lte=end_date,
+                status='completed'
+            )
+            
+            appointment_count = appointments.count()
+            patient_count = appointments.values('patient').distinct().count()
+            
+            doctor_data.append({
+                'id': doctor.id,
+                'name': doctor.name,
+                'specialization': doctor.specialization,
+                'appointment_count': appointment_count,
+                'patient_count': patient_count,
+                'total_revenue': 0,
+                'avg_per_patient': 0,
+            })
+            
+            total_appointments += appointment_count
+            total_patients += patient_count
+        
+        doctor_data.sort(key=lambda x: x['total_revenue'], reverse=True)
+        
+        return Response({
+            'doctors': doctor_data,
+            'total_revenue': total_revenue,
+            'total_appointments': total_appointments,
+            'total_patients': total_patients,
+        })
+
+# ==================== MISSING VIEWS ====================
+
+class ServiceListView(generics.ListAPIView):
+    queryset = Service.objects.filter(is_active=True)
+    serializer_class = ServiceSerializer
+    permission_classes = [AllowAny]
+
+class DoctorListView(generics.ListAPIView):
+    queryset = Doctor.objects.filter(is_active=True)
+    serializer_class = DoctorSerializer
+    permission_classes = [AllowAny]
+
+class PatientListView(generics.ListAPIView):
+    queryset = Patient.objects.filter(is_active=True)
+    serializer_class = PatientSerializer
+    permission_classes = [AllowAny]
+
+class AppointmentListView(generics.ListAPIView):
+    queryset = Appointment.objects.all().order_by('-appointment_date')
+    serializer_class = AppointmentSerializer
+    permission_classes = [AllowAny]
+
+class InvoiceListView(generics.ListAPIView):
+    queryset = Invoice.objects.all().order_by('-issue_date')
+    serializer_class = InvoiceSerializer
+    permission_classes = [AllowAny]
+
+class InventoryListView(generics.ListAPIView):
+    serializer_class = InventoryItemSerializer
+    permission_classes = [AllowAny]
+    
+    def get_queryset(self):
+        from inventory.models import InventoryItem
+        return InventoryItem.objects.filter(is_active=True)
+
+class SettingsView(APIView):
+    permission_classes = [AllowAny]
+    
+    def get(self, request):
+        from core.models import CompanySettings
+        settings = CompanySettings.get_settings()
+        serializer = CompanySettingsSerializer(settings)
+        return Response(serializer.data)
+    
+    def post(self, request):
+        from core.models import CompanySettings
+        settings = CompanySettings.get_settings()
+        serializer = CompanySettingsSerializer(settings, data=request.data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data)
+        return Response(serializer.errors, status=400)
+
+class AgingReportView(APIView):
+    permission_classes = [AllowAny]
+    
+    def get(self, request):
+        from datetime import date, timedelta
+        from django.db.models import Sum, Q, Q
+        from billing.models import Invoice
+        
+        end_date = date.today()
+        start_date = end_date - timedelta(days=365)
+        
+        invoices = Invoice.objects.filter(
+            Q(status='partially_paid') | Q(status='overdue') | Q(status='sent') | Q(status='draft')
+        )
+        
+        aging_data = {
+            'zero_thirty': 0,
+            'thirty_sixty': 0,
+            'sixty_ninety': 0,
+            'over_90': 0,
+            'zero_thirty_count': 0,
+            'thirty_sixty_count': 0,
+            'sixty_ninety_count': 0,
+            'over_90_count': 0,
+            'invoices': [],
+            'total_outstanding': 0,
+            'total_amount': 0,
+            'total_paid': 0,
+            'invoices_count': 0,
+        }
+        
+        for invoice in invoices:
+            if invoice.issue_date:
+                age_days = (end_date - invoice.issue_date).days
+                balance = invoice.balance_due or 0
+                
+                if balance > 0:
+                    aging_data['invoices'].append({
+                        'id': invoice.id,
+                        'invoice_number': invoice.invoice_number,
+                        'patient_name': invoice.patient_name,
+                        'patient_phone': invoice.patient_phone,
+                        'issue_date': invoice.issue_date,
+                        'due_date': invoice.due_date,
+                        'age_days': age_days,
+                        'total_amount': float(invoice.total_amount),
+                        'amount_paid': float(invoice.amount_paid),
+                        'balance_due': float(invoice.balance_due),
+                        'status': invoice.status,
+                    })
+                    aging_data['total_amount'] += float(invoice.total_amount)
+                    aging_data['total_paid'] += float(invoice.amount_paid)
+                    aging_data['total_outstanding'] += balance
+                    aging_data['invoices_count'] += 1
+                    
+                    if age_days <= 30:
+                        aging_data['zero_thirty'] += balance
+                        aging_data['zero_thirty_count'] += 1
+                    elif age_days <= 60:
+                        aging_data['thirty_sixty'] += balance
+                        aging_data['thirty_sixty_count'] += 1
+                    elif age_days <= 90:
+                        aging_data['sixty_ninety'] += balance
+                        aging_data['sixty_ninety_count'] += 1
+                    else:
+                        aging_data['over_90'] += balance
+                        aging_data['over_90_count'] += 1
+        
+        return Response({'aging_data': aging_data})
+
+class PatientVisitsView(APIView):
+    permission_classes = [AllowAny]
+    
+    def get(self, request):
+        from datetime import date, timedelta
+        from django.db.models import Sum, Q, Count
+        from patients.models import Patient
+        from appointments.models import Appointment
+        
+        end_date = date.today()
+        start_date = end_date - timedelta(days=30)
+        
+        appointments = Appointment.objects.filter(
+            appointment_date__gte=start_date,
+            appointment_date__lte=end_date,
+            status='completed'
+        )
+        
+        patient_ids = appointments.values_list('patient_id', flat=True).distinct()
+        patients = Patient.objects.filter(id__in=patient_ids, is_active=True)
+        
+        patient_data = []
+        total_patients = patients.count()
+        total_visits = appointments.count()
+        new_patients = 0
+        returning_patients = 0
+        
+        for patient in patients:
+            patient_appointments = appointments.filter(patient=patient)
+            visit_count = patient_appointments.count()
+            
+            first_visit = patient_appointments.order_by('appointment_date').first()
+            last_visit = patient_appointments.order_by('-appointment_date').first()
+            
+            previous_visits = Appointment.objects.filter(
+                patient=patient,
+                appointment_date__lt=start_date
+            ).exists()
+            
+            if not previous_visits and visit_count > 0:
+                new_patients += 1
+            else:
+                returning_patients += 1
+            
+            patient_data.append({
+                'id': patient.id,
+                'full_name': patient.full_name,
+                'phone': patient.phone,
+                'gender': patient.gender,
+                'visit_count': visit_count,
+                'total_spent': 0,
+                'avg_per_visit': 0,
+                'first_visit': first_visit.appointment_date if first_visit else None,
+                'last_visit': last_visit.appointment_date if last_visit else None,
+            })
+        
+        patient_data.sort(key=lambda x: x['visit_count'], reverse=True)
+        
+        return Response({
+            'patients': patient_data,
+            'total_patients': total_patients,
+            'total_visits': total_visits,
+            'new_patients': new_patients,
+            'returning_patients': returning_patients,
+        })
+
+class DoctorPerformanceView(APIView):
+    permission_classes = [AllowAny]
+    
+    def get(self, request):
+        from datetime import date, timedelta
+        from django.db.models import Sum, Q, Count
+        from appointments.models import Doctor, Appointment
+        
+        end_date = date.today()
+        start_date = end_date - timedelta(days=30)
+        
+        doctors = Doctor.objects.filter(is_active=True)
+        
+        doctor_data = []
+        total_revenue = 0
+        total_appointments = 0
+        total_patients = 0
+        
+        for doctor in doctors:
+            appointments = Appointment.objects.filter(
+                doctor=doctor,
+                appointment_date__gte=start_date,
+                appointment_date__lte=end_date,
+                status='completed'
+            )
+            
+            appointment_count = appointments.count()
+            patient_count = appointments.values('patient').distinct().count()
+            
+            doctor_data.append({
+                'id': doctor.id,
+                'name': doctor.name,
+                'specialization': doctor.specialization,
+                'appointment_count': appointment_count,
+                'patient_count': patient_count,
+                'total_revenue': 0,
+                'avg_per_patient': 0,
+            })
+            
+            total_appointments += appointment_count
+            total_patients += patient_count
+        
+        doctor_data.sort(key=lambda x: x['total_revenue'], reverse=True)
+        
+        return Response({
+            'doctors': doctor_data,
+            'total_revenue': total_revenue,
+            'total_appointments': total_appointments,
+            'total_patients': total_patients,
+        })
+
+
+
+
+

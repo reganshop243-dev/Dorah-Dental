@@ -11,6 +11,8 @@
     <!-- Google Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     
+    {% load static %}
+    
     <style>
         * {
             margin: 0;
@@ -23,10 +25,13 @@
             background: #f0f2f5;
         }
         
-        /* Sidebar */
+        /* ======================= */
+        /* SIDEBAR - UPDATED COLORS */
+        /* ======================= */
         .sidebar {
             min-height: 100vh;
-            background: linear-gradient(180deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+            /* UPDATED: Dark Navy gradient to match logo */
+            background: linear-gradient(180deg, #13163b 0%, #1a1f52 100%);
             padding-top: 20px;
             padding-bottom: 20px;
             position: fixed;
@@ -45,43 +50,46 @@
         .sidebar::-webkit-scrollbar {
             width: 5px;
         }
-        
         .sidebar::-webkit-scrollbar-track {
             background: rgba(255, 255, 255, 0.05);
         }
-        
         .sidebar::-webkit-scrollbar-thumb {
             background: rgba(255, 255, 255, 0.2);
             border-radius: 10px;
         }
-        
         .sidebar::-webkit-scrollbar-thumb:hover {
             background: rgba(255, 255, 255, 0.3);
         }
-        
         .sidebar {
             scrollbar-width: thin;
             scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
         }
         
+        /* BRAND SECTION WITH YOUR LOGO */
         .sidebar .brand {
             text-align: center;
-            padding: 15px 20px 25px;
+            padding: 10px 20px 25px;
             border-bottom: 1px solid rgba(255, 255, 255, 0.1);
             margin-bottom: 15px;
             flex-shrink: 0;
         }
         
-        .sidebar .brand .logo-icon {
+        .sidebar .brand .logo-wrapper {
             display: inline-block;
-            width: 50px;
-            height: 50px;
-            background: linear-gradient(135deg, #667eea, #764ba2);
+            width: 70px;
+            height: 70px;
+            background: #ffffff;
             border-radius: 50%;
-            line-height: 50px;
-            font-size: 24px;
-            color: white;
+            padding: 5px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
             margin-bottom: 10px;
+            border: 2px solid #5faad5;
+        }
+        .sidebar .brand .logo-wrapper img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            border-radius: 50%;
         }
         
         .sidebar .brand h3 {
@@ -90,13 +98,11 @@
             font-size: 20px;
             margin: 0;
         }
-        
         .sidebar .brand h3 span {
-            color: #a29bfe;
+            color: #5faad5; /* Light blue from logo */
         }
-        
         .sidebar .brand .tagline {
-            color: rgba(255, 255, 255, 0.5);
+            color: rgba(255, 255, 255, 0.6);
             font-size: 11px;
             letter-spacing: 2px;
             text-transform: uppercase;
@@ -125,9 +131,10 @@
         }
         
         .sidebar .nav-link.active {
-            background: linear-gradient(135deg, #667eea, #764ba2);
-            color: #fff;
-            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+            background: #5faad5; /* Light blue background */
+            color: #13163b; /* Dark text for contrast */
+            box-shadow: 0 4px 15px rgba(95, 170, 213, 0.4);
+            font-weight: 600;
         }
         
         .sidebar .nav-link i {
@@ -150,14 +157,15 @@
             padding: 10px 20px 5px;
         }
         
-        /* Main Content */
+        /* ======================= */
+        /* MAIN CONTENT */
+        /* ======================= */
         .main-content {
             margin-left: 250px;
             padding: 20px 30px;
             min-height: 100vh;
         }
         
-        /* Top Navbar */
         .top-navbar {
             background: white;
             border-radius: 16px;
@@ -173,11 +181,11 @@
             font-family: 'Playfair Display', serif;
             font-size: 22px;
             font-weight: 700;
-            color: #2d3436;
+            color: #13163b;
         }
         
         .top-navbar .page-title i {
-            color: #667eea;
+            color: #5faad5;
             margin-right: 10px;
         }
         
@@ -191,7 +199,6 @@
             color: #636e72;
             font-size: 13px;
         }
-        
         .top-navbar .user-info .clock i {
             margin-right: 5px;
         }
@@ -205,13 +212,11 @@
             color: #2d3436;
             transition: all 0.3s;
         }
-        
         .top-navbar .user-dropdown .btn:hover {
             background: #e9ecef;
         }
-        
         .top-navbar .user-dropdown .btn .role-badge {
-            background: linear-gradient(135deg, #667eea, #764ba2);
+            background: #13163b;
             color: white;
             padding: 2px 10px;
             border-radius: 20px;
@@ -219,18 +224,18 @@
             margin-left: 5px;
         }
         
-        /* Cards */
+        /* ======================= */
+        /* CARDS & STATS */
+        /* ======================= */
         .card {
             border-radius: 16px;
             box-shadow: 0 2px 15px rgba(0, 0, 0, 0.05);
             border: none;
             transition: all 0.3s;
         }
-        
         .card:hover {
             box-shadow: 0 5px 25px rgba(0, 0, 0, 0.08);
         }
-        
         .card-header {
             background: white;
             border-bottom: 2px solid #f0f2f5;
@@ -238,12 +243,10 @@
             padding: 18px 25px;
             border-radius: 16px 16px 0 0 !important;
         }
-        
         .card-body {
             padding: 25px;
         }
         
-        /* Stat Cards */
         .stat-card {
             background: white;
             border-radius: 16px;
@@ -253,110 +256,101 @@
             height: 100%;
             border: 1px solid rgba(0, 0, 0, 0.02);
         }
-        
         .stat-card:hover {
             transform: translateY(-5px);
             box-shadow: 0 8px 30px rgba(0, 0, 0, 0.1);
         }
-        
         .stat-card .stat-icon {
             font-size: 2.5rem;
             opacity: 0.8;
             margin-bottom: 10px;
         }
-        
         .stat-card .stat-number {
             font-size: 2.2rem;
             font-weight: 700;
             margin: 5px 0;
         }
-        
         .stat-card .stat-label {
             color: #636e72;
             font-size: 0.9rem;
             font-weight: 400;
         }
         
-        /* Toast Messages */
+        /* ======================= */
+        /* TOAST MESSAGES */
+        /* ======================= */
         .toast-container {
             position: fixed;
             top: 20px;
             right: 20px;
             z-index: 1050;
         }
-        
         .toast {
             border: none;
             border-radius: 12px;
             box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
         }
         
-        /* Buttons */
+        /* ======================= */
+        /* BUTTONS */
+        /* ======================= */
         .btn-primary {
-            background: linear-gradient(135deg, #667eea, #764ba2);
+            background: #13163b;
             border: none;
             padding: 10px 25px;
             border-radius: 10px;
             font-weight: 500;
             transition: all 0.3s;
         }
-        
         .btn-primary:hover {
             transform: translateY(-2px);
-            box-shadow: 0 4px 20px rgba(102, 126, 234, 0.4);
+            box-shadow: 0 4px 20px rgba(19, 22, 59, 0.4);
+            background: #1a1f52;
         }
-        
         .btn-outline-primary {
-            border-color: #667eea;
-            color: #667eea;
+            border-color: #5faad5;
+            color: #5faad5;
         }
-        
         .btn-outline-primary:hover {
-            background: #667eea;
-            color: white;
+            background: #5faad5;
+            color: #13163b;
         }
         
-        /* Responsive */
+        /* ======================= */
+        /* RESPONSIVE */
+        /* ======================= */
         @media (max-width: 768px) {
             .sidebar {
                 width: 70px;
                 padding-top: 10px;
             }
-            
             .sidebar .brand h3,
             .sidebar .brand .tagline,
             .sidebar .nav-link span,
             .sidebar .nav-label {
                 display: none;
             }
-            
-            .sidebar .brand .logo-icon {
-                width: 35px;
-                height: 35px;
-                line-height: 35px;
-                font-size: 16px;
+            .sidebar .brand .logo-wrapper {
+                width: 45px;
+                height: 45px;
+                padding: 3px;
             }
-            
             .sidebar .nav-link {
                 padding: 10px;
                 margin: 2px 8px;
                 text-align: center;
             }
-            
             .sidebar .nav-link i {
                 margin-right: 0;
                 font-size: 18px;
             }
-            
             .main-content {
                 margin-left: 70px;
                 padding: 15px;
             }
-            
             .top-navbar .page-title {
                 font-size: 18px;
             }
-            
             .stat-card .stat-number {
                 font-size: 1.5rem;
             }
@@ -368,7 +362,6 @@
                 gap: 10px;
                 text-align: center;
             }
-            
             .main-content {
                 padding: 10px;
             }
@@ -378,18 +371,21 @@
 </head>
 <body>
     {% if user.is_authenticated %}
-        <!-- Sidebar -->
+        <!-- ======================= -->
+        <!-- SIDEBAR -->
+        <!-- ======================= -->
         <div class="sidebar">
             <div class="brand">
-                <div class="logo-icon">
-                    <i class="fas fa-gem"></i>
+                <div class="logo-wrapper">
+                    <!-- Your Actual Tooth Logo -->
+                    <img src="{% static 'images/dental_logo.png' %}" alt="Dora's Dental Logo">
                 </div>
                 <h3>Dora's <span>Dental</span></h3>
-                <div class="tagline">Clinic Management</div>
+                <div class="tagline">Your Smile Matters</div>
             </div>
             
             <nav class="nav flex-column">
-                <!-- Dashboard Link - Role Specific -->
+                <!-- Dashboard Link -->
                 <a class="nav-link {% if request.resolver_match.url_name == 'dashboard' or request.resolver_match.url_name == 'admin_dashboard' or request.resolver_match.url_name == 'doctor_dashboard' or request.resolver_match.url_name == 'receptionist_dashboard' or request.resolver_match.url_name == 'accountant_dashboard' %}active{% endif %}" 
                    href="
                    {% if user.profile.role == 'admin' %}
@@ -407,7 +403,6 @@
                     <i class="fas fa-chart-pie"></i> <span>Dashboard</span>
                 </a>
                 
-                <!-- Appointments - All Users -->
                 <a class="nav-link {% if 'appointments' in request.path and 'add' not in request.path %}active{% endif %}" href="{% url 'appointments:list' %}">
                     <i class="fas fa-calendar-check"></i> <span>Appointments</span>
                 </a>
@@ -415,7 +410,6 @@
                     <i class="fas fa-plus-circle"></i> <span>New Appointment</span>
                 </a>
                 
-                <!-- Patients - All Users -->
                 <a class="nav-link {% if 'patients' in request.path %}active{% endif %}" href="{% url 'patients:list' %}">
                     <i class="fas fa-users"></i> <span>Patients</span>
                 </a>
@@ -423,7 +417,6 @@
                     <i class="fas fa-user-plus"></i> <span>Add Patient</span>
                 </a>
                 
-                <!-- Billing & Expenses - Admin & Accountant only -->
                 {% if user.profile.role == 'admin' or user.profile.role == 'accountant' %}
                     <a class="nav-link {% if 'billing' in request.path and 'expense' not in request.path and 'balance' not in request.path %}active{% endif %}" href="{% url 'billing:list' %}">
                         <i class="fas fa-file-invoice-dollar"></i> <span>Invoices</span>
@@ -439,12 +432,10 @@
                     </a>
                 {% endif %}
                 
-                <!-- Doctors - All Users -->
                 <a class="nav-link" href="{% url 'appointments:doctors' %}">
                     <i class="fas fa-user-md"></i> <span>Doctors</span>
                 </a>
                 
-                <!-- Services - All Users -->
                 <a class="nav-link {% if 'services' in request.path and 'add' not in request.path %}active{% endif %}" href="{% url 'appointments:services' %}">
                     <i class="fas fa-notes-medical"></i> <span>Services</span>
                 </a>
@@ -452,12 +443,10 @@
                     <i class="fas fa-plus-circle"></i> <span>Add Service</span>
                 </a>
                 
-                <!-- Calendar - All Users -->
                 <a class="nav-link" href="{% url 'appointments:calendar' %}">
                     <i class="fas fa-calendar-alt"></i> <span>Calendar</span>
                 </a>
                 
-                <!-- Inventory - Admin & Accountant only -->
                 {% if user.profile.role == 'admin' or user.profile.role == 'accountant' %}
                     <a class="nav-link {% if 'inventory' in request.path and 'low-stock' not in request.path %}active{% endif %}" href="{% url 'inventory:list' %}">
                         <i class="fas fa-boxes"></i> <span>Inventory</span>
@@ -467,13 +456,10 @@
                     </a>
                 {% endif %}
                 
-                <!-- ============================================================ -->
-                <!-- REPORTS SECTION - All Users with appropriate permissions -->
-                <!-- ============================================================ -->
+                <!-- Reports -->
                 <div class="nav-divider"></div>
                 <div class="nav-label">Reports</div>
                 
-                <!-- Revenue Reports - Admin & Accountant only -->
                 {% if user.profile.role == 'admin' or user.profile.role == 'accountant' %}
                     <a class="nav-link {% if 'revenue' in request.path %}active{% endif %}" href="{% url 'core:revenue_dashboard' %}">
                         <i class="fas fa-chart-line"></i> <span>Revenue Reports</span>
@@ -483,39 +469,32 @@
                     </a>
                 {% endif %}
                 
-                <!-- Aging Report - Admin & Accountant only -->
                 {% if user.profile.role == 'admin' or user.profile.role == 'accountant' %}
                     <a class="nav-link {% if 'aging' in request.path %}active{% endif %}" href="{% url 'reports:aging' %}">
                         <i class="fas fa-clock text-warning"></i> <span>Aging Report</span>
                     </a>
                 {% endif %}
                 
-                <!-- Patient Visits - Admin, Receptionist, Accountant -->
                 {% if user.profile.role == 'admin' or user.profile.role == 'receptionist' or user.profile.role == 'accountant' %}
                     <a class="nav-link {% if 'patient-visits' in request.path %}active{% endif %}" href="{% url 'reports:patient_visits' %}">
                         <i class="fas fa-users"></i> <span>Patient Visits</span>
                     </a>
                 {% endif %}
                 
-                <!-- Doctor Performance - Admin & Accountant only -->
                 {% if user.profile.role == 'admin' or user.profile.role == 'accountant' %}
                     <a class="nav-link {% if 'doctor-performance' in request.path %}active{% endif %}" href="{% url 'reports:doctor_performance' %}">
                         <i class="fas fa-user-md"></i> <span>Doctor Performance</span>
                     </a>
                 {% endif %}
                 
-                <!-- ============================================================ -->
-                <!-- PATIENT PORTAL - All Users -->
-                <!-- ============================================================ -->
+                <!-- Patient Portal -->
                 <div class="nav-divider"></div>
                 <div class="nav-label">Patient Portal</div>
                 <a class="nav-link" href="{% url 'patient_portal:login' %}" target="_blank">
                     <i class="fas fa-user-circle"></i> <span>Patient Portal</span>
                 </a>
                 
-                <!-- ============================================================ -->
-                <!-- ADMIN SECTION - Admin only -->
-                <!-- ============================================================ -->
+                <!-- Admin -->
                 {% if user.profile.role == 'admin' %}
                     <div class="nav-divider"></div>
                     <div class="nav-label">Administration</div>
@@ -538,7 +517,9 @@
             </nav>
         </div>
         
-        <!-- Main Content -->
+        <!-- ======================= -->
+        <!-- MAIN CONTENT -->
+        <!-- ======================= -->
         <div class="main-content">
             <!-- Top Navbar -->
             <div class="top-navbar">
