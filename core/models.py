@@ -29,10 +29,12 @@ class UserProfile(models.Model):
     
     # OTP fields
     phone_verified = models.BooleanField(default=False)
-    otp_code = models.CharField(max_length=6, blank=True, null=True)
+    otp_code = models.CharField(max_length=128, blank=True, default='')
     otp_created_at = models.DateTimeField(blank=True, null=True)
     otp_attempts = models.IntegerField(default=0)  # Fixed: added default=0
     last_otp_sent = models.DateTimeField(blank=True, null=True)
+    # Successful 2FA verification timestamp. A user remains OTP-verified for 24 hours.
+    otp_verified_at = models.DateTimeField(blank=True, null=True)
     
     def __str__(self):
         return f"{self.user.username} - {self.get_role_display()}"
@@ -46,18 +48,20 @@ class UserProfile(models.Model):
         return dict(self.ROLE_CHOICES).get(self.role, self.role)
     
     def can_request_otp(self):
-        """Check if user can request a new OTP (once per day)"""
+        """Check if user can request a new OTP (once per minute)"""
         if not self.last_otp_sent:
             return True
-        # Allow OTP request once per day
+        # Allow OTP request once per minute
         time_diff = timezone.now() - self.last_otp_sent
-        return time_diff.total_seconds() >= 86400  # 24 hours
+        return time_diff.total_seconds() >= 60  # 60-second resend cooldown
     
     def is_otp_valid(self, code):
         """Check if OTP code is valid and not expired (5 minutes expiry)"""
         if not self.otp_code or not self.otp_created_at:
             return False
-        if self.otp_code != code:
+        import hashlib, hmac
+        supplied_hash = hashlib.sha256(code.encode()).hexdigest()
+        if not hmac.compare_digest(self.otp_code, supplied_hash):
             return False
         # OTP expires after 5 minutes
         time_diff = timezone.now() - self.otp_created_at

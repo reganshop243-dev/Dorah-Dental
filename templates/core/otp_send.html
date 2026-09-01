@@ -50,9 +50,9 @@
 
 <div class="text-center mt-2">
     <small>
-        <a href="{% url 'core:logout' %}" class="text-danger">
+        <form method="post" action="{% url 'core:logout' %}" style="display:inline">{% csrf_token %}<button type="submit" class="btn btn-link text-danger p-0 text-danger">
             <i class="fas fa-sign-out-alt"></i> Logout
-        </a>
+        </button></form>
     </small>
 </div>
 {% endblock %}

@@ -1,4 +1,4 @@
-﻿from django.http import JsonResponse
+from django.http import JsonResponse
 from django.db.models import Sum
 from datetime import date
 
@@ -24,3 +24,14 @@ def stats_view(request):
         return JsonResponse(data)
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=500)
+
+
+def offline_view(request):
+    from django.shortcuts import render
+    return render(request, 'offline.html')
+
+def service_worker_view(request):
+    from django.http import HttpResponse
+    from pathlib import Path
+    path = Path(__file__).resolve().parent.parent / 'static' / 'pwa' / 'sw.js'
+    return HttpResponse(path.read_text(encoding='utf-8'), content_type='application/javascript')

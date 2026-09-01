@@ -12,6 +12,14 @@
     <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     
     {% load static %}
+
+    <link rel="manifest" href="{% static 'pwa/manifest.webmanifest' %}">
+    <meta name="theme-color" content="#13163b">
+    <link rel="apple-touch-icon" sizes="180x180" href="{% static 'pwa/apple-touch-icon.png' %}">
+    <link rel="icon" type="image/png" sizes="64x64" href="{% static 'pwa/favicon-64.png' %}">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
     
     <style>
         * {
@@ -368,6 +376,74 @@
         }
     </style>
     {% block extra_css %}{% endblock %}
+
+<style>
+/* Modern responsive layer */
+:root{--brand:#13163b;--brand-2:#5faad5;--surface:#fff;--page:#f5f8fb;--border:#e6ebf0}
+body{background:var(--page);color:#243447}
+.card,.stat-card{border:1px solid var(--border);border-radius:16px;box-shadow:0 6px 24px rgba(19,22,59,.06)}
+.btn{min-height:40px}
+.form-control,.form-select{min-height:44px;border-radius:10px}
+.table-responsive{border-radius:12px}
+.mobile-menu-toggle{display:none}
+@media(max-width:991.98px){
+ .sidebar{transform:translateX(-100%);width:280px;box-shadow:10px 0 30px rgba(0,0,0,.2)}
+ .sidebar.mobile-open{transform:translateX(0)}
+ .main-content{margin-left:0;padding:14px}
+ .mobile-menu-toggle{display:inline-flex;align-items:center;justify-content:center;width:42px;height:42px;border:0;border-radius:10px;background:#13163b;color:#fff;margin-right:10px}
+ .top-navbar{padding:10px 12px;margin-bottom:16px;position:sticky;top:8px;z-index:900}
+ .top-navbar .clock{display:none}
+ .top-navbar .page-title{font-size:18px}
+ .user-info{gap:6px!important}
+ .user-dropdown .role-badge{display:none}
+ .sidebar-backdrop{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:999}
+ .sidebar-backdrop.show{display:block}
+ .table{font-size:13px}
+ .btn-sm{min-height:36px}
+}
+@media(max-width:575.98px){
+ .main-content{padding:10px}
+ .top-navbar{border-radius:12px}
+ .card-body{padding:14px}
+ .stat-card{padding:16px!important}
+ h1{font-size:1.45rem} h2{font-size:1.25rem} h3{font-size:1.1rem}
+ .table-responsive{overflow-x:auto;-webkit-overflow-scrolling:touch}
+}
+
+<style>
+/* Phone-first usability improvements */
+html,body{max-width:100%;overflow-x:hidden;-webkit-text-size-adjust:100%}
+img,video,canvas,svg{max-width:100%;height:auto}
+input,select,textarea,button{font-size:16px}
+.table-responsive{width:100%;overflow-x:auto}
+@media(max-width:767.98px){
+  .top-navbar{position:relative;top:auto;flex-wrap:wrap;align-items:center}
+  .top-navbar .page-title{flex:1;min-width:0;text-align:left;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .top-navbar .user-info{width:auto;max-width:55%;overflow:hidden}
+  .top-navbar .user-dropdown .btn{padding:8px 10px}
+  .card-header{padding:14px 16px}
+  .card-body{padding:14px}
+  .row>[class*=col-]{margin-bottom:12px}
+  .btn{width:auto;max-width:100%}
+  .btn-group{flex-wrap:wrap;gap:6px}
+  .btn-group>.btn{border-radius:8px!important}
+  .modal-dialog{margin:.5rem}
+  .modal-body{padding:14px}
+  .form-label{margin-bottom:5px;font-weight:600}
+  .stat-card .stat-number{font-size:1.35rem}
+  .sidebar{width:min(86vw,300px)}
+}
+@media(max-width:420px){
+  .main-content{padding:8px}
+  .top-navbar{padding:9px;border-radius:10px}
+  .top-navbar .page-title{font-size:16px}
+  .top-navbar .user-info{max-width:48%}
+  .card,.stat-card{border-radius:12px}
+  .card-body{padding:12px}
+  .table{font-size:12px}
+}
+</style>
+</style>
 </head>
 <body>
     {% if user.is_authenticated %}
@@ -520,10 +596,11 @@
         <!-- ======================= -->
         <!-- MAIN CONTENT -->
         <!-- ======================= -->
+        <div class="sidebar-backdrop" id="sidebarBackdrop"></div>
         <div class="main-content">
             <!-- Top Navbar -->
             <div class="top-navbar">
-                <div class="page-title">
+                <div class="page-title"><button class="mobile-menu-toggle" id="mobileMenuToggle" type="button" aria-label="Open navigation"><i class="fas fa-bars"></i></button>
                     <i class="fas fa-gem"></i> {% block page_title %}Dashboard{% endblock %}
                 </div>
                 <div class="user-info">
@@ -554,9 +631,7 @@
                                 </a>
                             </li>
                             <li><hr class="dropdown-divider"></li>
-                            <li><a class="dropdown-item text-danger" href="{% url 'core:logout' %}">
-                                <i class="fas fa-sign-out-alt"></i> Logout
-                            </a></li>
+                            <li><form method="post" action="{% url 'core:logout' %}" class="m-0">{% csrf_token %}<button class="dropdown-item text-danger" type="submit"><i class="fas fa-sign-out-alt"></i> Logout</button></form></li>
                         </ul>
                     </div>
                 </div>
@@ -601,5 +676,16 @@
     <!-- jQuery -->
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     {% block extra_js %}{% endblock %}
+
+<script>
+(function(){
+ const sidebar=document.querySelector('.sidebar'), toggle=document.getElementById('mobileMenuToggle'), backdrop=document.getElementById('sidebarBackdrop');
+ function close(){sidebar&&sidebar.classList.remove('mobile-open');backdrop&&backdrop.classList.remove('show');}
+ toggle&&toggle.addEventListener('click',()=>{sidebar.classList.toggle('mobile-open');backdrop.classList.toggle('show');});
+ backdrop&&backdrop.addEventListener('click',close);
+ document.querySelectorAll('.sidebar .nav-link').forEach(a=>a.addEventListener('click',close));
+ if('serviceWorker' in navigator){window.addEventListener('load',()=>navigator.serviceWorker.register('/sw.js',{scope:'/'}).then(reg=>reg.update()).catch(()=>{}));}
+})();
+</script>
 </body>
 </html>

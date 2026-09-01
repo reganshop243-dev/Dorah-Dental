@@ -1,5 +1,4 @@
-﻿from django.urls import path, include
-from django.views.decorators.csrf import csrf_exempt
+from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from . import views
 from .views import simple_stats_direct
@@ -21,7 +20,7 @@ urlpatterns = [
     path('booking-request/', views.PublicBookingRequestView.as_view(), name='public_booking_request'),
     
     # ==================== AUTHENTICATION ====================
-    path('login/', csrf_exempt(views.LoginView.as_view()), name='login'),
+    path('login/', views.LoginView.as_view(), name='login'),
     
     # ==================== PATIENT ENDPOINTS ====================
     path('patient/profile/', views.PatientProfileView.as_view(), name='patient_profile'),

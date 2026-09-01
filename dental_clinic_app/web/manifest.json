@@ -1,11 +1,11 @@
 {
-    "name": "dental_clinic_app",
-    "short_name": "dental_clinic_app",
+    "name": "Dora's Dental Gem",
+    "short_name": "Dora Dental",
     "start_url": ".",
     "display": "standalone",
-    "background_color": "#0175C2",
-    "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
+    "background_color": "#f5f8fb",
+    "theme_color": "#13163b",
+    "description": "Dora's Dental Gem Clinic Management System",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [

@@ -1,4 +1,4 @@
-﻿from rest_framework import viewsets, generics, permissions, status
+from rest_framework import viewsets, generics, permissions, status
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.authtoken.models import Token
@@ -6,7 +6,6 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from django.contrib.auth import authenticate
 from django.contrib.auth.models import User
-from django.views.decorators.csrf import csrf_exempt
 from django.utils.decorators import method_decorator
 from django.db.models import Q, Sum
 from patients.models import Patient
@@ -28,14 +27,14 @@ from .serializers import (
     InventoryItemSerializer,
     CompanySettingsSerializer,
 )
-from .permissions import IsPatient, IsDoctor, IsAdmin, IsReceptionist
+from .permissions import IsPatient, IsDoctor, IsAdmin, IsReceptionist, IsClinicStaff
 
 
 # ==================== PATIENT VIEWSET ====================
 class PatientViewSet(viewsets.ModelViewSet):
     queryset = Patient.objects.filter(is_active=True)
     serializer_class = PatientSerializer
-    permission_classes = [AllowAny]
+    permission_classes = [IsClinicStaff]
     
     def get_queryset(self):
         queryset = super().get_queryset()
@@ -67,18 +66,18 @@ class DoctorListView(generics.ListAPIView):
 class AppointmentListView(generics.ListAPIView):
     queryset = Appointment.objects.all().order_by('-appointment_date')
     serializer_class = AppointmentSerializer
-    permission_classes = [AllowAny]
+    permission_classes = [IsClinicStaff]
 
 
 class InvoiceListView(generics.ListAPIView):
     queryset = Invoice.objects.all().order_by('-issue_date')
     serializer_class = InvoiceSerializer
-    permission_classes = [AllowAny]
+    permission_classes = [IsClinicStaff]
 
 
 class InventoryListView(generics.ListAPIView):
     serializer_class = InventoryItemSerializer
-    permission_classes = [AllowAny]
+    permission_classes = [IsClinicStaff]
     
     def get_queryset(self):
         return InventoryItem.objects.filter(is_active=True)
@@ -108,7 +107,6 @@ class PublicBookingRequestView(generics.CreateAPIView):
 
 # ==================== AUTHENTICATION ====================
 
-@method_decorator(csrf_exempt, name='dispatch')
 class LoginView(APIView):
     permission_classes = [AllowAny]
 
@@ -156,7 +154,7 @@ class LoginView(APIView):
 
 class PatientProfileView(generics.RetrieveAPIView):
     serializer_class = PatientDetailSerializer
-    permission_classes = [AllowAny]
+    permission_classes = [IsAuthenticated]
 
     def get_object(self):
         try:
@@ -167,7 +165,7 @@ class PatientProfileView(generics.RetrieveAPIView):
 
 class PatientAppointmentsView(generics.ListAPIView):
     serializer_class = AppointmentSerializer
-    permission_classes = [AllowAny]
+    permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
         try:
@@ -179,7 +177,7 @@ class PatientAppointmentsView(generics.ListAPIView):
 
 class PatientInvoicesView(generics.ListAPIView):
     serializer_class = InvoiceSerializer
-    permission_classes = [AllowAny]
+    permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
         try:
@@ -191,7 +189,7 @@ class PatientInvoicesView(generics.ListAPIView):
 
 class PatientAppointmentCreateView(generics.CreateAPIView):
     serializer_class = AppointmentCreateSerializer
-    permission_classes = [AllowAny]
+    permission_classes = [IsAuthenticated]
 
     def perform_create(self, serializer):
         try:
@@ -211,7 +209,7 @@ class PatientAppointmentCreateView(generics.CreateAPIView):
 
 class AllAppointmentsView(generics.ListAPIView):
     serializer_class = AppointmentSerializer
-    permission_classes = [AllowAny]
+    permission_classes = [IsClinicStaff]
 
     def get_queryset(self):
         return Appointment.objects.all().order_by('-appointment_date')
@@ -219,14 +217,14 @@ class AllAppointmentsView(generics.ListAPIView):
 
 class AllPatientsView(generics.ListAPIView):
     serializer_class = PatientSerializer
-    permission_classes = [AllowAny]
+    permission_classes = [IsClinicStaff]
 
     def get_queryset(self):
         return Patient.objects.filter(is_active=True)
 
 
 class SettingsView(APIView):
-    permission_classes = [AllowAny]
+    permission_classes = [IsClinicStaff]
     
     def get(self, request):
         settings = CompanySettings.get_settings()
@@ -243,7 +241,7 @@ class SettingsView(APIView):
 
 
 class DashboardStatsView(APIView):
-    permission_classes = [AllowAny]
+    permission_classes = [IsClinicStaff]
 
     def get(self, request):
         from datetime import date
@@ -264,7 +262,7 @@ class DashboardStatsView(APIView):
 # ==================== REPORT VIEWS ====================
 
 class AgingReportView(APIView):
-    permission_classes = [AllowAny]
+    permission_classes = [IsClinicStaff]
     
     def get(self, request):
         from datetime import date, timedelta
@@ -325,7 +323,7 @@ class AgingReportView(APIView):
 
 
 class PatientVisitsView(APIView):
-    permission_classes = [AllowAny]
+    permission_classes = [IsClinicStaff]
     
     def get(self, request):
         from datetime import date, timedelta
@@ -378,7 +376,7 @@ class PatientVisitsView(APIView):
 
 
 class DoctorPerformanceView(APIView):
-    permission_classes = [AllowAny]
+    permission_classes = [IsClinicStaff]
     
     def get(self, request):
         from datetime import date, timedelta
@@ -441,7 +439,7 @@ def simple_stats_direct(request):
 
 # ==================== BALANCE SHEET VIEW ====================
 class BalanceSheetView(APIView):
-    permission_classes = [AllowAny]
+    permission_classes = [IsClinicStaff]
     
     def get(self, request):
         from datetime import date, timedelta, datetime
@@ -491,7 +489,7 @@ class BalanceSheetView(APIView):
 
 # ==================== REVENUE DASHBOARD VIEW ====================
 class RevenueDashboardView(APIView):
-    permission_classes = [AllowAny]
+    permission_classes = [IsClinicStaff]
     
     def get(self, request):
         from datetime import date, timedelta

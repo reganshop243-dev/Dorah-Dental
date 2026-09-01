@@ -1,7 +1,10 @@
 from django.db import models
+from django.contrib.auth.models import User
 from datetime import date
 
 class Patient(models.Model):
+    # Optional link for authenticated patient/API workflows. Existing patients may remain unlinked.
+    user = models.OneToOneField(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='patient_record')
     GENDER_CHOICES = [
         ('M', 'Male'),
         ('F', 'Female'),

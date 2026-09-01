@@ -262,9 +262,9 @@
             
             <div class="text-center mt-3">
                 <small>
-                    <a href="{% url 'core:logout' %}" class="logout-link">
+                    <form method="post" action="{% url 'core:logout' %}" style="display:inline">{% csrf_token %}<button type="submit" class="btn btn-link text-danger p-0 logout-link">
                         <i class="fas fa-sign-out-alt"></i> Logout
-                    </a>
+                    </button></form>
                 </small>
             </div>
             

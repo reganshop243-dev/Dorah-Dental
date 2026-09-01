@@ -1,47 +1,62 @@
-  #   P y t h o n 
- _ _ p y c a c h e _ _ / 
- * . p y c 
- * . p y o 
- * . p y d 
- . P y t h o n 
- * . d b 
- * . s q l i t e 3 
- . D S _ S t o r e 
- . e n v 
- v e n v / 
- e n v / 
- E N V / 
- * . e x e 
- * . s p e c 
- b u i l d / 
- d i s t / 
- * . l o g 
- * . t m p 
- 
- #   D j a n g o 
- * . l o g 
- l o c a l _ s e t t i n g s . p y 
- d b . s q l i t e 3 
- m e d i a / 
- 
- #   I D E 
- . v s c o d e / 
- . i d e a / 
- * . s w p 
- * . s w o 
- 
- #   W i n d o w s 
- T h u m b s . d b 
- d e s k t o p . i n i 
- 
- #   P r o j e c t   s p e c i f i c 
- D o r a D e n t a l G e m _ A p p / 
- D o r a D e n t a l G e m _ S e t u p / 
- * . b a t 
- * . p y c 
- _ _ p y c a c h e _ _ / 
+# Python
+__pycache__/
+*.py[cod]
+*.class
+.python-version
+*.pyd
 
- # Django settings (local configuration)
-dental_clinic/settings.py
- 
- 
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+
+# Environment / secrets
+.env
+
+# Databases
+*.db
+*.sqlite3
+db.sqlite3
+
+# Logs / temporary files
+*.log
+*.tmp
+logs/
+
+# Django
+media/
+staticfiles/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Windows
+Thumbs.db
+Desktop.ini
+
+# Build / distribution
+build/
+dist/
+*.exe
+*.spec
+
+# Local application files
+DoraDentalGem_App/
+
+# Sensitive / historical register data
+REGISTER.xlsx
+
+# Local analysis / debug exports
+*_analysis.txt
+*analysis*.txt
+*export*.txt
+debug_full.txt
+project_structure_*.txt
+
+# Local settings
+
+dental_clinic/settings.py.*

@@ -9,7 +9,7 @@ from django.utils import timezone
 class PatientPortalAccess(models.Model):
     """Patient portal login credentials"""
     patient = models.OneToOneField(Patient, on_delete=models.CASCADE, related_name='portal_access')
-    portal_pin = models.CharField(max_length=10, help_text="4-6 digit PIN for portal access")
+    portal_pin = models.CharField(max_length=128, help_text="Hashed portal PIN")
     is_active = models.BooleanField(default=True)
     last_login = models.DateTimeField(null=True, blank=True)
     login_attempts = models.IntegerField(default=0)

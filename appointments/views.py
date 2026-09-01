@@ -1,6 +1,7 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
+from django.db import IntegrityError
 from django.db.models import Sum, Count, Q
 from django.utils import timezone
 from django.conf import settings
@@ -322,6 +323,8 @@ Thank you,
                     messages.warning(request, f'⚠️ Appointment created but reminder failed: {str(e)}')
             
             return redirect('appointments:list')
+        except IntegrityError:
+            messages.error(request, '❌ That doctor already has an active appointment at this time. Please choose another time.')
         except Exception as e:
             messages.error(request, f'❌ Error creating appointment: {str(e)}')
             import traceback

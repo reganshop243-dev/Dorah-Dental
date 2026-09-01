@@ -4,11 +4,21 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import User
 from django.db import models
-from django.http import JsonResponse
+from django.http import JsonResponse, HttpResponseNotAllowed
 from .models import UserProfile
 from .otp_service import OTPService
 from datetime import timedelta
+from django.utils import timezone
 import re
+
+OTP_TRUST_PERIOD = timedelta(hours=24)
+
+def otp_trust_is_valid(profile):
+    return bool(
+        profile.phone_verified
+        and profile.otp_verified_at
+        and timezone.now() - profile.otp_verified_at < OTP_TRUST_PERIOD
+    )
 
 
 # ====================
@@ -38,16 +48,18 @@ def clean_doctor_name(first_name, last_name, username=""):
 
 
 def login_view(request):
-    """Custom login view with username OR phone number login"""
+    """Login with username/phone and require OTP only when 24-hour trust expires."""
     if request.user.is_authenticated:
-        # Check if user needs OTP verification
-        if not request.user.profile.phone_verified:
-            # If OTP not sent yet, send it
-            if not request.user.profile.otp_code:
-                otp_service = OTPService()
-                otp_service.create_and_send_otp(request.user)
-            return redirect('core:otp_verify')
-        return redirect_to_dashboard(request.user)
+        profile = request.user.profile
+        if otp_trust_is_valid(profile):
+            request.session['otp_verified'] = True
+            request.session['otp_user_id'] = request.user.pk
+            return redirect_to_dashboard(request.user)
+        request.session['otp_verified'] = False
+        request.session['otp_user_id'] = request.user.pk
+        if not profile.otp_code:
+            OTPService().create_and_send_otp(request.user)
+        return redirect('core:otp_verify')
     
     if request.method == 'POST':
         username_or_phone = request.POST.get('username', '').strip()
@@ -72,26 +84,28 @@ def login_view(request):
             authenticated_user = authenticate(request, username=user.username, password=password)
             if authenticated_user:
                 login(request, authenticated_user)
-                
-                # Check if user has phone number for OTP
-                if not user.profile.phone:
+                profile = authenticated_user.profile
+                request.session['otp_user_id'] = authenticated_user.pk
+
+                if otp_trust_is_valid(profile):
+                    request.session['otp_verified'] = True
+                    return redirect_to_dashboard(authenticated_user)
+
+                request.session['otp_verified'] = False
+                if not profile.phone:
                     messages.warning(request, 'No phone number registered for OTP. Please contact administrator.')
                     return render(request, 'core/login.html')
-                
-                # Send OTP
-                otp_service = OTPService()
-                success, message = otp_service.create_and_send_otp(user)
-                
+
+                success, message = OTPService().create_and_send_otp(authenticated_user)
                 if success:
-                    messages.info(request, f'OTP sent to your registered phone number ({user.profile.phone})')
+                    messages.info(request, f'OTP sent to your registered phone number ({profile.phone})')
                     return redirect('core:otp_verify')
-                else:
-                    messages.error(request, f'Failed to send OTP: {message}')
-                    return render(request, 'core/login.html')
+                messages.error(request, f'Failed to send OTP: {message}')
+                return render(request, 'core/login.html')
             else:
-                messages.error(request, 'Invalid password')
+                messages.error(request, 'Invalid username, phone number, or password.')
         else:
-            messages.error(request, 'Invalid username or phone number')
+            messages.error(request, 'Invalid username, phone number, or password.')
     
     return render(request, 'core/login.html')
 
@@ -119,7 +133,9 @@ def redirect_to_dashboard(user):
 
 
 def logout_view(request):
-    """Custom logout view"""
+    """Log out using POST to prevent logout CSRF/link abuse."""
+    if request.method != 'POST':
+        return HttpResponseNotAllowed(['POST'])
     logout(request)
     messages.info(request, 'You have been logged out.')
     return redirect('core:login')
@@ -128,12 +144,15 @@ def logout_view(request):
 @login_required
 def otp_verify_view(request):
     """View for OTP verification after login"""
-    # If already verified, redirect to dashboard
-    if request.user.profile.phone_verified:
-        return redirect_to_dashboard(request.user)
-    
-    # Check if OTP has expired (5 minutes)
     profile = request.user.profile
+
+    # Restore the session flag before redirecting; this prevents a middleware loop.
+    if otp_trust_is_valid(profile):
+        request.session['otp_verified'] = True
+        request.session['otp_user_id'] = request.user.pk
+        return redirect_to_dashboard(request.user)
+
+    # Check if OTP has expired (5 minutes)
     if profile.otp_code and profile.otp_created_at:
         from django.utils import timezone
         time_diff = timezone.now() - profile.otp_created_at
@@ -148,16 +167,6 @@ def otp_verify_view(request):
     if request.method == 'POST':
         otp_code = request.POST.get('otp_code', '').strip()
         
-        # DEBUG: Allow 000000 as master OTP for testing
-        if otp_code == '000000':
-            profile = request.user.profile
-            profile.phone_verified = True
-            profile.otp_code = None
-            profile.otp_created_at = None
-            profile.otp_attempts = 0
-            profile.save()
-            messages.success(request, 'OTP verified successfully (debug mode)!')
-            return redirect_to_dashboard(request.user)
         
         if not otp_code or len(otp_code) != 6 or not otp_code.isdigit():
             messages.error(request, 'Please enter a valid 6-digit OTP')
@@ -168,6 +177,8 @@ def otp_verify_view(request):
         success, message = otp_service.verify_otp(request.user, otp_code)
         
         if success:
+            request.session['otp_verified'] = True
+            request.session['otp_user_id'] = request.user.pk
             messages.success(request, 'OTP verified successfully!')
             return redirect_to_dashboard(request.user)
         else:
@@ -189,12 +200,14 @@ def otp_verify_view(request):
 @login_required
 def otp_send_view(request):
     """Send OTP to user's phone"""
-    # If already verified, redirect to dashboard
-    if request.user.profile.phone_verified:
-        return redirect_to_dashboard(request.user)
-    
-    # Check if OTP exists and is still valid
     profile = request.user.profile
+
+    if otp_trust_is_valid(profile):
+        request.session['otp_verified'] = True
+        request.session['otp_user_id'] = request.user.pk
+        return redirect_to_dashboard(request.user)
+
+    # Check if OTP exists and is still valid
     otp_exists = profile.otp_code and profile.otp_created_at
     
     if otp_exists:
@@ -206,7 +219,7 @@ def otp_send_view(request):
             return redirect('core:otp_verify')
     
     if request.method == 'POST':
-        # Check if user can request OTP (once per day)
+        # Check if user can request OTP (once per minute)
         if not profile.can_request_otp():
             # Check if OTP has expired - if expired, allow resend
             if profile.otp_code and profile.otp_created_at:
@@ -223,13 +236,7 @@ def otp_send_view(request):
                 messages.warning(request, 'OTP already sent today. Please check your phone.')
                 return redirect('core:otp_verify')
         
-        # Force reset any existing OTP
-        profile.otp_code = None
-        profile.otp_created_at = None
-        profile.otp_attempts = 0
-        profile.save()
-        
-        # Send new OTP
+        # Send a new OTP only when the existing OTP/cooldown rules allow it.
         otp_service = OTPService()
         success, message = otp_service.create_and_send_otp(request.user)
         
@@ -248,13 +255,14 @@ def otp_send_view(request):
 # ====================
 
 def otp_required(function):
-    """Decorator to ensure user has verified OTP"""
+    """Require a successful OTP verification for the current login session."""
     def wrap(request, *args, **kwargs):
         if request.user.is_authenticated:
-            if not request.user.profile.phone_verified:
-                messages.warning(request, 'Please verify your phone number first.')
+            if not request.session.get('otp_verified') or request.session.get('otp_user_id') != request.user.pk:
+                messages.warning(request, 'Please verify your one-time password first.')
                 return redirect('core:otp_verify')
         return function(request, *args, **kwargs)
+    wrap.__name__ = getattr(function, '__name__', 'otp_required')
     return wrap
 
 

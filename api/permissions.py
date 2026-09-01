@@ -36,3 +36,14 @@ class IsAdminOrReceptionist(permissions.BasePermission):
         if hasattr(request.user, 'profile'):
             return request.user.profile.role in ['admin', 'receptionist']
         return False
+
+class IsClinicStaff(permissions.BasePermission):
+    """Authenticated clinic staff (not public/anonymous clients)."""
+    allowed_roles = {'admin', 'doctor', 'receptionist', 'accountant', 'nurse', 'assistant'}
+
+    def has_permission(self, request, view):
+        return (request.user.is_authenticated and
+                hasattr(request.user, 'profile') and
+                request.user.profile.role in self.allowed_roles and
+                request.user.profile.is_active and
+                request.user.is_active)

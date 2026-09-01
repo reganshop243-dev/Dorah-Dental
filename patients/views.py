@@ -10,7 +10,8 @@ from .models import Patient, DentalImage
 from appointments.models import Appointment, Treatment
 from billing.models import Invoice
 from patient_portal.models import PatientPortalAccess  # ✅ ADD THIS IMPORT
-import random  # ✅ ADD THIS IMPORT
+import random  # legacy compatibility
+import hashlib
 from appointments.models import DentalChart
 
 # ====================
@@ -209,7 +210,7 @@ def patient_add(request):
             portal_pin = f"{random.randint(100000, 999999)}"
             PatientPortalAccess.objects.create(
                 patient=patient,
-                portal_pin=portal_pin,
+                portal_pin=hashlib.sha256(portal_pin.encode()).hexdigest(),
                 is_active=True
             )
             
@@ -306,7 +307,7 @@ def patient_detail(request, pk):
     # ✅ Get portal PIN if exists
     try:
         portal_access = patient.portal_access
-        portal_pin = portal_access.portal_pin
+        portal_pin = None
     except PatientPortalAccess.DoesNotExist:
         portal_pin = None
     

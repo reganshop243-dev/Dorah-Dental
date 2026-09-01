@@ -1,5 +1,6 @@
 from django.db import models
 from django.utils import timezone
+from django.core.validators import MinValueValidator, MaxValueValidator
 from patients.models import Patient
 
 
@@ -89,6 +90,17 @@ class Appointment(models.Model):
     
     class Meta:
         ordering = ['-appointment_date', '-appointment_time']
+        indexes = [
+            models.Index(fields=['appointment_date', 'doctor', 'status']),
+            models.Index(fields=['patient', '-appointment_date']),
+        ]
+        constraints = [
+            models.UniqueConstraint(
+                fields=['doctor', 'appointment_date', 'appointment_time'],
+                condition=models.Q(status__in=['scheduled', 'checked_in', 'in_progress']),
+                name='unique_active_doctor_slot',
+            ),
+        ]
 
 
 class Treatment(models.Model):
@@ -182,7 +194,7 @@ class DentalChart(models.Model):
     ]
     
     patient = models.ForeignKey('patients.Patient', on_delete=models.CASCADE, related_name='dental_charts')
-    tooth_number = models.IntegerField(help_text="Universal tooth numbering system (1-32)")
+    tooth_number = models.PositiveSmallIntegerField(validators=[MinValueValidator(1), MaxValueValidator(32)], help_text="Universal tooth numbering system (1-32)")
     tooth_name = models.CharField(max_length=50, blank=True, null=True)
     surface = models.CharField(max_length=20, choices=SURFACE_CHOICES, blank=True, null=True)
     condition = models.CharField(max_length=20, choices=TOOTH_CONDITION_CHOICES, default='healthy')

@@ -1,0 +1,17 @@
+{
+  "name": "Dora\'s Dental Gem",
+  "short_name": "Dora Dental",
+  "description": "Dora\'s Dental Gem Clinic Management System",
+  "id": "/",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#13163b",
+  "orientation": "any",
+  "prefer_related_applications": false,
+  "icons": [
+    {"src": "/static/pwa/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable"},
+    {"src": "/static/pwa/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable"}
+  ]
+}
