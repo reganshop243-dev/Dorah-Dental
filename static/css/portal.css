@@ -42,3 +42,11 @@
   .btn-group>.btn{flex:0 0 auto;}
   .quick-link-card .card-body{min-height:92px;display:flex;flex-direction:column;align-items:center;justify-content:center;}
 }
+
+@media(max-width:575.98px){
+  .portal-main,.portal-container,.portal-content{max-width:100%!important;width:100%!important;padding-left:10px!important;padding-right:10px!important;}
+  .portal-card,.portal-main .card{border-radius:13px!important;}
+  .portal-main .table-responsive{overflow-x:auto;-webkit-overflow-scrolling:touch;}
+  .portal-main .btn{min-height:42px;}
+  .portal-main form .row>[class*="col-"]{width:100%;flex:0 0 100%;}
+}

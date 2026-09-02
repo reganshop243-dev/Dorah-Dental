@@ -23,6 +23,7 @@
     
     <link rel="stylesheet" href="{% static 'css/app.css' %}">
 
+    {% block extra_css %}{% endblock %}
 </head>
 <body class="mobile-optimized">
     {% if user.is_authenticated %}

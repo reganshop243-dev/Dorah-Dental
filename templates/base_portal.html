@@ -13,6 +13,7 @@
     
     {% load static %}
     <link rel="stylesheet" href="{% static 'css/portal.css' %}">
+    {% block extra_css %}{% endblock %}
 </head>
 <body class="mobile-optimized">
     <!-- Portal Header - Only show when logged in -->

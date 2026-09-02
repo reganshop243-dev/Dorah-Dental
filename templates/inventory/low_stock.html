@@ -6,70 +6,69 @@
 
 {% block content %}
 <div class="d-flex justify-content-between align-items-center mb-4">
-    <h4><i class="fas fa-exclamation-triangle text-warning"></i> Low Stock Items</h4>
-    <a href="{% url 'inventory:list' %}" class="btn btn-secondary">
-        <i class="fas fa-arrow-left"></i> Back to Inventory
+<h4><i class="fas fa-exclamation-triangle text-warning"></i> Low Stock Items</h4>
+<a class="btn btn-secondary" href="{% url 'inventory:list' %}">
+<i class="fas fa-arrow-left"></i> Back to Inventory
     </a>
 </div>
-
 <div class="card">
-    <div class="card-body">
+<div class="card-body">
         {% if items %}
             <div class="table-responsive">
-                <table class="table table-hover">
-                    <thead>
-                        <tr>
-                            <th>Item Name</th>
-                            <th>Category</th>
-                            <th>Current Quantity</th>
-                            <th>Min Quantity</th>
-                            <th>Status</th>
-                            <th>Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody>
+<table class="table table-hover mobile-stack-table">
+<thead>
+<tr>
+<th>Item Name</th>
+<th>Category</th>
+<th>Current Quantity</th>
+<th>Min Quantity</th>
+<th>Status</th>
+<th>Actions</th>
+</tr>
+</thead>
+<tbody>
                         {% for item in items %}
                         <tr>
-                            <td>
-                                <a href="{% url 'inventory:detail' item.pk %}" class="fw-bold text-decoration-none">
+<td data-label="Item Name">
+<a class="fw-bold text-decoration-none" href="{% url 'inventory:detail' item.pk %}">
                                     {{ item.name }}
                                 </a>
-                            </td>
-                            <td>{{ item.category.name|default:"-" }}</td>
-                            <td>
-                                <span class="fw-bold {% if item.is_out_of_stock %}text-danger{% else %}text-warning{% endif %}">
+</td>
+<td data-label="Category">{{ item.category.name|default:"-" }}</td>
+<td data-label="Current Quantity">
+<span class="fw-bold {% if item.is_out_of_stock %}text-danger{% else %}text-warning{% endif %}">
                                     {{ item.quantity }}
                                 </span>
-                            </td>
-                            <td>{{ item.min_quantity }}</td>
-                            <td>
-                                <span class="badge {% if item.is_out_of_stock %}bg-danger{% else %}bg-warning{% endif %}">
+</td>
+<td data-label="Min Quantity">{{ item.min_quantity }}</td>
+<td data-label="Status">
+<span class="badge {% if item.is_out_of_stock %}bg-danger{% else %}bg-warning{% endif %}">
                                     {{ item.get_status_display }}
-                                </td>
-                            <td>
-                                <div class="btn-group btn-group-sm">
-                                    <a href="{% url 'inventory:detail' item.pk %}" class="btn btn-outline-primary">
-                                        <i class="fas fa-eye"></i>
+                                </span></td>
+<td data-label="Actions">
+<div class="btn-group btn-group-sm">
+<a class="btn btn-outline-primary" href="{% url 'inventory:detail' item.pk %}">
+<i class="fas fa-eye"></i>
+</a>
+<a class="btn btn-outline-success" href="{% url 'inventory:adjust_stock' item.pk %}">
+<i class="fas fa-plus"></i> Restock
                                     </a>
-                                    <a href="{% url 'inventory:adjust_stock' item.pk %}" class="btn btn-outline-success">
-                                        <i class="fas fa-plus"></i> Restock
-                                    </a>
-                                </div>
-                            </td>
-                        </tr>
+</div>
+</td>
+</tr>
                         {% endfor %}
                     </tbody>
-                </table>
-            </div>
+</table>
+</div>
         {% else %}
             <div class="text-center py-5">
-                <i class="fas fa-check-circle fa-3x text-success mb-3"></i>
-                <h5>No low stock items</h5>
-                <p class="text-muted">All items are well stocked!</p>
-                <a href="{% url 'inventory:list' %}" class="btn btn-primary">
-                    <i class="fas fa-boxes"></i> View All Items
+<i class="fas fa-check-circle fa-3x text-success mb-3"></i>
+<h5>No low stock items</h5>
+<p class="text-muted">All items are well stocked!</p>
+<a class="btn btn-primary" href="{% url 'inventory:list' %}">
+<i class="fas fa-boxes"></i> View All Items
                 </a>
-            </div>
+</div>
         {% endif %}
     </div>
 </div>

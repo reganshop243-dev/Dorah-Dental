@@ -1,11 +1,12 @@
 <!DOCTYPE html>
+
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Invoice #{{ invoice.invoice_number }}</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <style>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Invoice #{{ invoice.invoice_number }}</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet"/>
+<style>
         @media print {
             .no-print { display: none; }
             body { font-size: 12px; }
@@ -70,26 +71,25 @@
     </style>
 </head>
 <body>
-    <div class="container mt-4">
-        <!-- Print Button -->
-        <div class="no-print mb-3">
-            <button onclick="window.print()" class="btn btn-primary">
-                <i class="fas fa-print"></i> Print Invoice
+<div class="container mt-4">
+<!-- Print Button -->
+<div class="no-print mb-3">
+<button class="btn btn-primary" onclick="window.print()">
+<i class="fas fa-print"></i> Print Invoice
             </button>
-            <a href="{% url 'billing:detail' invoice.pk %}" class="btn btn-secondary">
-                <i class="fas fa-arrow-left"></i> Back
+<a class="btn btn-secondary" href="{% url 'billing:detail' invoice.pk %}">
+<i class="fas fa-arrow-left"></i> Back
             </a>
-        </div>
-
-        <!-- Invoice -->
-        <div class="card shadow-sm">
-            <div class="card-body">
-                <!-- Header -->
-                <div class="invoice-header">
-                    <div class="row">
-                        <div class="col-md-6">
-                            <div class="company-name">
-                                <span class="company-icon">🦷</span>
+</div>
+<!-- Invoice -->
+<div class="card shadow-sm">
+<div class="card-body">
+<!-- Header -->
+<div class="invoice-header">
+<div class="row">
+<div class="col-md-6">
+<div class="company-name">
+<span class="company-icon">🦷</span>
                                 {% with company=company %}
                                     {% if company %}
                                         {{ company.business_name|default:"Dora's Dental Gem" }}
@@ -98,224 +98,215 @@
                                     {% endif %}
                                 {% endwith %}
                             </div>
-                            <div class="company-details mt-2">
+<div class="company-details mt-2">
                                 {% with company=company %}
                                     {% if company %}
-                                        <strong>{{ company.business_name|default:"Dora's Dental Gem" }}</strong><br>
-                                        {{ company.address|default:"Kampala, Uganda" }}<br>
-                                        Phone: {{ company.phone|default:"+256 700 000 000" }}<br>
-                                        Email: {{ company.email|default:"info@dorasdentalgem.com" }}<br>
+                                        <strong>{{ company.business_name|default:"Dora's Dental Gem" }}</strong><br/>
+                                        {{ company.address|default:"Kampala, Uganda" }}<br/>
+                                        Phone: {{ company.phone|default:"+256 700 000 000" }}<br/>
+                                        Email: {{ company.email|default:"info@dorasdentalgem.com" }}<br/>
                                         {% if company.website %}
-                                            Web: {{ company.website }}<br>
+                                            Web: {{ company.website }}<br/>
                                         {% endif %}
                                         {% if company.tax_id %}
                                             Tax ID: {{ company.tax_id }}
                                         {% endif %}
                                     {% else %}
-                                        <strong>Dora's Dental Gem</strong><br>
-                                        Kampala, Uganda<br>
-                                        Phone: +256 700 000 000<br>
+                                        <strong>Dora's Dental Gem</strong><br/>
+                                        Kampala, Uganda<br/>
+                                        Phone: +256 700 000 000<br/>
                                         Email: info@dorasdentalgem.com
                                     {% endif %}
                                 {% endwith %}
                             </div>
-                        </div>
-                        <div class="col-md-6 text-end">
-                            <div class="invoice-title">INVOICE</div>
-                            <p class="mt-2">
-                                <strong>Invoice #:</strong> {{ invoice.invoice_number }}<br>
-                                <strong>Date:</strong> {{ invoice.issue_date|date:"F d, Y" }}<br>
-                                <strong>Due Date:</strong> {{ invoice.due_date|date:"F d, Y"|default:"N/A" }}<br>
-                                <strong>Status:</strong> 
-                                <span class="invoice-status 
-                                    {% if invoice.status == 'paid' %}paid
-                                    {% elif invoice.status == 'draft' %}draft
-                                    {% elif invoice.status == 'partially_paid' %}partial
-                                    {% elif invoice.status == 'overdue' %}overdue
-                                    {% else %}unpaid{% endif %}">
+</div>
+<div class="col-md-6 text-end">
+<div class="invoice-title">INVOICE</div>
+<p class="mt-2">
+<strong>Invoice #:</strong> {{ invoice.invoice_number }}<br/>
+<strong>Date:</strong> {{ invoice.issue_date|date:"F d, Y" }}<br/>
+<strong>Due Date:</strong> {{ invoice.due_date|date:"F d, Y"|default:"N/A" }}<br/>
+<strong>Status:</strong>
+<span class="invoice-status {% if invoice.status == 'paid' %}paid {% elif invoice.status == 'draft' %}draft {% elif invoice.status == 'partially_paid' %}partial {% elif invoice.status == 'overdue' %}overdue {% else %}unpaid{% endif %}">
                                     {{ invoice.get_status_display }}
                                 </span>
-                            </p>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Patient Info -->
-                <div class="row mb-4">
-                    <div class="col-md-6">
-                        <h6>Bill To:</h6>
-                        <p>
-                            <strong>{{ invoice.patient_name }}</strong><br>
-                            Phone: {{ invoice.patient_phone }}<br>
+</p>
+</div>
+</div>
+</div>
+<!-- Patient Info -->
+<div class="row mb-4">
+<div class="col-md-6">
+<h6>Bill To:</h6>
+<p>
+<strong>{{ invoice.patient_name }}</strong><br/>
+                            Phone: {{ invoice.patient_phone }}<br/>
                             Email: {{ invoice.patient.email|default:"N/A" }}
                         </p>
-                    </div>
-                    <div class="col-md-6 text-end">
+</div>
+<div class="col-md-6 text-end">
                         {% if invoice.payment_date %}
                             <p>
-                                <strong>Payment Date:</strong> {{ invoice.payment_date|date:"F d, Y H:i" }}
+<strong>Payment Date:</strong> {{ invoice.payment_date|date:"F d, Y H:i" }}
                             </p>
                         {% endif %}
                     </div>
-                </div>
-
-                <!-- Items -->
-                <table class="table table-bordered">
-                    <thead class="table-light">
-                        <tr>
-                            <th>#</th>
-                            <th>Description</th>
-                            <th>Quantity</th>
-                            <th>Unit Price</th>
-                            <th>Total</th>
-                        </tr>
-                    </thead>
-                    <tbody>
+</div>
+<!-- Items -->
+<table class="table table-bordered mobile-stack-table">
+<thead class="table-light">
+<tr>
+<th>#</th>
+<th>Description</th>
+<th>Quantity</th>
+<th>Unit Price</th>
+<th>Total</th>
+</tr>
+</thead>
+<tbody>
                         {% for item in invoice.items.all %}
                         <tr>
-                            <td>{{ forloop.counter }}</td>
-                            <td>
+<td data-label="#">{{ forloop.counter }}</td>
+<td data-label="Description">
                                 {{ item.description }}
                                 {% if item.service %}
-                                    <br>
-                                    <small class="text-muted">Service: {{ item.service.name }}</small>
+                                    <br/>
+<small class="text-muted">Service: {{ item.service.name }}</small>
                                 {% endif %}
                                 {% if item.inventory_item %}
-                                    <br>
-                                    <small class="text-muted">Supply: {{ item.inventory_item.name }}</small>
+                                    <br/>
+<small class="text-muted">Supply: {{ item.inventory_item.name }}</small>
                                 {% endif %}
                             </td>
-                            <td>{{ item.quantity }}</td>
-                            <td>
+<td data-label="Quantity">{{ item.quantity }}</td>
+<td data-label="Unit Price">
                                 {% with company=company %}
                                     {{ company.currency|default:"UGX" }} {{ item.unit_price|floatformat:0 }}
                                 {% endwith %}
                             </td>
-                            <td>
+<td data-label="Total">
                                 {% with company=company %}
                                     {{ company.currency|default:"UGX" }} {{ item.total_price|floatformat:0 }}
                                 {% endwith %}
                             </td>
-                        </tr>
+</tr>
                         {% empty %}
                         <tr>
-                            <td colspan="5" class="text-center text-muted">No items</td>
-                        </tr>
+<td class="text-center text-muted" colspan="5" data-label="#">No items</td>
+</tr>
                         {% endfor %}
                     </tbody>
-                    <tfoot>
-                        <tr>
-                            <td colspan="4" class="text-end"><strong>Subtotal:</strong></td>
-                            <td>
+<tfoot>
+<tr>
+<td class="text-end" colspan="4"><strong>Subtotal:</strong></td>
+<td>
                                 {% with company=company %}
                                     {{ company.currency|default:"UGX" }} {{ invoice.subtotal|floatformat:0 }}
                                 {% endwith %}
                             </td>
-                        </tr>
-                        <tr>
-                            <td colspan="4" class="text-end"><strong>Tax ({{ invoice.tax_rate }}%):</strong></td>
-                            <td>
+</tr>
+<tr>
+<td class="text-end" colspan="4"><strong>Tax ({{ invoice.tax_rate }}%):</strong></td>
+<td>
                                 {% with company=company %}
                                     {{ company.currency|default:"UGX" }} {{ invoice.tax_amount|floatformat:0 }}
                                 {% endwith %}
                             </td>
-                        </tr>
-                        <tr>
-                            <td colspan="4" class="text-end"><strong>Discount:</strong></td>
-                            <td>
+</tr>
+<tr>
+<td class="text-end" colspan="4"><strong>Discount:</strong></td>
+<td>
                                 {% with company=company %}
                                     {{ company.currency|default:"UGX" }} {{ invoice.discount|floatformat:0 }}
                                 {% endwith %}
                             </td>
-                        </tr>
-                        <tr>
-                            <td colspan="4" class="text-end"><strong>Total:</strong></td>
-                            <td>
-                                <strong class="total-amount">
+</tr>
+<tr>
+<td class="text-end" colspan="4"><strong>Total:</strong></td>
+<td>
+<strong class="total-amount">
                                     {% with company=company %}
                                         {{ company.currency|default:"UGX" }} {{ invoice.total_amount|floatformat:0 }}
                                     {% endwith %}
                                 </strong>
-                            </td>
-                        </tr>
-                        <tr>
-                            <td colspan="4" class="text-end"><strong>Amount Paid:</strong></td>
-                            <td>
+</td>
+</tr>
+<tr>
+<td class="text-end" colspan="4"><strong>Amount Paid:</strong></td>
+<td>
                                 {% with company=company %}
                                     {{ company.currency|default:"UGX" }} {{ invoice.amount_paid|floatformat:0 }}
                                 {% endwith %}
                             </td>
-                        </tr>
-                        <tr>
-                            <td colspan="4" class="text-end"><strong>Balance Due:</strong></td>
-                            <td>
-                                <strong class="text-danger">
+</tr>
+<tr>
+<td class="text-end" colspan="4"><strong>Balance Due:</strong></td>
+<td>
+<strong class="text-danger">
                                     {% with company=company %}
                                         {{ company.currency|default:"UGX" }} {{ invoice.balance_due|floatformat:0 }}
                                     {% endwith %}
                                 </strong>
-                            </td>
-                        </tr>
-                    </tfoot>
-                </table>
-
-                <!-- Payment History -->
+</td>
+</tr>
+</tfoot>
+</table>
+<!-- Payment History -->
                 {% if invoice.payments.all %}
                 <div class="mt-3">
-                    <h6>Payment History</h6>
-                    <table class="table table-sm">
-                        <thead>
-                            <tr>
-                                <th>Date</th>
-                                <th>Amount</th>
-                                <th>Method</th>
-                                <th>Status</th>
-                            </tr>
-                        </thead>
-                        <tbody>
+<h6>Payment History</h6>
+<table class="table table-sm mobile-stack-table">
+<thead>
+<tr>
+<th>Date</th>
+<th>Amount</th>
+<th>Method</th>
+<th>Status</th>
+</tr>
+</thead>
+<tbody>
                             {% for payment in invoice.payments.all %}
                             <tr>
-                                <td>{{ payment.payment_date|date:"M d, Y H:i" }}</td>
-                                <td>
+<td data-label="Date">{{ payment.payment_date|date:"M d, Y H:i" }}</td>
+<td data-label="Amount">
                                     {% with company=company %}
                                         {{ company.currency|default:"UGX" }} {{ payment.amount|floatformat:0 }}
                                     {% endwith %}
                                 </td>
-                                <td>{{ payment.get_payment_method_display }}</td>
-                                <td>
-                                    <span class="badge {% if payment.status == 'completed' %}bg-success{% elif payment.status == 'pending' %}bg-warning{% else %}bg-danger{% endif %}">
+<td data-label="Method">{{ payment.get_payment_method_display }}</td>
+<td data-label="Status">
+<span class="badge {% if payment.status == 'completed' %}bg-success{% elif payment.status == 'pending' %}bg-warning{% else %}bg-danger{% endif %}">
                                         {{ payment.get_status_display }}
                                     </span>
-                                </td>
-                            </tr>
+</td>
+</tr>
                             {% endfor %}
                         </tbody>
-                    </table>
-                </div>
+</table>
+</div>
                 {% endif %}
 
                 <!-- Notes -->
                 {% if invoice.notes %}
                 <div class="mt-3">
-                    <strong>Notes:</strong>
-                    <p class="text-muted">{{ invoice.notes }}</p>
-                </div>
+<strong>Notes:</strong>
+<p class="text-muted">{{ invoice.notes }}</p>
+</div>
                 {% endif %}
 
                 <!-- Footer -->
-                <div class="text-center mt-4 pt-3 border-top">
-                    <small class="footer-text">
+<div class="text-center mt-4 pt-3 border-top">
+<small class="footer-text">
                         {% with company=company %}
                             {{ company.invoice_footer|default:"Thank you for choosing Dora's Dental Gem. Payment is due within 30 days." }}
-                            <br>
+                            <br/>
                             © {{ company.business_year|default:"2026" }} {{ company.business_name|default:"Dora's Dental Gem" }} - All Rights Reserved
                         {% endwith %}
                     </small>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</div>
+</div>
+</div>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>

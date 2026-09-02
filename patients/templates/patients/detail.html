@@ -107,113 +107,108 @@
 {% block content %}
 <!-- Header -->
 <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
-    <div>
-        <h4 class="mb-0">
-            <i class="fas fa-user-circle text-primary me-2"></i>
+<div>
+<h4 class="mb-0">
+<i class="fas fa-user-circle text-primary me-2"></i>
             {{ patient.full_name }}
         </h4>
-        <small class="text-muted">
-            <i class="fas fa-calendar-alt me-1"></i> 
+<small class="text-muted">
+<i class="fas fa-calendar-alt me-1"></i> 
             Patient since {{ patient.registered_at|date:"F d, Y" }}
         </small>
-    </div>
-    <div class="action-buttons">
-        <a href="{% url 'appointments:add' %}?patient={{ patient.pk }}" class="btn btn-success btn-sm">
-            <i class="fas fa-calendar-plus"></i> Book Appointment
+</div>
+<div class="action-buttons">
+<a class="btn btn-success btn-sm" href="{% url 'appointments:add' %}?patient={{ patient.pk }}">
+<i class="fas fa-calendar-plus"></i> Book Appointment
         </a>
-        <!-- ✅ ONLY show Edit button if NOT a doctor -->
+<!-- ✅ ONLY show Edit button if NOT a doctor -->
         {% if not is_doctor %}
-        <a href="{% url 'patients:edit' patient.pk %}" class="btn btn-primary btn-sm">
-            <i class="fas fa-edit"></i> Edit
+        <a class="btn btn-primary btn-sm" href="{% url 'patients:edit' patient.pk %}">
+<i class="fas fa-edit"></i> Edit
         </a>
-        <a href="{% url 'billing:add' %}?patient={{ patient.pk }}" class="btn btn-info btn-sm text-white">
-            <i class="fas fa-file-invoice"></i> Invoice
+<a class="btn btn-info btn-sm text-white" href="{% url 'billing:add' %}?patient={{ patient.pk }}">
+<i class="fas fa-file-invoice"></i> Invoice
         </a>
         {% endif %}
-        <a href="{% url 'patients:list' %}" class="btn btn-secondary btn-sm">
-            <i class="fas fa-arrow-left"></i> Back
+        <a class="btn btn-secondary btn-sm" href="{% url 'patients:list' %}">
+<i class="fas fa-arrow-left"></i> Back
         </a>
-    </div>
 </div>
-
+</div>
 <!-- ✅ Doctor access warning -->
 {% if is_doctor %}
 <div class="alert alert-info alert-dismissible fade show">
-    <i class="fas fa-info-circle me-2"></i>
-    <strong>Read-Only View:</strong> You are viewing this patient's information. As a doctor, you can view patient details and add dental images, but you cannot edit or delete patient records.
-    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+<i class="fas fa-info-circle me-2"></i>
+<strong>Read-Only View:</strong> You are viewing this patient's information. As a doctor, you can view patient details and add dental images, but you cannot edit or delete patient records.
+    <button class="btn-close" data-bs-dismiss="alert" type="button"></button>
 </div>
 {% endif %}
 
 <div class="row">
-    <!-- LEFT COLUMN - Patient Information -->
-    <div class="col-md-4">
-        <!-- Patient Info Card -->
-        <div class="info-card">
-            <h6 class="text-muted mb-3"><i class="fas fa-user me-2"></i>Patient Information</h6>
-            
-            <div class="mb-3">
-                <div class="info-label">Full Name</div>
-                <div class="info-value">{{ patient.full_name }}</div>
-            </div>
-            
-            <div class="mb-3">
-                <div class="info-label">Phone</div>
-                <div class="info-value">
-                    <i class="fas fa-phone text-muted me-1"></i>
+<!-- LEFT COLUMN - Patient Information -->
+<div class="col-md-4">
+<!-- Patient Info Card -->
+<div class="info-card">
+<h6 class="text-muted mb-3"><i class="fas fa-user me-2"></i>Patient Information</h6>
+<div class="mb-3">
+<div class="info-label">Full Name</div>
+<div class="info-value">{{ patient.full_name }}</div>
+</div>
+<div class="mb-3">
+<div class="info-label">Phone</div>
+<div class="info-value">
+<i class="fas fa-phone text-muted me-1"></i>
                     {{ patient.phone }}
                 </div>
-            </div>
-            
+</div>
 <!-- Portal Access Info -->
 <div class="info-card mt-3">
-    <h6 class="text-muted mb-3"><i class="fas fa-key me-2"></i>Patient Portal Access</h6>
+<h6 class="text-muted mb-3"><i class="fas fa-key me-2"></i>Patient Portal Access</h6>
     
     {% if portal_pin %}
         <div class="alert alert-success">
-            <i class="fas fa-check-circle me-2"></i>
-            <strong>Portal Access Enabled</strong>
-            <br>
-            <small>
-                <strong>Patient ID:</strong> {{ patient.id }}<br>
-                <strong>PIN:</strong> <code class="bg-light p-1 rounded">{{ portal_pin }}</code>
-            </small>
-            <br>
-            <small class="text-muted">
-                <i class="fas fa-info-circle"></i> 
+<i class="fas fa-check-circle me-2"></i>
+<strong>Portal Access Enabled</strong>
+<br/>
+<small>
+<strong>Patient ID:</strong> {{ patient.id }}<br/>
+<strong>PIN:</strong> <code class="bg-light p-1 rounded">{{ portal_pin }}</code>
+</small>
+<br/>
+<small class="text-muted">
+<i class="fas fa-info-circle"></i> 
                 Patients can login at: <code>/portal/login/</code>
-            </small>
-        </div>
+</small>
+</div>
     {% else %}
         <div class="alert alert-warning">
-            <i class="fas fa-exclamation-triangle me-2"></i>
+<i class="fas fa-exclamation-triangle me-2"></i>
             No portal access configured.
-            <br>
-            <small>Click the button below to generate portal access.</small>
-        </div>
-        <a href="{% url 'patient_portal:generate_portal_pin' patient.pk %}" class="btn btn-sm btn-primary">
-            <i class="fas fa-key"></i> Generate Portal PIN
+            <br/>
+<small>Click the button below to generate portal access.</small>
+</div>
+<a class="btn btn-sm btn-primary" href="{% url 'patient_portal:generate_portal_pin' patient.pk %}">
+<i class="fas fa-key"></i> Generate Portal PIN
         </a>
     {% endif %}
     
     {% if new_patient_pin %}
         <div class="alert alert-success mt-3">
-            <i class="fas fa-check-circle me-2"></i>
-            <strong>New Patient Registered!</strong>
-            <br>
-            <strong>Portal Credentials:</strong>
-            <ul class="mb-0 mt-2">
-                <li><strong>Patient ID:</strong> {{ new_patient_id }}</li>
-                <li><strong>PIN:</strong> <code class="bg-light p-1 rounded">{{ new_patient_pin }}</code></li>
-                <li><strong>Login URL:</strong> <code>/portal/login/</code></li>
-            </ul>
-        </div>
+<i class="fas fa-check-circle me-2"></i>
+<strong>New Patient Registered!</strong>
+<br/>
+<strong>Portal Credentials:</strong>
+<ul class="mb-0 mt-2">
+<li><strong>Patient ID:</strong> {{ new_patient_id }}</li>
+<li><strong>PIN:</strong> <code class="bg-light p-1 rounded">{{ new_patient_pin }}</code></li>
+<li><strong>Login URL:</strong> <code>/portal/login/</code></li>
+</ul>
+</div>
     {% endif %}
 </div>
-
-            <div class="mb-3">
-                <div class="info-label">Email</div>
-                <div class="info-value">
+<div class="mb-3">
+<div class="info-label">Email</div>
+<div class="info-value">
                     {% if patient.email %}
                         <i class="fas fa-envelope text-muted me-1"></i>
                         {{ patient.email }}
@@ -221,11 +216,10 @@
                         <span class="text-muted">Not provided</span>
                     {% endif %}
                 </div>
-            </div>
-            
-            <div class="mb-3">
-                <div class="info-label">Address</div>
-                <div class="info-value">
+</div>
+<div class="mb-3">
+<div class="info-label">Address</div>
+<div class="info-value">
                     {% if patient.address %}
                         <i class="fas fa-map-marker-alt text-muted me-1"></i>
                         {{ patient.address }}
@@ -233,361 +227,337 @@
                         <span class="text-muted">Not provided</span>
                     {% endif %}
                 </div>
-            </div>
-            
-            <hr>
-            
-            <div class="row">
-                <div class="col-6 mb-2">
-                    <div class="info-label">Date of Birth</div>
-                    <div class="info-value">{{ patient.date_of_birth|date:"M d, Y" }}</div>
-                </div>
-                <div class="col-6 mb-2">
-                    <div class="info-label">Age</div>
-                    <div class="info-value">
+</div>
+<hr/>
+<div class="row">
+<div class="col-6 mb-2">
+<div class="info-label">Date of Birth</div>
+<div class="info-value">{{ patient.date_of_birth|date:"M d, Y" }}</div>
+</div>
+<div class="col-6 mb-2">
+<div class="info-label">Age</div>
+<div class="info-value">
                         {% if patient.age %}
                             {{ patient.age }} years
                             {% if patient.age == 0 %}
-                                <span class="text-muted">(< 1 year)</span>
+                                <span class="text-muted">(&lt; 1 year)</span>
                             {% endif %}
                         {% else %}
                             <span class="text-muted">-</span>
                         {% endif %}
                     </div>
-                </div>
-            </div>
-            
-            <div class="mb-2">
-                <div class="info-label">Gender</div>
-                <div class="info-value">{{ patient.get_gender_display }}</div>
-            </div>
-            
-            <div class="mb-0">
-                <div class="info-label">Status</div>
-                <div class="info-value">
+</div>
+</div>
+<div class="mb-2">
+<div class="info-label">Gender</div>
+<div class="info-value">{{ patient.get_gender_display }}</div>
+</div>
+<div class="mb-0">
+<div class="info-label">Status</div>
+<div class="info-value">
                     {% if patient.is_active %}
                         <span class="badge bg-success"><i class="fas fa-check-circle"></i> Active</span>
                     {% else %}
                         <span class="badge bg-danger"><i class="fas fa-times-circle"></i> Inactive</span>
                     {% endif %}
                 </div>
-            </div>
-        </div>
-        
-        <!-- Medical History Card -->
-        <div class="info-card">
-            <h6 class="text-muted mb-3"><i class="fas fa-notes-medical me-2"></i>Medical History</h6>
-            
-            <div class="medical-section">
-                <div class="section-title">Under Physician</div>
-                <div class="section-content">
+</div>
+</div>
+<!-- Medical History Card -->
+<div class="info-card">
+<h6 class="text-muted mb-3"><i class="fas fa-notes-medical me-2"></i>Medical History</h6>
+<div class="medical-section">
+<div class="section-title">Under Physician</div>
+<div class="section-content">
                     {{ patient.get_under_physician_display|default:"Not specified" }}
                     {% if patient.physician_details %}
-                        <br><small class="text-muted">{{ patient.physician_details }}</small>
+                        <br/><small class="text-muted">{{ patient.physician_details }}</small>
                     {% endif %}
                 </div>
-            </div>
-            
-            <div class="medical-section">
-                <div class="section-title">Allergies</div>
-                <div class="section-content">
-                    {{ patient.allergies|default:"<span class='text-muted'>No allergies recorded</span>" }}
+</div>
+<div class="medical-section">
+<div class="section-title">Allergies</div>
+<div class="section-content">
+                    {{ patient.allergies|default:"<span class="text-muted">No allergies recorded</span>" }}
                 </div>
-            </div>
-            
-            <div class="medical-section">
-                <div class="section-title">Current Medications</div>
-                <div class="section-content">
-                    {{ patient.current_medications|default:"<span class='text-muted'>No medications recorded</span>" }}
+</div>
+<div class="medical-section">
+<div class="section-title">Current Medications</div>
+<div class="section-content">
+                    {{ patient.current_medications|default:"<span class="text-muted">No medications recorded</span>" }}
                 </div>
-            </div>
-        </div>
-        
-        <!-- Dental History Card -->
-        <div class="info-card">
-            <h6 class="text-muted mb-3"><i class="fas fa-tooth me-2"></i>Dental History</h6>
-            
-            <div class="mb-2">
-                <div class="info-label">Dental Discomfort</div>
-                <div class="info-value">
+</div>
+</div>
+<!-- Dental History Card -->
+<div class="info-card">
+<h6 class="text-muted mb-3"><i class="fas fa-tooth me-2"></i>Dental History</h6>
+<div class="mb-2">
+<div class="info-label">Dental Discomfort</div>
+<div class="info-value">
                     {{ patient.get_dental_discomfort_display|default:"Not specified" }}
                     {% if patient.discomfort_details %}
-                        <br><small class="text-muted">{{ patient.discomfort_details }}</small>
+                        <br/><small class="text-muted">{{ patient.discomfort_details }}</small>
                     {% endif %}
                 </div>
-            </div>
-            
-            <div class="mb-2">
-                <div class="info-label">Previous Surgery</div>
-                <div class="info-value">
+</div>
+<div class="mb-2">
+<div class="info-label">Previous Surgery</div>
+<div class="info-value">
                     {{ patient.get_previous_surgery_display|default:"Not specified" }}
                     {% if patient.surgery_details %}
-                        <br><small class="text-muted">{{ patient.surgery_details }}</small>
+                        <br/><small class="text-muted">{{ patient.surgery_details }}</small>
                     {% endif %}
                 </div>
-            </div>
-            
-            <div class="mb-0">
-                <div class="info-label">Reason for Visit</div>
-                <div class="info-value">{{ patient.reason_for_visit|default:"Not specified" }}</div>
-            </div>
-            
-            <hr>
-            
-            <div class="mb-0">
-                <div class="info-label">Last Dental Visit</div>
-                <div class="info-value">{{ patient.last_dental_visit|date:"M d, Y"|default:"Not recorded" }}</div>
-            </div>
-        </div>
-    </div>
-    
-    <!-- RIGHT COLUMN - Statistics and History -->
-    <div class="col-md-8">
-        <!-- Statistics -->
-        <div class="row mb-4">
-            <div class="col-3">
-                <div class="stat-box primary">
-                    <div class="stat-icon"><i class="fas fa-calendar-check"></i></div>
-                    <div class="stat-number">{{ appointments|length }}</div>
-                    <div class="stat-label">Appointments</div>
-                </div>
-            </div>
-            <div class="col-3">
-                <div class="stat-box success">
-                    <div class="stat-icon"><i class="fas fa-stethoscope"></i></div>
-                    <div class="stat-number">{{ treatments|length }}</div>
-                    <div class="stat-label">Treatments</div>
-                </div>
-            </div>
-            <div class="col-3">
-                <div class="stat-box warning">
-                    <div class="stat-icon"><i class="fas fa-file-invoice"></i></div>
-                    <div class="stat-number">{{ invoices|length }}</div>
-                    <div class="stat-label">Invoices</div>
-                </div>
-            </div>
-            <div class="col-3">
-                <div class="stat-box danger">
-                    <div class="stat-icon"><i class="fas fa-money-bill-wave"></i></div>
-                    <div class="stat-number">UGX {{ total_amount|floatformat:0|intcomma }}</div>
-                    <div class="stat-label">Total Spent</div>
-                </div>
-            </div>
-        </div>
-        
-        <!-- Appointments -->
-        <div class="info-card">
-            <div class="d-flex justify-content-between align-items-center mb-3">
-                <h6 class="text-muted mb-0"><i class="fas fa-calendar-check me-2"></i>Appointments</h6>
-                <a href="{% url 'appointments:add' %}?patient={{ patient.pk }}" class="btn btn-sm btn-primary">
-                    <i class="fas fa-plus"></i> New
+</div>
+<div class="mb-0">
+<div class="info-label">Reason for Visit</div>
+<div class="info-value">{{ patient.reason_for_visit|default:"Not specified" }}</div>
+</div>
+<hr/>
+<div class="mb-0">
+<div class="info-label">Last Dental Visit</div>
+<div class="info-value">{{ patient.last_dental_visit|date:"M d, Y"|default:"Not recorded" }}</div>
+</div>
+</div>
+</div>
+<!-- RIGHT COLUMN - Statistics and History -->
+<div class="col-md-8">
+<!-- Statistics -->
+<div class="row mb-4">
+<div class="col-3">
+<div class="stat-box primary">
+<div class="stat-icon"><i class="fas fa-calendar-check"></i></div>
+<div class="stat-number">{{ appointments|length }}</div>
+<div class="stat-label">Appointments</div>
+</div>
+</div>
+<div class="col-3">
+<div class="stat-box success">
+<div class="stat-icon"><i class="fas fa-stethoscope"></i></div>
+<div class="stat-number">{{ treatments|length }}</div>
+<div class="stat-label">Treatments</div>
+</div>
+</div>
+<div class="col-3">
+<div class="stat-box warning">
+<div class="stat-icon"><i class="fas fa-file-invoice"></i></div>
+<div class="stat-number">{{ invoices|length }}</div>
+<div class="stat-label">Invoices</div>
+</div>
+</div>
+<div class="col-3">
+<div class="stat-box danger">
+<div class="stat-icon"><i class="fas fa-money-bill-wave"></i></div>
+<div class="stat-number">UGX {{ total_amount|floatformat:0|intcomma }}</div>
+<div class="stat-label">Total Spent</div>
+</div>
+</div>
+</div>
+<!-- Appointments -->
+<div class="info-card">
+<div class="d-flex justify-content-between align-items-center mb-3">
+<h6 class="text-muted mb-0"><i class="fas fa-calendar-check me-2"></i>Appointments</h6>
+<a class="btn btn-sm btn-primary" href="{% url 'appointments:add' %}?patient={{ patient.pk }}">
+<i class="fas fa-plus"></i> New
                 </a>
-            </div>
+</div>
             
             {% if appointments %}
                 <div class="table-responsive">
-                    <table class="table table-hover mb-0">
-                        <thead>
-                            <tr>
-                                <th>Date</th>
-                                <th>Time</th>
-                                <th>Service</th>
-                                <th>Doctor</th>
-                                <th>Status</th>
-                            </tr>
-                        </thead>
-                        <tbody>
+<table class="table table-hover mb-0 mobile-stack-table">
+<thead>
+<tr>
+<th>Date</th>
+<th>Time</th>
+<th>Service</th>
+<th>Doctor</th>
+<th>Status</th>
+</tr>
+</thead>
+<tbody>
                             {% for appt in appointments|slice:":10" %}
                             <tr>
-                                <td>{{ appt.appointment_date|date:"M d, Y" }}</td>
-                                <td>{{ appt.appointment_time|time:"H:i" }}</td>
-                                <td>{{ appt.service.name }}</td>
-                                <td>Dr. {{ appt.doctor.name }}</td>
-                                <td>
-                                    <span class="badge-status {{ appt.status }}">
+<td data-label="Date">{{ appt.appointment_date|date:"M d, Y" }}</td>
+<td data-label="Time">{{ appt.appointment_time|time:"H:i" }}</td>
+<td data-label="Service">{{ appt.service.name }}</td>
+<td data-label="Doctor">Dr. {{ appt.doctor.name }}</td>
+<td data-label="Status">
+<span class="badge-status {{ appt.status }}">
                                         {{ appt.get_status_display }}
                                     </span>
-                                </td>
-                            </tr>
+</td>
+</tr>
                             {% endfor %}
-                            {% if appointments|length > 10 %}
+                            {% if appointments|length &gt; 10 %}
                                 <tr>
-                                    <td colspan="5" class="text-center text-muted">
-                                        <small>+ {{ appointments|length|add:"-10" }} more appointments</small>
-                                    </td>
-                                </tr>
+<td class="text-center text-muted" colspan="5" data-label="Date">
+<small>+ {{ appointments|length|add:"-10" }} more appointments</small>
+</td>
+</tr>
                             {% endif %}
                         </tbody>
-                    </table>
-                </div>
-                {% if appointments|length > 10 %}
+</table>
+</div>
+                {% if appointments|length &gt; 10 %}
                     <div class="text-center mt-2">
-                        <a href="{% url 'appointments:list' %}?patient={{ patient.pk }}" class="btn btn-sm btn-outline-primary">
+<a class="btn btn-sm btn-outline-primary" href="{% url 'appointments:list' %}?patient={{ patient.pk }}">
                             View All Appointments
                         </a>
-                    </div>
+</div>
                 {% endif %}
             {% else %}
                 <p class="text-muted text-center py-3">
-                    <i class="fas fa-calendar-plus fa-2x d-block mb-2"></i>
+<i class="fas fa-calendar-plus fa-2x d-block mb-2"></i>
                     No appointments recorded
                 </p>
             {% endif %}
         </div>
-        
-        <!-- Treatments -->
-        <div class="info-card mt-3">
-            <h6 class="text-muted mb-3"><i class="fas fa-stethoscope me-2"></i>Treatment History</h6>
+<!-- Treatments -->
+<div class="info-card mt-3">
+<h6 class="text-muted mb-3"><i class="fas fa-stethoscope me-2"></i>Treatment History</h6>
             
             {% if treatments %}
                 <div class="table-responsive">
-                    <table class="table table-hover mb-0">
-                        <thead>
-                            <tr>
-                                <th>Date</th>
-                                <th>Service</th>
-                                <th>Doctor</th>
-                                <th>Amount</th>
-                            </tr>
-                        </thead>
-                        <tbody>
+<table class="table table-hover mb-0 mobile-stack-table">
+<thead>
+<tr>
+<th>Date</th>
+<th>Service</th>
+<th>Doctor</th>
+<th>Amount</th>
+</tr>
+</thead>
+<tbody>
                             {% for treatment in treatments|slice:":10" %}
                             <tr>
-                                <td>{{ treatment.treatment_date|date:"M d, Y" }}</td>
-                                <td>{{ treatment.service.name }}</td>
-                                <td>Dr. {{ treatment.doctor.name }}</td>
-                                <td>UGX {{ treatment.amount|floatformat:0|intcomma }}</td>
-                            </tr>
+<td data-label="Date">{{ treatment.treatment_date|date:"M d, Y" }}</td>
+<td data-label="Service">{{ treatment.service.name }}</td>
+<td data-label="Doctor">Dr. {{ treatment.doctor.name }}</td>
+<td data-label="Amount">UGX {{ treatment.amount|floatformat:0|intcomma }}</td>
+</tr>
                             {% endfor %}
-                            {% if treatments|length > 10 %}
+                            {% if treatments|length &gt; 10 %}
                                 <tr>
-                                    <td colspan="4" class="text-center text-muted">
-                                        <small>+ {{ treatments|length|add:"-10" }} more treatments</small>
-                                    </td>
-                                </tr>
+<td class="text-center text-muted" colspan="4" data-label="Date">
+<small>+ {{ treatments|length|add:"-10" }} more treatments</small>
+</td>
+</tr>
                             {% endif %}
                         </tbody>
-                    </table>
-                </div>
+</table>
+</div>
             {% else %}
                 <p class="text-muted text-center py-3">
-                    <i class="fas fa-stethoscope fa-2x d-block mb-2"></i>
+<i class="fas fa-stethoscope fa-2x d-block mb-2"></i>
                     No treatments recorded
                 </p>
             {% endif %}
         </div>
-        
-        <!-- Invoices -->
-        <div class="info-card mt-3">
-            <h6 class="text-muted mb-3"><i class="fas fa-file-invoice me-2"></i>Invoices</h6>
+<!-- Invoices -->
+<div class="info-card mt-3">
+<h6 class="text-muted mb-3"><i class="fas fa-file-invoice me-2"></i>Invoices</h6>
             
             {% if invoices %}
                 <div class="table-responsive">
-                    <table class="table table-hover mb-0">
-                        <thead>
-                            <tr>
-                                <th>Invoice #</th>
-                                <th>Date</th>
-                                <th>Total</th>
-                                <th>Status</th>
-                            </tr>
-                        </thead>
-                        <tbody>
+<table class="table table-hover mb-0 mobile-stack-table">
+<thead>
+<tr>
+<th>Invoice #</th>
+<th>Date</th>
+<th>Total</th>
+<th>Status</th>
+</tr>
+</thead>
+<tbody>
                             {% for invoice in invoices|slice:":10" %}
                             <tr>
-                                <td>
-                                    <a href="{% url 'billing:detail' invoice.pk %}">
+<td data-label="Invoice #">
+<a href="{% url 'billing:detail' invoice.pk %}">
                                         {{ invoice.invoice_number }}
                                     </a>
-                                </td>
-                                <td>{{ invoice.issue_date|date:"M d, Y" }}</td>
-                                <td>UGX {{ invoice.total_amount|floatformat:0|intcomma }}</td>
-                                <td>
-                                    <span class="badge-status {{ invoice.status }}">
+</td>
+<td data-label="Date">{{ invoice.issue_date|date:"M d, Y" }}</td>
+<td data-label="Total">UGX {{ invoice.total_amount|floatformat:0|intcomma }}</td>
+<td data-label="Status">
+<span class="badge-status {{ invoice.status }}">
                                         {{ invoice.get_status_display }}
                                     </span>
-                                </td>
-                            </tr>
+</td>
+</tr>
                             {% endfor %}
-                            {% if invoices|length > 10 %}
+                            {% if invoices|length &gt; 10 %}
                                 <tr>
-                                    <td colspan="4" class="text-center text-muted">
-                                        <small>+ {{ invoices|length|add:"-10" }} more invoices</small>
-                                    </td>
-                                </tr>
+<td class="text-center text-muted" colspan="4" data-label="Invoice #">
+<small>+ {{ invoices|length|add:"-10" }} more invoices</small>
+</td>
+</tr>
                             {% endif %}
                         </tbody>
-                    </table>
-                </div>
-                {% if invoices|length > 10 %}
+</table>
+</div>
+                {% if invoices|length &gt; 10 %}
                     <div class="text-center mt-2">
-                        <a href="{% url 'billing:list' %}?patient={{ patient.pk }}" class="btn btn-sm btn-outline-primary">
+<a class="btn btn-sm btn-outline-primary" href="{% url 'billing:list' %}?patient={{ patient.pk }}">
                             View All Invoices
                         </a>
-                    </div>
+</div>
                 {% endif %}
             {% else %}
                 <p class="text-muted text-center py-3">
-                    <i class="fas fa-file-invoice fa-2x d-block mb-2"></i>
+<i class="fas fa-file-invoice fa-2x d-block mb-2"></i>
                     No invoices recorded
                 </p>
             {% endif %}
         </div>
-        
-        <!-- Dental Images Gallery -->
-        <div class="info-card mt-3">
-            <div class="d-flex justify-content-between align-items-center mb-3">
-                <h6 class="text-muted mb-0"><i class="fas fa-images me-2"></i>Dental Images</h6>
-                <a href="{% url 'patients:add_image' patient.pk %}" class="btn btn-sm btn-primary">
-                    <i class="fas fa-plus"></i> Add Image
+<!-- Dental Images Gallery -->
+<div class="info-card mt-3">
+<div class="d-flex justify-content-between align-items-center mb-3">
+<h6 class="text-muted mb-0"><i class="fas fa-images me-2"></i>Dental Images</h6>
+<a class="btn btn-sm btn-primary" href="{% url 'patients:add_image' patient.pk %}">
+<i class="fas fa-plus"></i> Add Image
                 </a>
-            </div>
+</div>
             
             {% if patient.dental_images.all %}
                 <div class="row">
                     {% for image in patient.dental_images.all %}
                         <div class="col-md-3 col-sm-4 col-6 mb-3">
-                            <div class="card h-100">
-                                <img src="{{ image.image.url }}" alt="{{ image.description }}"
-                                     style="width: 100%; height: 150px; object-fit: cover; cursor: pointer;"
-                                     onclick="openImageModal('{{ image.image.url }}', '{{ image.description }}')"
-                                     data-bs-toggle="modal" data-bs-target="#imageModal">
-                                <div class="card-body p-2">
-                                    <small class="d-block fw-bold">{{ image.get_image_type_display }}</small>
-                                    <small class="text-muted">{{ image.description|truncatechars:30 }}</small>
-                                    <br>
-                                    <small class="text-muted">{{ image.uploaded_at|date:"M d, Y" }}</small>
-                                </div>
-                            </div>
-                        </div>
+<div class="card h-100">
+<img alt="{{ image.description }}" data-bs-target="#imageModal" data-bs-toggle="modal" onclick="openImageModal('{{ image.image.url }}', '{{ image.description }}')" src="{{ image.image.url }}" style="width: 100%; height: 150px; object-fit: cover; cursor: pointer;"/>
+<div class="card-body p-2">
+<small class="d-block fw-bold">{{ image.get_image_type_display }}</small>
+<small class="text-muted">{{ image.description|truncatechars:30 }}</small>
+<br/>
+<small class="text-muted">{{ image.uploaded_at|date:"M d, Y" }}</small>
+</div>
+</div>
+</div>
                     {% endfor %}
                 </div>
             {% else %}
                 <p class="text-muted text-center py-3">
-                    <i class="fas fa-image fa-2x d-block mb-2"></i>
+<i class="fas fa-image fa-2x d-block mb-2"></i>
                     No dental images uploaded for this patient.
                 </p>
             {% endif %}
         </div>
-    </div>
 </div>
-
+</div>
 <!-- Image Modal -->
 <div class="modal fade" id="imageModal" tabindex="-1">
-    <div class="modal-dialog modal-lg">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title">Dental Image</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body text-center">
-                <img id="modalImage" src="" alt="Dental Image" style="max-width: 100%; max-height: 70vh;">
-                <p id="modalDescription" class="mt-2 text-muted"></p>
-            </div>
-        </div>
-    </div>
+<div class="modal-dialog modal-lg">
+<div class="modal-content">
+<div class="modal-header">
+<h5 class="modal-title">Dental Image</h5>
+<button class="btn-close" data-bs-dismiss="modal" type="button"></button>
 </div>
-
+<div class="modal-body text-center">
+<img alt="Dental Image" id="modalImage" src="" style="max-width: 100%; max-height: 70vh;"/>
+<p class="mt-2 text-muted" id="modalDescription"></p>
+</div>
+</div>
+</div>
+</div>
 <script>
 function openImageModal(url, description) {
     document.getElementById('modalImage').src = url;

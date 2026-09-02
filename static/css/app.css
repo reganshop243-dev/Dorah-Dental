@@ -213,3 +213,77 @@ input,select,textarea{font-size:16px!important}
   .main-content .image-grid{grid-template-columns:1fr!important;}
   .main-content .card-header,.main-content .card-body{padding-left:11px;padding-right:11px;}
 }
+
+
+/* ================================================================
+   MOBILE APP-LIKE TEMPLATE LAYOUT
+   ================================================================ */
+@media (max-width:575.98px){
+  .main-content{padding:10px 10px 28px;}
+  .main-content > .d-flex.justify-content-between.align-items-center,
+  .main-content > .d-flex.justify-content-between{align-items:flex-start!important;gap:10px!important;}
+  .main-content > .d-flex.justify-content-between > h1,
+  .main-content > .d-flex.justify-content-between > h2,
+  .main-content > .d-flex.justify-content-between > h3,
+  .main-content > .d-flex.justify-content-between > h4{margin:0!important;line-height:1.2;}
+  .main-content > .d-flex.justify-content-between > .btn,
+  .main-content > .d-flex.justify-content-between > a.btn{width:auto;max-width:100%;}
+
+  /* Mobile card-style tables: much easier to read than clipped columns. */
+  .table-responsive:has(> table.mobile-stack-table){overflow:visible;border:0;background:transparent;}
+  .mobile-stack-table{display:block;width:100%!important;min-width:0!important;border-collapse:separate;border-spacing:0;}
+  .mobile-stack-table thead{display:none;}
+  .mobile-stack-table tbody{display:block;width:100%;}
+  .mobile-stack-table tbody tr{display:block;background:#fff;border:1px solid var(--border);border-radius:13px;margin:0 0 10px;box-shadow:0 4px 16px rgba(19,22,59,.05);overflow:hidden;}
+  .mobile-stack-table tbody tr:last-child{margin-bottom:0;}
+  .mobile-stack-table tbody td{display:grid;grid-template-columns:minmax(88px,34%) minmax(0,1fr);gap:10px;align-items:start;width:100%;min-height:0!important;padding:11px 12px!important;border:0!important;border-bottom:1px solid #edf1f4!important;white-space:normal!important;overflow-wrap:anywhere;font-size:13px!important;line-height:1.35;}
+  .mobile-stack-table tbody td:last-child{border-bottom:0!important;}
+  .mobile-stack-table tbody td::before{content:attr(data-label);font-weight:700;color:#718096;font-size:10px;text-transform:uppercase;letter-spacing:.45px;line-height:1.4;}
+  .mobile-stack-table tbody td:last-child:has(.btn-group),
+  .mobile-stack-table tbody td:last-child:has(.btn-toolbar){display:block;text-align:right;}
+  .mobile-stack-table tbody td:last-child:has(.btn-group)::before,
+  .mobile-stack-table tbody td:last-child:has(.btn-toolbar)::before{display:block;text-align:left;margin-bottom:7px;}
+  .mobile-stack-table .btn-group{width:auto;display:flex;justify-content:flex-end;flex-wrap:wrap;gap:6px;overflow:visible;padding:0;}
+  .mobile-stack-table .btn-group .btn{min-width:40px;min-height:40px;padding:8px 10px;}
+  .mobile-stack-table .badge{white-space:normal;line-height:1.25;}
+
+  /* Wide analytical tables stay scrollable, never crushed. */
+  .mobile-wide-table{min-width:760px!important;width:max-content!important;}
+  .table-responsive:has(> .mobile-wide-table){overflow-x:auto!important;border:1px solid var(--border);background:#fff;border-radius:12px;}
+
+  /* Filters and action bars */
+  .main-content form.row.g-2,.main-content form.row.g-3{row-gap:10px!important;}
+  .main-content form.row.g-2 > [class*="col-"],.main-content form.row.g-3 > [class*="col-"]{width:100%!important;flex:0 0 100%!important;}
+  .main-content form .btn.w-100{width:100%!important;}
+  .main-content .filter-card,.main-content .search-card{padding:14px!important;}
+
+  /* Balance sheet and financial pages */
+  .balance-sheet-container{padding:4px 0 20px!important;min-height:0!important;}
+  .balance-sheet-header{padding:16px!important;margin-bottom:12px!important;}
+  .balance-sheet-header h3{font-size:1.35rem!important;line-height:1.25;}
+  .balance-sheet-header .subtitle{font-size:12px!important;margin-top:5px;}
+  .balance-sheet-header .d-flex{gap:8px!important;}
+  .balance-sheet-header .print-btn,.balance-sheet-header .btn{min-height:40px!important;padding:8px 12px!important;margin:0!important;}
+  .filter-card{padding:14px!important;margin-bottom:12px!important;}
+  .filter-card .row{margin-left:0;margin-right:0;}
+  .filter-card .period-badge{display:inline-block;max-width:100%;white-space:normal;line-height:1.3;}
+  .balance-sheet-container .stat-card{padding:13px!important;min-height:105px!important;}
+  .balance-sheet-container .stat-card .stat-label{font-size:10px!important;line-height:1.25;}
+  .balance-sheet-container .stat-card .stat-value{font-size:20px!important;overflow-wrap:anywhere;}
+  .balance-sheet-container .stat-card .stat-sub{font-size:11px!important;}
+  .balance-sheet-container .detail-card{margin-bottom:12px!important;}
+  .balance-sheet-container .detail-card .card-header{padding:12px 14px!important;}
+  .balance-sheet-container .detail-card .card-body{padding:13px 14px!important;}
+  .summary-table tr td{padding:9px 0!important;}
+  .summary-table .value{padding-left:10px!important;overflow-wrap:anywhere;}
+
+  /* Dashboard cards and quick actions */
+  .stat-card{min-width:0;}
+  .quick-actions{gap:8px!important;}
+  .quick-action{min-width:0;}
+
+  /* Modals fill the usable phone width. */
+  .modal-dialog{width:calc(100% - 12px);max-width:none;margin:6px auto!important;}
+  .modal-content{max-height:calc(100vh - 12px);}
+  .modal-body{overflow-y:auto;}
+}

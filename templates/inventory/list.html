@@ -6,182 +6,177 @@
 
 {% block content %}
 <div class="d-flex justify-content-between align-items-center mb-4">
-    <h4><i class="fas fa-boxes text-primary"></i> Inventory</h4>
-    <div>
-        <a href="{% url 'inventory:low_stock' %}" class="btn btn-warning me-2">
-            <i class="fas fa-exclamation-triangle"></i> Low Stock
+<h4><i class="fas fa-boxes text-primary"></i> Inventory</h4>
+<div>
+<a class="btn btn-warning me-2" href="{% url 'inventory:low_stock' %}">
+<i class="fas fa-exclamation-triangle"></i> Low Stock
         </a>
-        <a href="{% url 'inventory:add' %}" class="btn btn-primary">
-            <i class="fas fa-plus"></i> Add Item
+<a class="btn btn-primary" href="{% url 'inventory:add' %}">
+<i class="fas fa-plus"></i> Add Item
         </a>
-    </div>
 </div>
-
+</div>
 <!-- Stats -->
 <div class="row mb-4">
-    <div class="col-md-3">
-        <div class="stat-card">
-            <div class="d-flex justify-content-between">
-                <div>
-                    <div class="stat-number">{{ total_items }}</div>
-                    <div class="stat-label">Total Items</div>
-                </div>
-                <div class="stat-icon text-primary">
-                    <i class="fas fa-boxes"></i>
-                </div>
-            </div>
-        </div>
-    </div>
-    <div class="col-md-3">
-        <div class="stat-card">
-            <div class="d-flex justify-content-between">
-                <div>
-                    <div class="stat-number text-warning">{{ low_stock_items }}</div>
-                    <div class="stat-label">Low Stock</div>
-                </div>
-                <div class="stat-icon text-warning">
-                    <i class="fas fa-exclamation-triangle"></i>
-                </div>
-            </div>
-        </div>
-    </div>
-    <div class="col-md-3">
-        <div class="stat-card">
-            <div class="d-flex justify-content-between">
-                <div>
-                    <div class="stat-number text-danger">{{ out_of_stock_items }}</div>
-                    <div class="stat-label">Out of Stock</div>
-                </div>
-                <div class="stat-icon text-danger">
-                    <i class="fas fa-times-circle"></i>
-                </div>
-            </div>
-        </div>
-    </div>
-    <div class="col-md-3">
-        <div class="stat-card">
-            <div class="d-flex justify-content-between">
-                <div>
-                    <div class="stat-number text-success">UGX {{ total_value|floatformat:0|intcomma }}</div>
-                    <div class="stat-label">Total Value</div>
-                </div>
-                <div class="stat-icon text-success">
-                    <i class="fas fa-money-bill-wave"></i>
-                </div>
-            </div>
-        </div>
-    </div>
+<div class="col-md-3">
+<div class="stat-card">
+<div class="d-flex justify-content-between">
+<div>
+<div class="stat-number">{{ total_items }}</div>
+<div class="stat-label">Total Items</div>
 </div>
-
+<div class="stat-icon text-primary">
+<i class="fas fa-boxes"></i>
+</div>
+</div>
+</div>
+</div>
+<div class="col-md-3">
+<div class="stat-card">
+<div class="d-flex justify-content-between">
+<div>
+<div class="stat-number text-warning">{{ low_stock_items }}</div>
+<div class="stat-label">Low Stock</div>
+</div>
+<div class="stat-icon text-warning">
+<i class="fas fa-exclamation-triangle"></i>
+</div>
+</div>
+</div>
+</div>
+<div class="col-md-3">
+<div class="stat-card">
+<div class="d-flex justify-content-between">
+<div>
+<div class="stat-number text-danger">{{ out_of_stock_items }}</div>
+<div class="stat-label">Out of Stock</div>
+</div>
+<div class="stat-icon text-danger">
+<i class="fas fa-times-circle"></i>
+</div>
+</div>
+</div>
+</div>
+<div class="col-md-3">
+<div class="stat-card">
+<div class="d-flex justify-content-between">
+<div>
+<div class="stat-number text-success">UGX {{ total_value|floatformat:0|intcomma }}</div>
+<div class="stat-label">Total Value</div>
+</div>
+<div class="stat-icon text-success">
+<i class="fas fa-money-bill-wave"></i>
+</div>
+</div>
+</div>
+</div>
+</div>
 <!-- Filters -->
 <div class="card mb-4">
-    <div class="card-body">
-        <form method="get" class="row g-3">
-            <div class="col-md-4">
-                <input type="text" class="form-control" name="search" 
-                       placeholder="Search by name, supplier, barcode..." 
-                       value="{{ search_query }}">
-            </div>
-            <div class="col-md-3">
-                <select class="form-select" name="category">
-                    <option value="">All Categories</option>
+<div class="card-body">
+<form class="row g-3" method="get">
+<div class="col-md-4">
+<input class="form-control" name="search" placeholder="Search by name, supplier, barcode..." type="text" value="{{ search_query }}"/>
+</div>
+<div class="col-md-3">
+<select class="form-select" name="category">
+<option value="">All Categories</option>
                     {% for category in categories %}
-                        <option value="{{ category.id }}" {% if category_filter == category.id|stringformat:"s" %}selected{% endif %}>
+                        <option %}="" %}selected{%="" category_filter='category.id|stringformat:"s"' endif="" if="" value="{{ category.id }}" {%="">
                             {{ category.name }}
                         </option>
                     {% endfor %}
                 </select>
-            </div>
-            <div class="col-md-3">
-                <select class="form-select" name="status">
-                    <option value="">All Status</option>
-                    <option value="available" {% if status_filter == 'available' %}selected{% endif %}>Available</option>
-                    <option value="low_stock" {% if status_filter == 'low_stock' %}selected{% endif %}>Low Stock</option>
-                    <option value="out_of_stock" {% if status_filter == 'out_of_stock' %}selected{% endif %}>Out of Stock</option>
-                </select>
-            </div>
-            <div class="col-md-2">
-                <button type="submit" class="btn btn-primary w-100">
-                    <i class="fas fa-filter"></i> Filter
-                </button>
-            </div>
-        </form>
-    </div>
 </div>
-
+<div class="col-md-3">
+<select class="form-select" name="status">
+<option value="">All Status</option>
+<option %}="" %}selected{%="" endif="" if="" status_filter="available" value="available" {%="">Available</option>
+<option %}="" %}selected{%="" endif="" if="" status_filter="low_stock" value="low_stock" {%="">Low Stock</option>
+<option %}="" %}selected{%="" endif="" if="" status_filter="out_of_stock" value="out_of_stock" {%="">Out of Stock</option>
+</select>
+</div>
+<div class="col-md-2">
+<button class="btn btn-primary w-100" type="submit">
+<i class="fas fa-filter"></i> Filter
+                </button>
+</div>
+</form>
+</div>
+</div>
 <!-- Items Table -->
 <div class="card">
-    <div class="card-body">
+<div class="card-body">
         {% if items %}
             <div class="table-responsive">
-                <table class="table table-hover">
-                    <thead>
-                        <tr>
-                            <th>Item Name</th>
-                            <th>Category</th>
-                            <th>Quantity</th>
-                            <th>Unit</th>
-                            <th>Unit Cost</th>
-                            <th>Total Value</th>
-                            <th>Status</th>
-                            <th>Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody>
+<table class="table table-hover mobile-wide-table">
+<thead>
+<tr>
+<th>Item Name</th>
+<th>Category</th>
+<th>Quantity</th>
+<th>Unit</th>
+<th>Unit Cost</th>
+<th>Total Value</th>
+<th>Status</th>
+<th>Actions</th>
+</tr>
+</thead>
+<tbody>
                         {% for item in items %}
                         <tr>
-                            <td>
-                                <a href="{% url 'inventory:detail' item.pk %}" class="fw-bold text-decoration-none">
+<td>
+<a class="fw-bold text-decoration-none" href="{% url 'inventory:detail' item.pk %}">
                                     {{ item.name }}
                                 </a>
                                 {% if item.is_low_stock %}
                                     <span class="badge bg-warning ms-1">Low</span>
                                 {% endif %}
                             </td>
-                            <td>{{ item.category.name|default:"-" }}</td>
-                            <td>
-                                <span class="{% if item.is_out_of_stock %}text-danger{% elif item.is_low_stock %}text-warning{% else %}text-success{% endif %} fw-bold">
+<td>{{ item.category.name|default:"-" }}</td>
+<td>
+<span class="{% if item.is_out_of_stock %}text-danger{% elif item.is_low_stock %}text-warning{% else %}text-success{% endif %} fw-bold">
                                     {{ item.quantity }}
                                 </span>
-                            </td>
-                            <td>{{ item.get_unit_display }}</td>
-                            <td>UGX {{ item.unit_cost|floatformat:0|intcomma }}</td>
-                            <td>UGX {{ item.total_value|floatformat:0|intcomma }}</td>
-                            <td>
-                                <span class="badge {% if item.status == 'available' %}bg-success{% elif item.status == 'low_stock' %}bg-warning{% elif item.status == 'out_of_stock' %}bg-danger{% else %}bg-secondary{% endif %}">
+</td>
+<td>{{ item.get_unit_display }}</td>
+<td>UGX {{ item.unit_cost|floatformat:0|intcomma }}</td>
+<td>UGX {{ item.total_value|floatformat:0|intcomma }}</td>
+<td>
+<span class="badge {% if item.status == 'available' %}bg-success{% elif item.status == 'low_stock' %}bg-warning{% elif item.status == 'out_of_stock' %}bg-danger{% else %}bg-secondary{% endif %}">
                                     {{ item.get_status_display }}
                                 </span>
-                            </td>
-                            <td>
-                                <div class="btn-group btn-group-sm">
-                                    <a href="{% url 'inventory:detail' item.pk %}" class="btn btn-outline-primary" title="View">
-                                        <i class="fas fa-eye"></i>
-                                    </a>
-                                    <a href="{% url 'inventory:edit' item.pk %}" class="btn btn-outline-secondary" title="Edit">
-                                        <i class="fas fa-edit"></i>
-                                    </a>
-                                    <a href="{% url 'inventory:adjust_stock' item.pk %}" class="btn btn-outline-success" title="Adjust Stock">
-                                        <i class="fas fa-exchange-alt"></i>
-                                    </a>
-                                    <a href="{% url 'inventory:delete' item.pk %}" class="btn btn-outline-danger" title="Delete">
-                                        <i class="fas fa-trash"></i>
-                                    </a>
-                                </div>
-                            </td>
-                        </tr>
+</td>
+<td>
+<div class="btn-group btn-group-sm">
+<a class="btn btn-outline-primary" href="{% url 'inventory:detail' item.pk %}" title="View">
+<i class="fas fa-eye"></i>
+</a>
+<a class="btn btn-outline-secondary" href="{% url 'inventory:edit' item.pk %}" title="Edit">
+<i class="fas fa-edit"></i>
+</a>
+<a class="btn btn-outline-success" href="{% url 'inventory:adjust_stock' item.pk %}" title="Adjust Stock">
+<i class="fas fa-exchange-alt"></i>
+</a>
+<a class="btn btn-outline-danger" href="{% url 'inventory:delete' item.pk %}" title="Delete">
+<i class="fas fa-trash"></i>
+</a>
+</div>
+</td>
+</tr>
                         {% endfor %}
                     </tbody>
-                </table>
-            </div>
+</table>
+</div>
         {% else %}
             <div class="text-center py-5">
-                <i class="fas fa-boxes fa-3x text-muted mb-3"></i>
-                <h5>No inventory items found</h5>
-                <p class="text-muted">Start by adding your first inventory item.</p>
-                <a href="{% url 'inventory:add' %}" class="btn btn-primary">
-                    <i class="fas fa-plus"></i> Add Item
+<i class="fas fa-boxes fa-3x text-muted mb-3"></i>
+<h5>No inventory items found</h5>
+<p class="text-muted">Start by adding your first inventory item.</p>
+<a class="btn btn-primary" href="{% url 'inventory:add' %}">
+<i class="fas fa-plus"></i> Add Item
                 </a>
-            </div>
+</div>
         {% endif %}
     </div>
 </div>
