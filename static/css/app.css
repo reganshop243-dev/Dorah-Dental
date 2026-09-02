@@ -101,3 +101,115 @@ input,select,textarea{font-size:16px!important}
 /* Accessibility / interaction */
 .nav-link:focus-visible,.btn:focus-visible,.quick-action:focus-visible{outline:3px solid rgba(95,170,213,.42);outline-offset:2px}
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{scroll-behavior:auto!important;transition:none!important;animation:none!important}}
+
+/* ================================================================
+   MOBILE TEMPLATE COMPATIBILITY LAYER
+   Applies to every template extending base.html.
+   Keep this layer last so template-specific inline styles cannot
+   accidentally make the page wider than the viewport.
+   ================================================================ */
+@media (max-width: 991.98px){
+  .main-content > *{max-width:100%;}
+  .main-content .container,.main-content .container-fluid{max-width:100%;padding-left:0;padding-right:0;}
+  .main-content .row{--bs-gutter-x:1rem;max-width:100%;}
+  .main-content .row > *{min-width:0;}
+
+  /* Page headings and action bars */
+  .main-content > .d-flex.justify-content-between,
+  .main-content .page-header,
+  .main-content .content-header,
+  .main-content .section-header{
+    flex-wrap:wrap!important;align-items:flex-start!important;gap:10px!important;
+  }
+  .main-content > .d-flex.justify-content-between > :last-child,
+  .main-content .page-header > :last-child,
+  .main-content .content-header > :last-child,
+  .main-content .section-header > :last-child{max-width:100%;}
+  .main-content h1,.main-content h2,.main-content h3,.main-content h4{overflow-wrap:anywhere;}
+
+  /* Forms: one comfortable control per line where Bootstrap stacks columns. */
+  .main-content form .input-group{width:100%;max-width:100%;}
+  .main-content form .input-group > .form-control,
+  .main-content form .input-group > .form-select{min-width:0;}
+  .main-content form .form-check{padding-left:1.75rem;}
+  .main-content form textarea{min-height:110px;resize:vertical;}
+  .main-content form .row.g-3 > [class*="col-"],
+  .main-content form .row.g-2 > [class*="col-"]{min-width:0;}
+
+  /* Action controls never create a giant overflowing row. */
+  .main-content .btn-toolbar{gap:8px;flex-wrap:wrap;}
+  .main-content .btn-group{max-width:100%;}
+  .main-content .btn-group > .btn{margin:0!important;}
+  .main-content .action-buttons,.main-content .table-actions{display:flex;flex-wrap:wrap;gap:7px;max-width:100%;}
+
+  /* Tables remain complete but become touch-scrollable instead of crushing columns. */
+  .main-content .table-responsive{max-width:100%;overflow-x:auto;overflow-y:hidden;scrollbar-width:thin;}
+  .main-content .table-responsive > .table{width:max-content;min-width:100%;}
+  .main-content .table-responsive .table td,.main-content .table-responsive .table th{vertical-align:middle;}
+  .main-content .table-responsive .table td:last-child,.main-content .table-responsive .table th:last-child{white-space:nowrap;}
+
+  /* Cards and panels */
+  .main-content .card-body > .row:last-child{margin-bottom:0;}
+  .main-content .card-header{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;}
+  .main-content .card-header > *{min-width:0;}
+  .main-content .card-footer{padding:12px 15px;}
+
+  /* Bootstrap modals */
+  .main-content + .modal .modal-dialog,.modal .modal-dialog{max-width:calc(100% - 16px);margin:8px auto;}
+  .modal .modal-body{overflow-wrap:anywhere;}
+  .modal .modal-footer{gap:7px;flex-wrap:wrap;}
+  .modal .modal-footer .btn{margin:0!important;flex:1 1 auto;}
+
+  /* Common visual widgets */
+  .main-content img,.main-content video,.main-content iframe{max-width:100%;}
+  .main-content iframe{border:0;}
+  .main-content pre{max-width:100%;overflow-x:auto;white-space:pre-wrap;word-break:break-word;}
+  .main-content .alert{overflow-wrap:anywhere;}
+  .main-content .dropdown-menu{max-width:calc(100vw - 24px);}
+  .main-content .pagination{justify-content:center;}
+
+  /* Calendar and chart libraries need a controlled scroll region on phones. */
+  .main-content .calendar-container,.main-content .calendar-wrapper,.main-content .fc,
+  .main-content .fc-view-harness,.main-content .chart-container{max-width:100%;overflow-x:auto;}
+  .main-content canvas{max-width:100%!important;}
+}
+
+@media (max-width: 575.98px){
+  /* Consistent phone rhythm across every page. */
+  .main-content .mb-4{margin-bottom:1rem!important;}
+  .main-content .mb-5{margin-bottom:1.25rem!important;}
+  .main-content .display-1{font-size:2.2rem;}.main-content .display-2{font-size:2rem;}
+  .main-content .display-3{font-size:1.8rem;}.main-content .display-4{font-size:1.6rem;}
+
+  /* Full-width primary actions are easier to tap. */
+  .main-content .page-header .btn,.main-content .content-header .btn,
+  .main-content .section-header .btn{min-height:44px;}
+  .main-content .btn-lg{min-height:48px;}
+  .main-content .btn-group{width:100%;overflow-x:auto;flex-wrap:nowrap;padding-bottom:2px;}
+  .main-content .btn-group > .btn{flex:0 0 auto;}
+  .main-content .action-buttons,.main-content .table-actions{width:100%;}
+
+  /* Search/filter toolbars stack cleanly. */
+  .main-content .filter-row,.main-content .search-toolbar,.main-content .toolbar{display:flex;flex-direction:column;gap:9px;}
+  .main-content .filter-row > *,.main-content .search-toolbar > *,.main-content .toolbar > *{width:100%!important;max-width:100%!important;}
+  .main-content .input-group .btn{min-width:44px;}
+
+  /* Prevent long IDs, emails and URLs from breaking the layout. */
+  .main-content a,.main-content td,.main-content th,.main-content .text-break{overflow-wrap:anywhere;}
+
+  /* Comfortable empty states. */
+  .main-content .empty-state,.main-content .no-results{padding:24px 10px!important;}
+  .main-content .empty-state .fa-3x,.main-content .no-results .fa-3x{font-size:2.3rem;}
+
+  /* Detail grids become single-column cards. */
+  .main-content .detail-grid,.main-content .info-grid,.main-content .summary-grid{grid-template-columns:1fr!important;}
+
+  /* Images / dental charts / uploads */
+  .main-content .image-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:9px!important;}
+  .main-content .image-grid img{width:100%;height:auto;object-fit:cover;}
+}
+
+@media (max-width:380px){
+  .main-content .image-grid{grid-template-columns:1fr!important;}
+  .main-content .card-header,.main-content .card-body{padding-left:11px;padding-right:11px;}
+}

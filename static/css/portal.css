@@ -5,3 +5,40 @@
 .card{border:1px solid var(--portal-border);border-radius:16px;box-shadow:0 5px 22px rgba(31,41,55,.06);overflow:hidden}.card:hover{box-shadow:0 9px 28px rgba(31,41,55,.09)}.card-header{background:#fff;border-bottom:1px solid var(--portal-border);font-weight:700;padding:15px 18px}.card-body{padding:20px}.btn{min-height:42px;border-radius:10px;font-weight:600}.btn-primary{background:linear-gradient(135deg,var(--portal-brand),var(--portal-brand-2));border:0}.form-control,.form-select{min-height:44px;border-radius:10px;font-size:16px}.list-group-item{border-color:var(--portal-border);padding:13px 14px}.badge-status{padding:5px 10px;border-radius:999px;font-size:.72rem;font-weight:600;display:inline-block}.toast-container{position:fixed;top:12px;right:12px;z-index:1050;max-width:min(390px,calc(100vw - 24px))}.toast{border:0;border-radius:12px;box-shadow:0 8px 28px rgba(0,0,0,.14);overflow:hidden}.quick-link-card{text-decoration:none}.quick-link-card .icon{font-size:2rem;margin-bottom:8px}
 @media(max-width:767.98px){.portal-header .container{padding-left:12px;padding-right:12px}.portal-header .brand{font-size:1rem}.portal-header .user-info{gap:8px}.portal-header .patient-name{font-size:.84rem;max-width:130px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.portal-header .btn-logout{font-size:.84rem;white-space:nowrap}.card{border-radius:13px}.card-body{padding:14px}.card-header{padding:13px 14px}.table-responsive{overflow-x:auto;-webkit-overflow-scrolling:touch}.table{min-width:600px}.row>[class*=col-]{margin-bottom:10px}}
 @media(max-width:480px){.portal-header .patient-name{display:none}.portal-header .brand .logo-icon{width:32px;height:32px}.portal-header .container{min-height:44px}.btn{width:100%}.card-body .btn{max-width:100%}.toast-container{left:10px;right:10px;max-width:none}.quick-link-card .card-body{padding:15px 10px}.quick-link-card h6{font-size:.85rem}}
+
+/* ================================================================
+   PATIENT PORTAL - ALL TEMPLATE MOBILE LAYOUT
+   ================================================================ */
+@media(max-width:767.98px){
+  .container{max-width:100%;}
+  main,.portal-main,.container > .row{min-width:0;}
+  .portal-header .container{gap:8px;}
+  .portal-header .brand{min-width:0;white-space:nowrap;}
+  .portal-header .user-info{min-width:0;max-width:55%;}
+  .portal-header .btn-logout{padding:8px 4px;}
+  .card-header{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;}
+  .card-header > *{min-width:0;}
+  .row > [class*="col-"]{min-width:0;}
+  .table-responsive{max-width:100%;overflow-x:auto;-webkit-overflow-scrolling:touch;}
+  .table-responsive > .table{width:max-content;min-width:100%;}
+  .input-group{width:100%;}
+  .form-control,.form-select{width:100%;min-width:0;}
+  .btn-toolbar{display:flex;flex-wrap:wrap;gap:8px;}
+  .modal-dialog{max-width:calc(100% - 16px);margin:8px auto;}
+  img,video,iframe{max-width:100%;}
+  pre{max-width:100%;overflow-x:auto;white-space:pre-wrap;word-break:break-word;}
+}
+@media(max-width:480px){
+  .portal-header{padding:8px 0;}
+  .portal-header .brand{font-size:.92rem;}
+  .portal-header .user-info{gap:4px;max-width:48%;}
+  .portal-header .btn-logout{font-size:.8rem;}
+  .card{border-radius:12px;}
+  .card-body{padding:12px;}
+  .card-header{padding:11px 12px;}
+  .row{--bs-gutter-x:.75rem;}
+  .btn:not(.btn-close){min-height:44px;}
+  .btn-group{width:100%;overflow-x:auto;flex-wrap:nowrap;padding-bottom:2px;}
+  .btn-group>.btn{flex:0 0 auto;}
+  .quick-link-card .card-body{min-height:92px;display:flex;flex-direction:column;align-items:center;justify-content:center;}
+}
