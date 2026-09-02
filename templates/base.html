@@ -267,26 +267,49 @@
  window.addEventListener('resize',function(){if(window.innerWidth>991) close();});
  if('serviceWorker' in navigator){window.addEventListener('load',function(){navigator.serviceWorker.register('/sw.js',{scope:'/'}).then(function(reg){return reg.update();}).catch(function(){});});}
 
- // PWA installation: Android/Chrome gets a real Install button; iPhone gets Add to Home Screen guidance.
+ // PWA installation: use the native prompt when available; otherwise give platform-specific instructions.
  (function(){
    const banner=document.getElementById('pwaInstallBanner'), button=document.getElementById('pwaInstallButton'), close=document.getElementById('pwaInstallClose'), text=document.getElementById('pwaInstallText'), iosHelp=document.getElementById('pwaIosHelp');
    if(!banner||!button) return;
    let deferredPrompt=null;
-   const dismissed=sessionStorage.getItem('doraPwaInstallDismissed')==='1';
    const standalone=window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone===true;
    const ios=/iphone|ipad|ipod/i.test(navigator.userAgent);
-   function show(){if(!standalone&&!dismissed) banner.classList.add('show');}
-   window.addEventListener('beforeinstallprompt',function(e){e.preventDefault();deferredPrompt=e;button.textContent='Install';text.textContent='Install the clinic app on your phone for quick access.';show();});
-   if(ios&&!standalone&&!dismissed){button.textContent='How';text.textContent='Add the clinic app to your iPhone home screen.';iosHelp.classList.add('show');show();}
-   button.addEventListener('click',async function(){
-     if(ios){iosHelp.classList.toggle('show'); return;}
-     if(!deferredPrompt) return;
-     deferredPrompt.prompt();
-     try{await deferredPrompt.userChoice;}catch(e){}
-     deferredPrompt=null; banner.classList.remove('show');
+   const android=/android/i.test(navigator.userAgent);
+   const dismissed=sessionStorage.getItem('doraPwaInstallDismissed')==='1';
+   function show(){ if(!standalone&&!dismissed) banner.classList.add('show'); }
+   function fallback(){
+     if(ios){
+       button.textContent='How';
+       text.textContent='Add Dora Dental to your Home Screen.';
+       if(iosHelp) iosHelp.innerHTML='On iPhone/iPad: tap <strong>Share</strong> → <strong>Add to Home Screen</strong> → <strong>Add</strong>.';
+       if(iosHelp) iosHelp.classList.add('show');
+     } else if(android){
+       button.textContent='Install';
+       text.textContent='Tap Install when Chrome offers it, or use Chrome menu → Add to Home screen.';
+     } else {
+       button.textContent='Install';
+       text.textContent='Use your browser menu and choose Install app or Add to Home screen.';
+     }
+     show();
+   }
+   window.addEventListener('beforeinstallprompt',function(e){
+     e.preventDefault();
+     deferredPrompt=e;
+     button.textContent='Install';
+     text.textContent='Install Dora Dental on this device for quick access.';
+     if(iosHelp) iosHelp.classList.remove('show');
+     show();
    });
-   close.addEventListener('click',function(){banner.classList.remove('show');sessionStorage.setItem('doraPwaInstallDismissed','1');});
-   window.addEventListener('appinstalled',function(){banner.classList.remove('show');deferredPrompt=null;});
+   window.addEventListener('appinstalled',function(){ banner.classList.remove('show'); deferredPrompt=null; sessionStorage.removeItem('doraPwaInstallDismissed'); });
+   if(!standalone&&!dismissed){ setTimeout(function(){ if(!deferredPrompt) fallback(); },1200); }
+   button.addEventListener('click',async function(){
+     if(ios){ fallback(); return; }
+     if(!deferredPrompt){ fallback(); return; }
+     deferredPrompt.prompt();
+     try{ await deferredPrompt.userChoice; }catch(e){}
+     deferredPrompt=null;
+   });
+   close.addEventListener('click',function(){ banner.classList.remove('show'); sessionStorage.setItem('doraPwaInstallDismissed','1'); });
  })();
 })();
 </script>
