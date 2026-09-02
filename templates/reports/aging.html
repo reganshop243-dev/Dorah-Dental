@@ -124,171 +124,182 @@
 
 {% block content %}
 <div class="aging-container">
-<!-- Header -->
-<div class="aging-header">
-<div class="d-flex justify-content-between align-items-center flex-wrap">
-<div>
-<h3><i class="fas fa-clock text-warning"></i> Aging Report</h3>
-<div class="text-muted">Accounts Receivable Summary</div>
-</div>
-<div>
-<button class="btn btn-secondary" onclick="window.print()">
-<i class="fas fa-print"></i> Print
+    <!-- Header -->
+    <div class="aging-header">
+        <div class="d-flex justify-content-between align-items-center flex-wrap">
+            <div>
+                <h3><i class="fas fa-clock text-warning"></i> Aging Report</h3>
+                <div class="text-muted">Accounts Receivable Summary</div>
+            </div>
+            <div>
+                <button onclick="window.print()" class="btn btn-secondary">
+                    <i class="fas fa-print"></i> Print
                 </button>
-<button class="btn btn-primary ms-2" onclick="exportCSV()">
-<i class="fas fa-download"></i> Export CSV
+                <button onclick="exportCSV()" class="btn btn-primary ms-2">
+                    <i class="fas fa-download"></i> Export CSV
                 </button>
-</div>
-</div>
-</div>
-<!-- Filter -->
-<div class="filter-card">
-<div class="row align-items-center">
-<div class="col-md-12">
-<form class="row g-2" method="get">
-<div class="col-md-3">
-<input class="form-control" name="start_date" placeholder="Start Date" type="date" value="{{ start_date_str }}"/>
-</div>
-<div class="col-md-3">
-<input class="form-control" name="end_date" placeholder="End Date" type="date" value="{{ end_date_str }}"/>
-</div>
-<div class="col-md-2">
-<button class="btn btn-primary w-100" type="submit">
-<i class="fas fa-filter"></i> Apply
+            </div>
+        </div>
+    </div>
+    
+    <!-- Filter -->
+    <div class="filter-card">
+        <div class="row align-items-center">
+            <div class="col-md-12">
+                <form method="get" class="row g-2">
+                    <div class="col-md-3">
+                        <input type="date" class="form-control" name="start_date" value="{{ start_date_str }}" placeholder="Start Date">
+                    </div>
+                    <div class="col-md-3">
+                        <input type="date" class="form-control" name="end_date" value="{{ end_date_str }}" placeholder="End Date">
+                    </div>
+                    <div class="col-md-2">
+                        <button type="submit" class="btn btn-primary w-100">
+                            <i class="fas fa-filter"></i> Apply
                         </button>
-</div>
-<div class="col-md-2">
-<a class="btn btn-secondary w-100" href="{% url 'reports:aging' %}">
-<i class="fas fa-redo"></i> Reset
+                    </div>
+                    <div class="col-md-2">
+                        <a href="{% url 'reports:aging' %}" class="btn btn-secondary w-100">
+                            <i class="fas fa-redo"></i> Reset
                         </a>
-</div>
-<div class="col-md-2">
-<span class="badge bg-info p-2 w-100">
+                    </div>
+                    <div class="col-md-2">
+                        <span class="badge bg-info p-2 w-100">
                             As of: {{ end_date_display }}
                         </span>
-</div>
-</form>
-</div>
-</div>
-</div>
-<!-- Summary Cards -->
-<div class="row g-3 mb-4">
-<div class="col-md-3 col-6">
-<div class="stat-card danger">
-<div class="stat-label">Over 90 Days</div>
-<div class="stat-value">UGX {{ aging_data.over_90|floatformat:0|intcomma }}</div>
-<small class="text-muted">{{ aging_data.over_90_count }} invoices</small>
-</div>
-</div>
-<div class="col-md-3 col-6">
-<div class="stat-card warning">
-<div class="stat-label">61-90 Days</div>
-<div class="stat-value">UGX {{ aging_data.sixty_ninety|floatformat:0|intcomma }}</div>
-<small class="text-muted">{{ aging_data.sixty_ninety_count }} invoices</small>
-</div>
-</div>
-<div class="col-md-3 col-6">
-<div class="stat-card info">
-<div class="stat-label">31-60 Days</div>
-<div class="stat-value">UGX {{ aging_data.thirty_sixty|floatformat:0|intcomma }}</div>
-<small class="text-muted">{{ aging_data.thirty_sixty_count }} invoices</small>
-</div>
-</div>
-<div class="col-md-3 col-6">
-<div class="stat-card success">
-<div class="stat-label">0-30 Days</div>
-<div class="stat-value">UGX {{ aging_data.zero_thirty|floatformat:0|intcomma }}</div>
-<small class="text-muted">{{ aging_data.zero_thirty_count }} invoices</small>
-</div>
-</div>
-</div>
-<!-- Aging Table -->
-<div class="card">
-<div class="card-header">
-<i class="fas fa-list"></i> Outstanding Invoices
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Summary Cards -->
+    <div class="row g-3 mb-4">
+        <div class="col-md-3 col-6">
+            <div class="stat-card danger">
+                <div class="stat-label">Over 90 Days</div>
+                <div class="stat-value">UGX {{ aging_data.over_90|floatformat:0|intcomma }}</div>
+                <small class="text-muted">{{ aging_data.over_90_count }} invoices</small>
+            </div>
+        </div>
+        <div class="col-md-3 col-6">
+            <div class="stat-card warning">
+                <div class="stat-label">61-90 Days</div>
+                <div class="stat-value">UGX {{ aging_data.sixty_ninety|floatformat:0|intcomma }}</div>
+                <small class="text-muted">{{ aging_data.sixty_ninety_count }} invoices</small>
+            </div>
+        </div>
+        <div class="col-md-3 col-6">
+            <div class="stat-card info">
+                <div class="stat-label">31-60 Days</div>
+                <div class="stat-value">UGX {{ aging_data.thirty_sixty|floatformat:0|intcomma }}</div>
+                <small class="text-muted">{{ aging_data.thirty_sixty_count }} invoices</small>
+            </div>
+        </div>
+        <div class="col-md-3 col-6">
+            <div class="stat-card success">
+                <div class="stat-label">0-30 Days</div>
+                <div class="stat-value">UGX {{ aging_data.zero_thirty|floatformat:0|intcomma }}</div>
+                <small class="text-muted">{{ aging_data.zero_thirty_count }} invoices</small>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Aging Table -->
+    <div class="card">
+        <div class="card-header">
+            <i class="fas fa-list"></i> Outstanding Invoices
             <span class="badge bg-secondary ms-2">{{ aging_data.invoices_count }} invoices</span>
-<span class="badge bg-danger ms-2">Total: UGX {{ aging_data.total_outstanding|floatformat:0|intcomma }}</span>
-</div>
-<div class="card-body">
+            <span class="badge bg-danger ms-2">Total: UGX {{ aging_data.total_outstanding|floatformat:0|intcomma }}</span>
+        </div>
+        <div class="card-body">
             {% if aging_data.invoices %}
                 <div class="table-responsive">
-<table class="aging-table mobile-wide-table">
-<thead>
-<tr>
-<th>Patient</th>
-<th>Invoice #</th>
-<th>Date</th>
-<th>Due Date</th>
-<th>Age</th>
-<th>Amount</th>
-<th>Paid</th>
-<th>Balance</th>
-<th>Risk</th>
-<th>Status</th>
-</tr>
-</thead>
-<tbody>
+                    <table class="aging-table">
+                        <thead>
+                            <tr>
+                                <th>Patient</th>
+                                <th>Invoice #</th>
+                                <th>Date</th>
+                                <th>Due Date</th>
+                                <th>Age</th>
+                                <th>Amount</th>
+                                <th>Paid</th>
+                                <th>Balance</th>
+                                <th>Risk</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
                             {% for item in aging_data.invoices %}
                             <tr>
-<td>
-<span class="patient-name">{{ item.patient_name }}</span>
-<br/>
-<small class="text-muted">{{ item.patient_phone }}</small>
-</td>
-<td>
-<a href="{% url 'billing:detail' item.id %}">
+                                <td>
+                                    <span class="patient-name">{{ item.patient_name }}</span>
+                                    <br>
+                                    <small class="text-muted">{{ item.patient_phone }}</small>
+                                </td>
+                                <td>
+                                    <a href="{% url 'billing:detail' item.id %}">
                                         {{ item.invoice_number }}
                                     </a>
-</td>
-<td>{{ item.issue_date|date:"M d, Y" }}</td>
-<td>{{ item.due_date|date:"M d, Y"|default:"N/A" }}</td>
-<td>
-<span class="badge-age {% if item.age_days &lt;= 30 %}current {% elif item.age_days &lt;= 60 %}thirty {% elif item.age_days &lt;= 90 %}sixty {% else %}ninety{% endif %}">
+                                </td>
+                                <td>{{ item.issue_date|date:"M d, Y" }}</td>
+                                <td>{{ item.due_date|date:"M d, Y"|default:"N/A" }}</td>
+                                <td>
+                                    <span class="badge-age 
+                                        {% if item.age_days <= 30 %}current
+                                        {% elif item.age_days <= 60 %}thirty
+                                        {% elif item.age_days <= 90 %}sixty
+                                        {% else %}ninety{% endif %}">
                                         {{ item.age_days }} days
                                     </span>
-</td>
-<td class="amount">UGX {{ item.total_amount|floatformat:0|intcomma }}</td>
-<td class="amount success">UGX {{ item.amount_paid|floatformat:0|intcomma }}</td>
-<td class="amount {% if item.balance_due &gt; 0 %}danger{% else %}success{% endif %}">
+                                </td>
+                                <td class="amount">UGX {{ item.total_amount|floatformat:0|intcomma }}</td>
+                                <td class="amount success">UGX {{ item.amount_paid|floatformat:0|intcomma }}</td>
+                                <td class="amount {% if item.balance_due > 0 %}danger{% else %}success{% endif %}">
                                     UGX {{ item.balance_due|floatformat:0|intcomma }}
                                 </td>
-<td>
-<span class="risk-indicator {% if item.age_days &lt;= 30 %}low {% elif item.age_days &lt;= 60 %}medium {% else %}high{% endif %}">
-</span>
-                                    {% if item.age_days &lt;= 30 %}Low
-                                    {% elif item.age_days &lt;= 60 %}Medium
+                                <td>
+                                    <span class="risk-indicator 
+                                        {% if item.age_days <= 30 %}low
+                                        {% elif item.age_days <= 60 %}medium
+                                        {% else %}high{% endif %}">
+                                    </span>
+                                    {% if item.age_days <= 30 %}Low
+                                    {% elif item.age_days <= 60 %}Medium
                                     {% else %}High{% endif %}
                                 </td>
-<td>
-<span class="badge-status {{ item.status }}">
+                                <td>
+                                    <span class="badge-status {{ item.status }}">
                                         {{ item.get_status_display }}
                                     </span>
-</td>
-</tr>
+                                </td>
+                            </tr>
                             {% endfor %}
                         </tbody>
-<tfoot>
-<tr style="background: #f8f9fa; font-weight: 700;">
-<td colspan="4">TOTAL</td>
-<td></td>
-<td>UGX {{ aging_data.total_amount|floatformat:0|intcomma }}</td>
-<td>UGX {{ aging_data.total_paid|floatformat:0|intcomma }}</td>
-<td>UGX {{ aging_data.total_outstanding|floatformat:0|intcomma }}</td>
-<td></td>
-<td></td>
-</tr>
-</tfoot>
-</table>
-</div>
+                        <tfoot>
+                            <tr style="background: #f8f9fa; font-weight: 700;">
+                                <td colspan="4">TOTAL</td>
+                                <td></td>
+                                <td>UGX {{ aging_data.total_amount|floatformat:0|intcomma }}</td>
+                                <td>UGX {{ aging_data.total_paid|floatformat:0|intcomma }}</td>
+                                <td>UGX {{ aging_data.total_outstanding|floatformat:0|intcomma }}</td>
+                                <td></td>
+                                <td></td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
             {% else %}
                 <p class="text-muted text-center py-4">
-<i class="fas fa-check-circle fa-3x text-success mb-3 d-block"></i>
+                    <i class="fas fa-check-circle fa-3x text-success mb-3 d-block"></i>
                     No outstanding invoices! All payments are up to date.
                 </p>
             {% endif %}
         </div>
+    </div>
 </div>
-</div>
+
 <script>
     function exportCSV() {
         var csv = 'Patient,Invoice #,Date,Due Date,Age (Days),Amount,Paid,Balance,Status\n';

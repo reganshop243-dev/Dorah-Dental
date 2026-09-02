@@ -124,300 +124,310 @@
 {% block content %}
 <!-- Date Filter -->
 <div class="filter-card">
-<div class="row align-items-center">
-<div class="col-md-3">
-<strong><i class="fas fa-calendar-alt"></i> Period:</strong>
-</div>
-<div class="col-md-9">
-<div class="btn-group mb-2 mb-md-0" role="group">
-<a class="btn btn-outline-primary {% if period == 'today' %}active{% endif %}" href="?period=today">
-<i class="fas fa-calendar-day"></i> Today
+    <div class="row align-items-center">
+        <div class="col-md-3">
+            <strong><i class="fas fa-calendar-alt"></i> Period:</strong>
+        </div>
+        <div class="col-md-9">
+            <div class="btn-group mb-2 mb-md-0" role="group">
+                <a href="?period=today" class="btn btn-outline-primary {% if period == 'today' %}active{% endif %}">
+                    <i class="fas fa-calendar-day"></i> Today
                 </a>
-<a class="btn btn-outline-primary {% if period == 'this_week' %}active{% endif %}" href="?period=this_week">
-<i class="fas fa-calendar-week"></i> This Week
+                <a href="?period=this_week" class="btn btn-outline-primary {% if period == 'this_week' %}active{% endif %}">
+                    <i class="fas fa-calendar-week"></i> This Week
                 </a>
-<a class="btn btn-outline-primary {% if period == 'this_month' %}active{% endif %}" href="?period=this_month">
-<i class="fas fa-calendar-alt"></i> This Month
+                <a href="?period=this_month" class="btn btn-outline-primary {% if period == 'this_month' %}active{% endif %}">
+                    <i class="fas fa-calendar-alt"></i> This Month
                 </a>
-<a class="btn btn-outline-primary {% if period == 'this_year' %}active{% endif %}" href="?period=this_year">
-<i class="fas fa-calendar"></i> This Year
+                <a href="?period=this_year" class="btn btn-outline-primary {% if period == 'this_year' %}active{% endif %}">
+                    <i class="fas fa-calendar"></i> This Year
                 </a>
-<a class="btn btn-outline-primary {% if period == 'all' %}active{% endif %}" href="?period=all">
-<i class="fas fa-infinity"></i> All Time
+                <a href="?period=all" class="btn btn-outline-primary {% if period == 'all' %}active{% endif %}">
+                    <i class="fas fa-infinity"></i> All Time
                 </a>
-</div>
-</div>
-</div>
-<hr/>
-<div class="row align-items-center">
-<div class="col-md-3">
-<strong><i class="fas fa-calendar-range"></i> Custom Range:</strong>
-</div>
-<div class="col-md-9">
-<form class="row g-2" method="get">
-<div class="col-md-4">
-<input class="form-control" name="start_date" required="" type="date" value="{{ start_date_str }}"/>
-</div>
-<div class="col-md-4">
-<input class="form-control" name="end_date" required="" type="date" value="{{ end_date_str }}"/>
-</div>
-<div class="col-md-4">
-<button class="btn btn-primary w-100" type="submit">
-<i class="fas fa-filter"></i> Apply Filter
+            </div>
+        </div>
+    </div>
+    
+    <hr>
+    
+    <div class="row align-items-center">
+        <div class="col-md-3">
+            <strong><i class="fas fa-calendar-range"></i> Custom Range:</strong>
+        </div>
+        <div class="col-md-9">
+            <form method="get" class="row g-2">
+                <div class="col-md-4">
+                    <input type="date" class="form-control" name="start_date" value="{{ start_date_str }}" required>
+                </div>
+                <div class="col-md-4">
+                    <input type="date" class="form-control" name="end_date" value="{{ end_date_str }}" required>
+                </div>
+                <div class="col-md-4">
+                    <button type="submit" class="btn btn-primary w-100">
+                        <i class="fas fa-filter"></i> Apply Filter
                     </button>
-</div>
-</form>
-</div>
-</div>
+                </div>
+            </form>
+        </div>
+    </div>
     
     {% if period == 'custom' or start_date_str %}
     <div class="row mt-2">
-<div class="col-md-12">
-<span class="period-badge">
-<i class="fas fa-calendar-check"></i> 
+        <div class="col-md-12">
+            <span class="period-badge">
+                <i class="fas fa-calendar-check"></i> 
                 Showing: {{ start_date_display }} to {{ end_date_display }}
             </span>
-<a class="btn btn-sm btn-secondary ms-2" href="?period=this_month">
-<i class="fas fa-times"></i> Clear Filter
+            <a href="?period=this_month" class="btn btn-sm btn-secondary ms-2">
+                <i class="fas fa-times"></i> Clear Filter
             </a>
-</div>
-</div>
+        </div>
+    </div>
     {% endif %}
 </div>
+
 <!-- Revenue Stats -->
 <div class="row mb-4">
-<div class="col-md-3 mb-3">
-<div class="revenue-stat period">
-<div class="d-flex justify-content-between align-items-start">
-<div>
-<div class="label">Period Revenue</div>
-<div class="amount text-primary">UGX {{ period_revenue|floatformat:0|intcomma }}</div>
-<small class="text-muted">{{ start_date_display }} - {{ end_date_display }}</small>
+    <div class="col-md-3 mb-3">
+        <div class="revenue-stat period">
+            <div class="d-flex justify-content-between align-items-start">
+                <div>
+                    <div class="label">Period Revenue</div>
+                    <div class="amount text-primary">UGX {{ period_revenue|floatformat:0|intcomma }}</div>
+                    <small class="text-muted">{{ start_date_display }} - {{ end_date_display }}</small>
+                </div>
+                <div class="icon period">
+                    <i class="fas fa-chart-bar"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 mb-3">
+        <div class="revenue-stat total">
+            <div class="d-flex justify-content-between align-items-start">
+                <div>
+                    <div class="label">Total Revenue</div>
+                    <div class="amount">UGX {{ total_revenue|floatformat:0|intcomma }}</div>
+                    <small class="text-muted">All time</small>
+                </div>
+                <div class="icon total">
+                    <i class="fas fa-chart-line"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 mb-3">
+        <div class="revenue-stat daily">
+            <div class="d-flex justify-content-between align-items-start">
+                <div>
+                    <div class="label">Today's Revenue</div>
+                    <div class="amount">UGX {{ daily_revenue|floatformat:0|intcomma }}</div>
+                    <small class="text-muted">{{ today|date:"M d, Y" }}</small>
+                </div>
+                <div class="icon daily">
+                    <i class="fas fa-calendar-day"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 mb-3">
+        <div class="revenue-stat outstanding">
+            <div class="d-flex justify-content-between align-items-start">
+                <div>
+                    <div class="label">Outstanding Balance</div>
+                    <div class="amount text-danger">UGX {{ total_outstanding|floatformat:0|intcomma }}</div>
+                    <small class="text-muted">Pending payments</small>
+                </div>
+                <div class="icon outstanding">
+                    <i class="fas fa-clock"></i>
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
-<div class="icon period">
-<i class="fas fa-chart-bar"></i>
-</div>
-</div>
-</div>
-</div>
-<div class="col-md-3 mb-3">
-<div class="revenue-stat total">
-<div class="d-flex justify-content-between align-items-start">
-<div>
-<div class="label">Total Revenue</div>
-<div class="amount">UGX {{ total_revenue|floatformat:0|intcomma }}</div>
-<small class="text-muted">All time</small>
-</div>
-<div class="icon total">
-<i class="fas fa-chart-line"></i>
-</div>
-</div>
-</div>
-</div>
-<div class="col-md-3 mb-3">
-<div class="revenue-stat daily">
-<div class="d-flex justify-content-between align-items-start">
-<div>
-<div class="label">Today's Revenue</div>
-<div class="amount">UGX {{ daily_revenue|floatformat:0|intcomma }}</div>
-<small class="text-muted">{{ today|date:"M d, Y" }}</small>
-</div>
-<div class="icon daily">
-<i class="fas fa-calendar-day"></i>
-</div>
-</div>
-</div>
-</div>
-<div class="col-md-3 mb-3">
-<div class="revenue-stat outstanding">
-<div class="d-flex justify-content-between align-items-start">
-<div>
-<div class="label">Outstanding Balance</div>
-<div class="amount text-danger">UGX {{ total_outstanding|floatformat:0|intcomma }}</div>
-<small class="text-muted">Pending payments</small>
-</div>
-<div class="icon outstanding">
-<i class="fas fa-clock"></i>
-</div>
-</div>
-</div>
-</div>
-</div>
+
 <!-- Invoice Status -->
 <div class="row mb-4">
-<div class="col-md-12">
-<div class="card">
-<div class="card-header">
-<i class="fas fa-file-invoice"></i> Invoice Status ({{ start_date_display }} - {{ end_date_display }})
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header">
+                <i class="fas fa-file-invoice"></i> Invoice Status ({{ start_date_display }} - {{ end_date_display }})
             </div>
-<div class="card-body">
-<div class="row">
-<div class="col-md-3 text-center">
-<h3 class="text-primary">{{ total_invoices }}</h3>
-<p class="text-muted">Total Invoices</p>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-3 text-center">
+                        <h3 class="text-primary">{{ total_invoices }}</h3>
+                        <p class="text-muted">Total Invoices</p>
+                    </div>
+                    <div class="col-md-3 text-center">
+                        <h3 class="text-success">{{ paid_invoices }}</h3>
+                        <p class="text-muted"><i class="fas fa-check-circle text-success"></i> Paid</p>
+                    </div>
+                    <div class="col-md-3 text-center">
+                        <h3 class="text-warning">{{ partially_paid_invoices }}</h3>
+                        <p class="text-muted"><i class="fas fa-clock text-warning"></i> Partially Paid</p>
+                    </div>
+                    <div class="col-md-3 text-center">
+                        <h3 class="text-danger">{{ overdue_invoices }}</h3>
+                        <p class="text-muted"><i class="fas fa-exclamation-circle text-danger"></i> Overdue</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
-<div class="col-md-3 text-center">
-<h3 class="text-success">{{ paid_invoices }}</h3>
-<p class="text-muted"><i class="fas fa-check-circle text-success"></i> Paid</p>
-</div>
-<div class="col-md-3 text-center">
-<h3 class="text-warning">{{ partially_paid_invoices }}</h3>
-<p class="text-muted"><i class="fas fa-clock text-warning"></i> Partially Paid</p>
-</div>
-<div class="col-md-3 text-center">
-<h3 class="text-danger">{{ overdue_invoices }}</h3>
-<p class="text-muted"><i class="fas fa-exclamation-circle text-danger"></i> Overdue</p>
-</div>
-</div>
-</div>
-</div>
-</div>
-</div>
+
 <!-- Monthly Revenue Chart -->
 <div class="row mb-4">
-<div class="col-md-12">
-<div class="card">
-<div class="card-header">
-<i class="fas fa-chart-bar text-primary"></i> Monthly Revenue (Last 12 Months)
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header">
+                <i class="fas fa-chart-bar text-primary"></i> Monthly Revenue (Last 12 Months)
             </div>
-<div class="card-body">
+            <div class="card-body">
                 {% if monthly_data %}
                     <div class="chart-container">
                         {% for data in monthly_data %}
                         <div class="chart-item">
-                            {% if data.revenue &gt; 0 %}
+                            {% if data.revenue > 0 %}
                             <div class="chart-value">UGX {{ data.revenue|floatformat:0|intcomma }}</div>
                             {% endif %}
-                            <div class="chart-bar" style="height: {% widthratio data.revenue max_monthly_revenue 100 %}%;
-                                        {% if data.revenue == 0 %}opacity: 0.3;{% endif %}" title="UGX {{ data.revenue|floatformat:0|intcomma }}">
-</div>
-<div class="chart-label">{{ data.month|slice:":3" }} {{ data.year|slice:"-2:" }}</div>
-</div>
+                            <div class="chart-bar" 
+                                 style="height: {% widthratio data.revenue max_monthly_revenue 100 %}%;
+                                        {% if data.revenue == 0 %}opacity: 0.3;{% endif %}"
+                                 title="UGX {{ data.revenue|floatformat:0|intcomma }}">
+                            </div>
+                            <div class="chart-label">{{ data.month|slice:":3" }} {{ data.year|slice:"-2:" }}</div>
+                        </div>
                         {% endfor %}
                     </div>
                 {% else %}
                     <p class="text-muted text-center py-4">No monthly data available.</p>
                 {% endif %}
             </div>
+        </div>
+    </div>
 </div>
-</div>
-</div>
+
 <!-- Recent Payments & Top Patients -->
 <div class="row">
-<!-- Recent Payments -->
-<div class="col-md-7">
-<div class="card">
-<div class="card-header">
-<i class="fas fa-history text-primary"></i> Recent Payments
+    <!-- Recent Payments -->
+    <div class="col-md-7">
+        <div class="card">
+            <div class="card-header">
+                <i class="fas fa-history text-primary"></i> Recent Payments
                 <span class="badge bg-secondary ms-2">{{ start_date_display }} - {{ end_date_display }}</span>
-</div>
-<div class="card-body">
+            </div>
+            <div class="card-body">
                 {% if recent_payments %}
                     <div class="table-responsive">
-<table class="table table-hover mobile-stack-table">
-<thead>
-<tr>
-<th>Date</th>
-<th>Patient</th>
-<th>Invoice</th>
-<th>Amount</th>
-<th>Method</th>
-</tr>
-</thead>
-<tbody>
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Date</th>
+                                    <th>Patient</th>
+                                    <th>Invoice</th>
+                                    <th>Amount</th>
+                                    <th>Method</th>
+                                </tr>
+                            </thead>
+                            <tbody>
                                 {% for payment in recent_payments %}
                                 <tr>
-<td data-label="Date">{{ payment.payment_date|date:"M d, Y" }}</td>
-<td data-label="Patient">{{ payment.invoice.patient_name }}</td>
-<td data-label="Invoice">
-<a href="{% url 'billing:detail' payment.invoice.pk %}">
+                                    <td>{{ payment.payment_date|date:"M d, Y" }}</td>
+                                    <td>{{ payment.invoice.patient_name }}</td>
+                                    <td>
+                                        <a href="{% url 'billing:detail' payment.invoice.pk %}">
                                             {{ payment.invoice.invoice_number }}
                                         </a>
-</td>
-<td data-label="Amount"><strong>UGX {{ payment.amount|floatformat:0|intcomma }}</strong></td>
-<td data-label="Method">
-<span class="badge bg-info">
+                                    </td>
+                                    <td><strong>UGX {{ payment.amount|floatformat:0|intcomma }}</strong></td>
+                                    <td>
+                                        <span class="badge bg-info">
                                             {{ payment.get_payment_method_display }}
                                         </span>
-</td>
-</tr>
+                                    </td>
+                                </tr>
                                 {% endfor %}
                             </tbody>
-</table>
-</div>
+                        </table>
+                    </div>
                 {% else %}
                     <div class="text-center py-4">
-<i class="fas fa-credit-card fa-3x text-muted mb-3"></i>
-<p class="text-muted">No payments recorded in this period.</p>
-</div>
+                        <i class="fas fa-credit-card fa-3x text-muted mb-3"></i>
+                        <p class="text-muted">No payments recorded in this period.</p>
+                    </div>
                 {% endif %}
             </div>
-</div>
-</div>
-<!-- Top Patients -->
-<div class="col-md-5">
-<div class="card">
-<div class="card-header">
-<i class="fas fa-trophy text-warning"></i> Top Patients by Spending
+        </div>
+    </div>
+    
+    <!-- Top Patients -->
+    <div class="col-md-5">
+        <div class="card">
+            <div class="card-header">
+                <i class="fas fa-trophy text-warning"></i> Top Patients by Spending
                 <span class="badge bg-secondary ms-2">{{ start_date_display }} - {{ end_date_display }}</span>
-</div>
-<div class="card-body">
+            </div>
+            <div class="card-body">
                 {% if top_patients %}
                     <div class="list-group list-group-flush">
                     {% for patient in top_patients %}
                         <div class="list-group-item d-flex justify-content-between align-items-center">
-<div>
-<span class="badge {% if forloop.counter == 1 %}bg-warning{% elif forloop.counter == 2 %}bg-secondary{% elif forloop.counter == 3 %}badge-bronze{% else %}bg-light text-dark{% endif %} me-2">
+                            <div>
+                                <span class="badge {% if forloop.counter == 1 %}bg-warning{% elif forloop.counter == 2 %}bg-secondary{% elif forloop.counter == 3 %}badge-bronze{% else %}bg-light text-dark{% endif %} me-2">
                                     {{ forloop.counter }}
                                 </span>
-<strong>{{ patient.patient__first_name }} {{ patient.patient__last_name }}</strong>
-<br/>
-<small class="text-muted">{{ patient.visit_count }} visit{{ patient.visit_count|pluralize }}</small>
-</div>
-<span class="badge bg-success">
+                                <strong>{{ patient.patient__first_name }} {{ patient.patient__last_name }}</strong>
+                                <br>
+                                <small class="text-muted">{{ patient.visit_count }} visit{{ patient.visit_count|pluralize }}</small>
+                            </div>
+                            <span class="badge bg-success">
                                 UGX {{ patient.total_spent|floatformat:0|intcomma }}
                             </span>
-</div>
+                        </div>
                     {% endfor %}
                     </div>
                 {% else %}
                     <div class="text-center py-4">
-<i class="fas fa-users fa-3x text-muted mb-3"></i>
-<p class="text-muted">No patient data in this period.</p>
-</div>
+                        <i class="fas fa-users fa-3x text-muted mb-3"></i>
+                        <p class="text-muted">No patient data in this period.</p>
+                    </div>
                 {% endif %}
             </div>
+        </div>
+    </div>
 </div>
-</div>
-</div>
+
 <!-- Summary Cards Footer -->
 <div class="row mt-4">
-<div class="col-md-12">
-<div class="card">
-<div class="card-header">
-<i class="fas fa-info-circle text-primary"></i> Quick Summary
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header">
+                <i class="fas fa-info-circle text-primary"></i> Quick Summary
             </div>
-<div class="card-body">
-<div class="row">
-<div class="col-md-3 text-center">
-<h4 class="text-primary">{{ total_invoices }}</h4>
-<small class="text-muted">Invoices</small>
-</div>
-<div class="col-md-3 text-center">
-<h4 class="text-success">{{ paid_invoices }}</h4>
-<small class="text-muted">Paid</small>
-</div>
-<div class="col-md-3 text-center">
-<h4 class="text-warning">{{ partially_paid_invoices }}</h4>
-<small class="text-muted">Partially Paid</small>
-</div>
-<div class="col-md-3 text-center">
-<h4 class="text-danger">{{ overdue_invoices }}</h4>
-<small class="text-muted">Overdue</small>
-</div>
-</div>
-</div>
-</div>
-</div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-3 text-center">
+                        <h4 class="text-primary">{{ total_invoices }}</h4>
+                        <small class="text-muted">Invoices</small>
+                    </div>
+                    <div class="col-md-3 text-center">
+                        <h4 class="text-success">{{ paid_invoices }}</h4>
+                        <small class="text-muted">Paid</small>
+                    </div>
+                    <div class="col-md-3 text-center">
+                        <h4 class="text-warning">{{ partially_paid_invoices }}</h4>
+                        <small class="text-muted">Partially Paid</small>
+                    </div>
+                    <div class="col-md-3 text-center">
+                        <h4 class="text-danger">{{ overdue_invoices }}</h4>
+                        <small class="text-muted">Overdue</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
 {% endblock %}

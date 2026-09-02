@@ -4,139 +4,142 @@
 
 {% block content %}
 <div class="row">
-<!-- Stats -->
-<div class="col-md-3 mb-3">
-<div class="stat-card">
-<div class="d-flex justify-content-between">
-<div>
-<div class="number">{{ total_patients }}</div>
-<div class="label">Total Patients</div>
+    <!-- Stats -->
+    <div class="col-md-3 mb-3">
+        <div class="stat-card">
+            <div class="d-flex justify-content-between">
+                <div>
+                    <div class="number">{{ total_patients }}</div>
+                    <div class="label">Total Patients</div>
+                </div>
+                <div class="icon">
+                    <i class="fas fa-users"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 mb-3">
+        <div class="stat-card">
+            <div class="d-flex justify-content-between">
+                <div>
+                    <div class="number">{{ total_appointments_today }}</div>
+                    <div class="label">Today's Appointments</div>
+                </div>
+                <div class="icon">
+                    <i class="fas fa-calendar-check"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 mb-3">
+        <div class="stat-card">
+            <div class="d-flex justify-content-between">
+                <div>
+                    <div class="number">{{ total_appointments_month }}</div>
+                    <div class="label">This Month's Appointments</div>
+                </div>
+                <div class="icon">
+                    <i class="fas fa-calendar-alt"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 mb-3">
+        <div class="stat-card">
+            <div class="d-flex justify-content-between">
+                <div>
+                    <div class="number">{{ today|date:"M j" }}</div>
+                    <div class="label">{{ today|date:"l" }}</div>
+                </div>
+                <div class="icon">
+                    <i class="fas fa-clock"></i>
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
-<div class="icon">
-<i class="fas fa-users"></i>
-</div>
-</div>
-</div>
-</div>
-<div class="col-md-3 mb-3">
-<div class="stat-card">
-<div class="d-flex justify-content-between">
-<div>
-<div class="number">{{ total_appointments_today }}</div>
-<div class="label">Today's Appointments</div>
-</div>
-<div class="icon">
-<i class="fas fa-calendar-check"></i>
-</div>
-</div>
-</div>
-</div>
-<div class="col-md-3 mb-3">
-<div class="stat-card">
-<div class="d-flex justify-content-between">
-<div>
-<div class="number">{{ total_appointments_month }}</div>
-<div class="label">This Month's Appointments</div>
-</div>
-<div class="icon">
-<i class="fas fa-calendar-alt"></i>
-</div>
-</div>
-</div>
-</div>
-<div class="col-md-3 mb-3">
-<div class="stat-card">
-<div class="d-flex justify-content-between">
-<div>
-<div class="number">{{ today|date:"M j" }}</div>
-<div class="label">{{ today|date:"l" }}</div>
-</div>
-<div class="icon">
-<i class="fas fa-clock"></i>
-</div>
-</div>
-</div>
-</div>
-</div>
+
 <div class="row">
-<!-- Today's Appointments -->
-<div class="col-md-8">
-<div class="card">
-<div class="card-header d-flex justify-content-between align-items-center">
-<span><i class="fas fa-calendar-day text-primary"></i> Today's Appointments</span>
-<a class="btn btn-sm btn-outline-primary" href="{% url 'appointments:list' %}">View All</a>
-</div>
-<div class="card-body">
+    <!-- Today's Appointments -->
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span><i class="fas fa-calendar-day text-primary"></i> Today's Appointments</span>
+                <a href="{% url 'appointments:list' %}" class="btn btn-sm btn-outline-primary">View All</a>
+            </div>
+            <div class="card-body">
                 {% if today_appointments %}
                     <div class="table-responsive">
-<table class="table table-hover mobile-stack-table">
-<thead>
-<tr>
-<th>Time</th>
-<th>Patient</th>
-<th>Doctor</th>
-<th>Service</th>
-<th>Status</th>
-</tr>
-</thead>
-<tbody>
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Time</th>
+                                    <th>Patient</th>
+                                    <th>Doctor</th>
+                                    <th>Service</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
                                 {% for appt in today_appointments %}
                                 <tr>
-<td data-label="Time">{{ appt.appointment_time|time:"H:i" }}</td>
-<td data-label="Patient">{{ appt.patient.full_name }}</td>
-<td data-label="Doctor">Dr. {{ appt.doctor.name }}</td>
-<td data-label="Service">{{ appt.service.name }}</td>
-<td data-label="Status">
-<span class="badge {% if appt.status == 'scheduled' %}bg-primary{% elif appt.status == 'completed' %}bg-success{% elif appt.status == 'cancelled' %}bg-danger{% else %}bg-warning{% endif %}">
+                                    <td>{{ appt.appointment_time|time:"H:i" }}</td>
+                                    <td>{{ appt.patient.full_name }}</td>
+                                    <td>Dr. {{ appt.doctor.name }}</td>
+                                    <td>{{ appt.service.name }}</td>
+                                    <td>
+                                        <span class="badge {% if appt.status == 'scheduled' %}bg-primary{% elif appt.status == 'completed' %}bg-success{% elif appt.status == 'cancelled' %}bg-danger{% else %}bg-warning{% endif %}">
                                             {{ appt.get_status_display }}
                                         </span>
-</td>
-</tr>
+                                    </td>
+                                </tr>
                                 {% endfor %}
                             </tbody>
-</table>
-</div>
+                        </table>
+                    </div>
                 {% else %}
                     <p class="text-muted text-center py-3">No appointments scheduled for today.</p>
                 {% endif %}
             </div>
-</div>
-</div>
-<!-- Quick Actions & Recent Patients -->
-<div class="col-md-4">
-<div class="card mb-3">
-<div class="card-header">Quick Actions</div>
-<div class="card-body">
-<div class="d-grid gap-2">
-<a class="btn btn-primary" href="{% url 'appointments:add' %}">
-<i class="fas fa-plus"></i> New Appointment
+        </div>
+    </div>
+
+    <!-- Quick Actions & Recent Patients -->
+    <div class="col-md-4">
+        <div class="card mb-3">
+            <div class="card-header">Quick Actions</div>
+            <div class="card-body">
+                <div class="d-grid gap-2">
+                    <a href="{% url 'appointments:add' %}" class="btn btn-primary">
+                        <i class="fas fa-plus"></i> New Appointment
                     </a>
-<a class="btn btn-success" href="{% url 'patients:add' %}">
-<i class="fas fa-user-plus"></i> Add Patient
+                    <a href="{% url 'patients:add' %}" class="btn btn-success">
+                        <i class="fas fa-user-plus"></i> Add Patient
                     </a>
-<a class="btn btn-info text-white" href="{% url 'billing:add' %}">
-<i class="fas fa-file-invoice"></i> New Invoice
+                    <a href="{% url 'billing:add' %}" class="btn btn-info text-white">
+                        <i class="fas fa-file-invoice"></i> New Invoice
                     </a>
-</div>
-</div>
-</div>
-<div class="card">
-<div class="card-header">Recent Patients</div>
-<div class="card-body">
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">Recent Patients</div>
+            <div class="card-body">
                 {% if recent_patients %}
                     <ul class="list-group list-group-flush">
                     {% for patient in recent_patients %}
                         <li class="list-group-item d-flex justify-content-between align-items-center">
                             {{ patient.full_name }}
                             <small class="text-muted">{{ patient.phone }}</small>
-</li>
+                        </li>
                     {% endfor %}
                     </ul>
                 {% else %}
                     <p class="text-muted text-center py-3">No patients registered yet.</p>
                 {% endif %}
             </div>
-</div>
-</div>
+        </div>
+    </div>
 </div>
 {% endblock %}

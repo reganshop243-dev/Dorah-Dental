@@ -52,175 +52,183 @@
 
 {% block content %}
 <div class="d-flex justify-content-between align-items-center mb-4">
-<h4><i class="fas fa-users text-primary"></i> Patients</h4>
-<div>
-<!-- ✅ Only show Add Patient button if NOT a doctor -->
+    <h4><i class="fas fa-users text-primary"></i> Patients</h4>
+    <div>
+        <!-- ✅ Only show Add Patient button if NOT a doctor -->
         {% if not is_doctor %}
-        <a class="btn btn-primary" href="{% url 'patients:add' %}">
-<i class="fas fa-plus"></i> Add Patient
+        <a href="{% url 'patients:add' %}" class="btn btn-primary">
+            <i class="fas fa-plus"></i> Add Patient
         </a>
         {% else %}
         <span class="badge bg-info p-2">
-<i class="fas fa-eye me-1"></i> View Only - Your Assigned Patients
+            <i class="fas fa-eye me-1"></i> View Only - Your Assigned Patients
         </span>
         {% endif %}
     </div>
 </div>
+
 <!-- ✅ Doctor View Banner -->
 {% if is_doctor %}
 <div class="doctor-view-banner">
-<i class="fas fa-info-circle text-primary me-2"></i>
-<strong>Read-Only Access:</strong> As a doctor, you can only view patients assigned to you. 
+    <i class="fas fa-info-circle text-primary me-2"></i>
+    <strong>Read-Only Access:</strong> As a doctor, you can only view patients assigned to you. 
     You cannot add, edit, or delete patient records.
 </div>
 {% endif %}
 
 <div class="card">
-<div class="card-body">
-<!-- Live Search -->
-<div class="search-container">
-<div class="row g-2 mb-3">
-<div class="col-md-6">
-<div class="input-group">
-<span class="input-group-text"><i class="fas fa-search"></i></span>
-<input autocomplete="off" class="form-control" id="patientSearch" placeholder="Search by name, phone, or email..." type="text" value="{{ search_query|default:'' }}"/>
-<button class="btn btn-outline-secondary" id="clearSearch" style="display: none;" type="button">
-<i class="fas fa-times"></i>
-</button>
-</div>
-<div class="search-results-loading" id="searchLoading">
-<i class="fas fa-spinner fa-spin"></i> Searching...
+    <div class="card-body">
+        <!-- Live Search -->
+        <div class="search-container">
+            <div class="row g-2 mb-3">
+                <div class="col-md-6">
+                    <div class="input-group">
+                        <span class="input-group-text"><i class="fas fa-search"></i></span>
+                        <input type="text" id="patientSearch" class="form-control" 
+                               placeholder="Search by name, phone, or email..." 
+                               autocomplete="off"
+                               value="{{ search_query|default:'' }}">
+                        <button class="btn btn-outline-secondary" type="button" id="clearSearch" style="display: none;">
+                            <i class="fas fa-times"></i>
+                        </button>
                     </div>
-</div>
-<div class="col-md-3">
-<select class="form-select" id="balanceFilter">
-<option value="">All Patients</option>
-<option value="has_balance">With Balance</option>
-<option value="no_balance">Without Balance</option>
-</select>
-</div>
-<div class="col-md-3">
-<select class="form-select" id="sortFilter">
-<option value="-registered_at">Newest First</option>
-<option value="registered_at">Oldest First</option>
-<option value="first_name">Name A-Z</option>
-<option value="-first_name">Name Z-A</option>
-</select>
-</div>
-</div>
-</div>
-<!-- Results Count -->
-<div class="d-flex justify-content-between align-items-center mb-2">
-<span class="text-muted" id="resultCount"></span>
-<span class="text-muted" id="exportBtn" style="cursor: pointer;">
-<i class="fas fa-download"></i> Export
+                    <div id="searchLoading" class="search-results-loading">
+                        <i class="fas fa-spinner fa-spin"></i> Searching...
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <select class="form-select" id="balanceFilter">
+                        <option value="">All Patients</option>
+                        <option value="has_balance">With Balance</option>
+                        <option value="no_balance">Without Balance</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <select class="form-select" id="sortFilter">
+                        <option value="-registered_at">Newest First</option>
+                        <option value="registered_at">Oldest First</option>
+                        <option value="first_name">Name A-Z</option>
+                        <option value="-first_name">Name Z-A</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Results Count -->
+        <div class="d-flex justify-content-between align-items-center mb-2">
+            <span id="resultCount" class="text-muted"></span>
+            <span id="exportBtn" class="text-muted" style="cursor: pointer;">
+                <i class="fas fa-download"></i> Export
             </span>
-</div>
-<!-- Patients Table -->
-<div class="table-container">
-<div class="table-responsive">
-<table class="table table-hover mobile-stack-table" id="patientTable">
-<thead>
-<tr>
-<th>Patient</th>
-<th>Phone</th>
-<th>Email</th>
-<th>Registered</th>
-<th>Balance</th>
-<th>Actions</th>
-</tr>
-</thead>
-<tbody id="patientTableBody">
+        </div>
+        
+        <!-- Patients Table -->
+        <div class="table-container">
+            <div class="table-responsive">
+                <table class="table table-hover" id="patientTable">
+                    <thead>
+                        <tr>
+                            <th>Patient</th>
+                            <th>Phone</th>
+                            <th>Email</th>
+                            <th>Registered</th>
+                            <th>Balance</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="patientTableBody">
                         {% if patients %}
                             {% for patient in patients %}
                             <tr class="patient-row" data-patient-id="{{ patient.pk }}">
-<td data-label="Patient">
-<a class="fw-bold text-decoration-none" href="{% url 'patients:detail' patient.pk %}">
+                                <td>
+                                    <a href="{% url 'patients:detail' patient.pk %}" class="fw-bold text-decoration-none">
                                         {{ patient.full_name }}
                                     </a>
-<br/>
-<small class="text-muted">{{ patient.date_of_birth|date:"M d, Y" }}</small>
-<br/>
-<small class="text-muted"><i class="fas fa-calendar"></i> {{ patient.age }} years</small>
-</td>
-<td data-label="Phone">
-<i class="fas fa-phone text-muted"></i> {{ patient.phone }}
+                                    <br>
+                                    <small class="text-muted">{{ patient.date_of_birth|date:"M d, Y" }}</small>
+                                    <br>
+                                    <small class="text-muted"><i class="fas fa-calendar"></i> {{ patient.age }} years</small>
                                 </td>
-<td data-label="Email">
+                                <td>
+                                    <i class="fas fa-phone text-muted"></i> {{ patient.phone }}
+                                </td>
+                                <td>
                                     {% if patient.email %}
                                         <i class="fas fa-envelope text-muted"></i> {{ patient.email }}
                                     {% else %}
                                         <span class="text-muted">-</span>
                                     {% endif %}
                                 </td>
-<td data-label="Registered">{{ patient.registered_at|date:"M d, Y" }}</td>
-<td data-label="Balance">
-                                    {% if patient.balance &gt; 0 %}
+                                <td>{{ patient.registered_at|date:"M d, Y" }}</td>
+                                <td>
+                                    {% if patient.balance > 0 %}
                                         <span class="badge bg-danger balance-badge">
-<i class="fas fa-exclamation-circle"></i> UGX {{ patient.balance|floatformat:0|intcomma }}
+                                            <i class="fas fa-exclamation-circle"></i> UGX {{ patient.balance|floatformat:0|intcomma }}
                                         </span>
                                     {% elif patient.balance == 0 %}
                                         <span class="badge bg-success balance-badge">
-<i class="fas fa-check-circle"></i> Paid
+                                            <i class="fas fa-check-circle"></i> Paid
                                         </span>
                                     {% else %}
                                         <span class="badge bg-secondary balance-badge">N/A</span>
                                     {% endif %}
                                 </td>
-<td data-label="Actions">
-<div class="btn-group btn-group-sm">
-<a class="btn btn-outline-primary quick-action-btn" href="{% url 'patients:detail' patient.pk %}" title="View">
-<i class="fas fa-eye"></i>
-</a>
-<!-- ✅ Only show Edit and Archive buttons if NOT a doctor -->
+                                <td>
+                                    <div class="btn-group btn-group-sm">
+                                        <a href="{% url 'patients:detail' patient.pk %}" class="btn btn-outline-primary quick-action-btn" title="View">
+                                            <i class="fas fa-eye"></i>
+                                        </a>
+                                        <!-- ✅ Only show Edit and Archive buttons if NOT a doctor -->
                                         {% if not is_doctor %}
-                                        <a class="btn btn-outline-secondary quick-action-btn" href="{% url 'patients:edit' patient.pk %}" title="Edit">
-<i class="fas fa-edit"></i>
-</a>
+                                        <a href="{% url 'patients:edit' patient.pk %}" class="btn btn-outline-secondary quick-action-btn" title="Edit">
+                                            <i class="fas fa-edit"></i>
+                                        </a>
                                         {% endif %}
-                                        <a class="btn btn-outline-success quick-action-btn" href="{% url 'appointments:add' %}?patient={{ patient.pk }}" title="Book Appointment">
-<i class="fas fa-calendar-plus"></i>
-</a>
-                                        {% if patient.balance &gt; 0 %}
-                                        <a class="btn btn-outline-warning quick-action-btn" href="{% url 'billing:add' %}?patient={{ patient.pk }}" title="Create Invoice">
-<i class="fas fa-file-invoice"></i>
-</a>
+                                        <a href="{% url 'appointments:add' %}?patient={{ patient.pk }}" class="btn btn-outline-success quick-action-btn" title="Book Appointment">
+                                            <i class="fas fa-calendar-plus"></i>
+                                        </a>
+                                        {% if patient.balance > 0 %}
+                                        <a href="{% url 'billing:add' %}?patient={{ patient.pk }}" class="btn btn-outline-warning quick-action-btn" title="Create Invoice">
+                                            <i class="fas fa-file-invoice"></i>
+                                        </a>
                                         {% endif %}
                                         <!-- ✅ Only show Archive button if NOT a doctor -->
                                         {% if not is_doctor %}
-                                        <button class="btn btn-outline-danger quick-action-btn" onclick="if(confirm('Archive {{ patient.full_name }}?')) window.location.href='{% url 'patients:delete' patient.pk %}'" title="Archive" type="button">
-<i class="fas fa-archive"></i>
-</button>
+                                        <button type="button" class="btn btn-outline-danger quick-action-btn" title="Archive" 
+                                                onclick="if(confirm('Archive {{ patient.full_name }}?')) window.location.href='{% url 'patients:delete' patient.pk %}'">
+                                            <i class="fas fa-archive"></i>
+                                        </button>
                                         {% endif %}
                                     </div>
-</td>
-</tr>
+                                </td>
+                            </tr>
                             {% endfor %}
                         {% else %}
                             <tr id="noResultsRow">
-<td colspan="6" data-label="Patient">
-<div class="text-center no-results">
-<i class="fas fa-users fa-3x text-muted mb-3"></i>
-<h5>No patients found</h5>
-<p class="text-muted">Start by adding your first patient.</p>
-<!-- ✅ Only show Add button if NOT a doctor -->
+                                <td colspan="6">
+                                    <div class="text-center no-results">
+                                        <i class="fas fa-users fa-3x text-muted mb-3"></i>
+                                        <h5>No patients found</h5>
+                                        <p class="text-muted">Start by adding your first patient.</p>
+                                        <!-- ✅ Only show Add button if NOT a doctor -->
                                         {% if not is_doctor %}
-                                        <a class="btn btn-primary" href="{% url 'patients:add' %}">
-<i class="fas fa-plus"></i> Add Patient
+                                        <a href="{% url 'patients:add' %}" class="btn btn-primary">
+                                            <i class="fas fa-plus"></i> Add Patient
                                         </a>
                                         {% else %}
                                         <p class="text-muted"><i class="fas fa-info-circle"></i> You have no assigned patients yet.</p>
                                         {% endif %}
                                     </div>
-</td>
-</tr>
+                                </td>
+                            </tr>
                         {% endif %}
                     </tbody>
-</table>
+                </table>
+            </div>
+        </div>
+    </div>
 </div>
-</div>
-</div>
-</div>
+
 <script>
     // ==================== LIVE SEARCH ====================
     let searchTimeout;

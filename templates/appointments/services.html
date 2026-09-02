@@ -3,56 +3,58 @@
 
 {% block content %}
 <div class="d-flex justify-content-between align-items-center mb-4">
-<h1 class="mb-0">Services</h1>
-<a class="btn btn-primary" href="{% url 'appointments:service_add' %}">
-<i class="fas fa-plus"></i> Add Service
+    <h1 class="mb-0">Services</h1>
+    <a href="{% url 'appointments:service_add' %}" class="btn btn-primary">
+        <i class="fas fa-plus"></i> Add Service
     </a>
 </div>
+
 <div class="card">
-<div class="card-body">
+    <div class="card-body">
         {% if services %}
         <div class="table-responsive">
-<table class="table table-hover mobile-stack-table">
-<thead>
-<tr>
-<th>Service</th>
-<th>Description</th>
-<th>Price</th>
-<th>Duration</th>
-<th>Actions</th>
-</tr>
-</thead>
-<tbody>
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>Service</th>
+                        <th>Description</th>
+                        <th>Price</th>
+                        <th>Duration</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
                     {% for service in services %}
                     <tr>
-<td data-label="Service"><strong>{{ service.name }}</strong></td>
-<td data-label="Description">{{ service.description|default:"-"|truncatechars:50 }}</td>
-<td data-label="Price">UGX {{ service.price|floatformat:0 }}</td>
-<td data-label="Duration">{{ service.duration_minutes }} min</td>
-<td data-label="Actions">
-<div class="btn-group btn-group-sm">
-<a class="btn btn-outline-primary" href="{% url 'appointments:service_edit' service.pk %}">
-<i class="fas fa-edit"></i>
-</a>
-<button class="btn btn-outline-danger" onclick="if(confirm('Remove service {{ service.name }}?')) window.location.href='{% url 'appointments:service_delete' service.pk %}'" type="button">
-<i class="fas fa-trash"></i>
-</button>
-</div>
-</td>
-</tr>
+                        <td><strong>{{ service.name }}</strong></td>
+                        <td>{{ service.description|default:"-"|truncatechars:50 }}</td>
+                        <td>UGX {{ service.price|floatformat:0 }}</td>
+                        <td>{{ service.duration_minutes }} min</td>
+                        <td>
+                            <div class="btn-group btn-group-sm">
+                                <a href="{% url 'appointments:service_edit' service.pk %}" class="btn btn-outline-primary">
+                                    <i class="fas fa-edit"></i>
+                                </a>
+                                <button type="button" class="btn btn-outline-danger" 
+                                        onclick="if(confirm('Remove service {{ service.name }}?')) window.location.href='{% url 'appointments:service_delete' service.pk %}'">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
                     {% endfor %}
                 </tbody>
-</table>
-</div>
+            </table>
+        </div>
         {% else %}
         <div class="text-center py-5">
-<i class="fas fa-tooth fa-3x text-muted mb-3"></i>
-<h5>No services added</h5>
-<p class="text-muted">Add dental services to start booking appointments.</p>
-<a class="btn btn-primary" href="{% url 'appointments:service_add' %}">
-<i class="fas fa-plus"></i> Add Service
+            <i class="fas fa-tooth fa-3x text-muted mb-3"></i>
+            <h5>No services added</h5>
+            <p class="text-muted">Add dental services to start booking appointments.</p>
+            <a href="{% url 'appointments:service_add' %}" class="btn btn-primary">
+                <i class="fas fa-plus"></i> Add Service
             </a>
-</div>
+        </div>
         {% endif %}
     </div>
 </div>

@@ -5,73 +5,74 @@
 
 {% block content %}
 <div class="container py-4">
-<div class="card">
-<div class="card-header d-flex justify-content-between align-items-center">
-<span><i class="fas fa-calendar-check me-2"></i> My Appointments</span>
-<span class="badge bg-primary">{{ appointments.count }} Total</span>
-</div>
-<div class="card-body">
-<!-- Filters -->
-<div class="row g-2 mb-3">
-<div class="col-md-4">
-<select class="form-select" id="statusFilter" onchange="applyFilters()">
-<option value="">All Status</option>
+    <div class="card">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <span><i class="fas fa-calendar-check me-2"></i> My Appointments</span>
+            <span class="badge bg-primary">{{ appointments.count }} Total</span>
+        </div>
+        <div class="card-body">
+            <!-- Filters -->
+            <div class="row g-2 mb-3">
+                <div class="col-md-4">
+                    <select class="form-select" id="statusFilter" onchange="applyFilters()">
+                        <option value="">All Status</option>
                         {% for status_code, status_label in status_choices %}
-                        <option %}="" %}selected{%="" endif="" if="" status_filter="status_code" value="{{ status_code }}" {%="">
+                        <option value="{{ status_code }}" {% if status_filter == status_code %}selected{% endif %}>
                             {{ status_label }}
                         </option>
                         {% endfor %}
                     </select>
-</div>
-<div class="col-md-4">
-<input class="form-control" id="dateFilter" onchange="applyFilters()" type="date" value="{{ date_filter }}"/>
-</div>
-<div class="col-md-4">
-<button class="btn btn-secondary w-100" onclick="clearFilters()">
-<i class="fas fa-undo"></i> Clear Filters
+                </div>
+                <div class="col-md-4">
+                    <input type="date" class="form-control" id="dateFilter" value="{{ date_filter }}" onchange="applyFilters()">
+                </div>
+                <div class="col-md-4">
+                    <button class="btn btn-secondary w-100" onclick="clearFilters()">
+                        <i class="fas fa-undo"></i> Clear Filters
                     </button>
-</div>
-</div>
+                </div>
+            </div>
             
             {% if appointments %}
                 <div class="table-responsive">
-<table class="table table-hover mobile-stack-table">
-<thead>
-<tr>
-<th>Date</th>
-<th>Time</th>
-<th>Doctor</th>
-<th>Service</th>
-<th>Status</th>
-</tr>
-</thead>
-<tbody>
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Time</th>
+                                <th>Doctor</th>
+                                <th>Service</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
                             {% for appt in appointments %}
                             <tr>
-<td data-label="Date">{{ appt.appointment_date|date:"M d, Y" }}</td>
-<td data-label="Time">{{ appt.appointment_time|time:"g:i A" }}</td>
-<td data-label="Doctor">Dr. {{ appt.doctor.name }}</td>
-<td data-label="Service">{{ appt.service.name }}</td>
-<td data-label="Status">
-<span class="badge-status {{ appt.status }}">
+                                <td>{{ appt.appointment_date|date:"M d, Y" }}</td>
+                                <td>{{ appt.appointment_time|time:"g:i A" }}</td>
+                                <td>Dr. {{ appt.doctor.name }}</td>
+                                <td>{{ appt.service.name }}</td>
+                                <td>
+                                    <span class="badge-status {{ appt.status }}">
                                         {{ appt.get_status_display }}
                                     </span>
-</td>
-</tr>
+                                </td>
+                            </tr>
                             {% endfor %}
                         </tbody>
-</table>
-</div>
+                    </table>
+                </div>
             {% else %}
                 <div class="text-center py-5">
-<i class="fas fa-calendar-plus fa-3x text-muted mb-3"></i>
-<h5>No appointments found</h5>
-<p class="text-muted">You don't have any appointments yet.</p>
-</div>
+                    <i class="fas fa-calendar-plus fa-3x text-muted mb-3"></i>
+                    <h5>No appointments found</h5>
+                    <p class="text-muted">You don't have any appointments yet.</p>
+                </div>
             {% endif %}
         </div>
+    </div>
 </div>
-</div>
+
 <script>
     function applyFilters() {
         const status = document.getElementById('statusFilter').value;

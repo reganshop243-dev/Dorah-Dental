@@ -5,107 +5,110 @@
 
 {% block content %}
 <div class="d-flex justify-content-between align-items-center mb-4">
-<h4><i class="fas fa-calendar-check text-primary"></i> Appointments</h4>
-<a class="btn btn-primary" href="{% url 'appointments:add' %}">
-<i class="fas fa-plus"></i> New Appointment
+    <h4><i class="fas fa-calendar-check text-primary"></i> Appointments</h4>
+    <a href="{% url 'appointments:add' %}" class="btn btn-primary">
+        <i class="fas fa-plus"></i> New Appointment
     </a>
 </div>
+
 <!-- Filters -->
 <!-- Add this to the filter section -->
 <div class="col-md-3">
-<select class="form-select" id="statusFilter" name="status">
-<option value="">All Status</option>
+    <select class="form-select" name="status" id="statusFilter">
+        <option value="">All Status</option>
         {% for status_code, status_label in status_choices %}
-            <option %}="" %}selected{%="" endif="" if="" status_filter="status_code" value="{{ status_code }}" {%="">
+            <option value="{{ status_code }}" {% if status_filter == status_code %}selected{% endif %}>
                 {{ status_label }}
             </option>
         {% endfor %}
     </select>
 </div>
+
 <div class="card mb-4">
-<div class="card-body">
-<form class="row g-3" method="get">
-<div class="col-md-4">
-<label class="form-label" for="status">Status</label>
-<select class="form-select" id="status" name="status">
-<option value="">All Statuses</option>
+    <div class="card-body">
+        <form method="get" class="row g-3">
+            <div class="col-md-4">
+                <label for="status" class="form-label">Status</label>
+                <select class="form-select" id="status" name="status">
+                    <option value="">All Statuses</option>
                     {% for status_code, status_label in status_choices %}
-                        <option %}="" %}selected{%="" endif="" if="" status_filter="status_code" value="{{ status_code }}" {%="">
+                        <option value="{{ status_code }}" {% if status_filter == status_code %}selected{% endif %}>
                             {{ status_label }}
                         </option>
                     {% endfor %}
                 </select>
-</div>
-<div class="col-md-4">
-<label class="form-label" for="date">Date</label>
-<input class="form-control" id="date" name="date" type="date" value="{{ date_filter }}"/>
-</div>
-<div class="col-md-4 d-flex align-items-end">
-<button class="btn btn-primary me-2" type="submit">
-<i class="fas fa-filter"></i> Filter
+            </div>
+            <div class="col-md-4">
+                <label for="date" class="form-label">Date</label>
+                <input type="date" class="form-control" id="date" name="date" value="{{ date_filter }}">
+            </div>
+            <div class="col-md-4 d-flex align-items-end">
+                <button type="submit" class="btn btn-primary me-2">
+                    <i class="fas fa-filter"></i> Filter
                 </button>
-<a class="btn btn-secondary" href="{% url 'appointments:list' %}">
-<i class="fas fa-undo"></i> Reset
+                <a href="{% url 'appointments:list' %}" class="btn btn-secondary">
+                    <i class="fas fa-undo"></i> Reset
                 </a>
+            </div>
+        </form>
+    </div>
 </div>
-</form>
-</div>
-</div>
+
 <!-- Appointments Table -->
 <div class="card">
-<div class="card-body">
+    <div class="card-body">
         {% if appointments %}
             <div class="table-responsive">
-<table class="table table-hover mobile-stack-table">
-<thead>
-<tr>
-<th>Date</th>
-<th>Time</th>
-<th>Patient</th>
-<th>Doctor</th>
-<th>Service</th>
-<th>Status</th>
-<th>Actions</th>
-</tr>
-</thead>
-<tbody>
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Time</th>
+                            <th>Patient</th>
+                            <th>Doctor</th>
+                            <th>Service</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
                         {% for appt in appointments %}
                         <tr>
-<td data-label="Date">{{ appt.appointment_date|date:"M d, Y" }}</td>
-<td data-label="Time">{{ appt.appointment_time|time:"H:i" }}</td>
-<td data-label="Patient">
-<a href="{% url 'patients:detail' appt.patient.pk %}">
+                            <td>{{ appt.appointment_date|date:"M d, Y" }}</td>
+                            <td>{{ appt.appointment_time|time:"H:i" }}</td>
+                            <td>
+                                <a href="{% url 'patients:detail' appt.patient.pk %}">
                                     {{ appt.patient.full_name }}
                                 </a>
-</td>
-<td data-label="Doctor">Dr. {{ appt.doctor.name }}</td>
-<td data-label="Service">{{ appt.service.name }}</td>
-<td data-label="Status">
-<span class="badge {% if appt.status == 'scheduled' %}bg-primary{% elif appt.status == 'checked_in' %}bg-info{% elif appt.status == 'in_progress' %}bg-warning{% elif appt.status == 'completed' %}bg-success{% elif appt.status == 'cancelled' %}bg-danger{% elif appt.status == 'no_show' %}bg-secondary{% endif %}">
+                            </td>
+                            <td>Dr. {{ appt.doctor.name }}</td>
+                            <td>{{ appt.service.name }}</td>
+                            <td>
+                                <span class="badge {% if appt.status == 'scheduled' %}bg-primary{% elif appt.status == 'checked_in' %}bg-info{% elif appt.status == 'in_progress' %}bg-warning{% elif appt.status == 'completed' %}bg-success{% elif appt.status == 'cancelled' %}bg-danger{% elif appt.status == 'no_show' %}bg-secondary{% endif %}">
                                     {{ appt.get_status_display }}
                                 </span>
-</td>
-<td data-label="Actions">
-<div class="btn-group btn-group-sm">
-<a class="btn btn-outline-primary" href="{% url 'appointments:detail' appt.pk %}">
-<i class="fas fa-eye"></i>
-</a>
-<a class="btn btn-outline-secondary" href="{% url 'appointments:edit' appt.pk %}">
-<i class="fas fa-edit"></i>
-</a>
-<a class="btn btn-outline-danger" href="{% url 'appointments:delete' appt.pk %}">
-<i class="fas fa-trash"></i>
-</a>
-</div>
-</td>
-</tr>
+                            </td>
+                            <td>
+                                <div class="btn-group btn-group-sm">
+                                    <a href="{% url 'appointments:detail' appt.pk %}" class="btn btn-outline-primary">
+                                        <i class="fas fa-eye"></i>
+                                    </a>
+                                    <a href="{% url 'appointments:edit' appt.pk %}" class="btn btn-outline-secondary">
+                                        <i class="fas fa-edit"></i>
+                                    </a>
+                                    <a href="{% url 'appointments:delete' appt.pk %}" class="btn btn-outline-danger">
+                                        <i class="fas fa-trash"></i>
+                                    </a>
+                                </div>
+                            </td>
+                        </tr>
                         {% endfor %}
                     </tbody>
-</table>
-</div>
+                </table>
+            </div>
         {% else %}
             <p class="text-muted text-center py-4">
-<i class="fas fa-calendar-plus fa-2x d-block mb-2"></i>
+                <i class="fas fa-calendar-plus fa-2x d-block mb-2"></i>
                 No appointments found.
             </p>
         {% endif %}
