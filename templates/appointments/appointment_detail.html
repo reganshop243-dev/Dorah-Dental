@@ -277,8 +277,8 @@
                     <a href="{% url 'patients:dental_chart' appointment.patient.pk %}" class="btn btn-info text-white">
                         <i class="fas fa-tooth"></i> Dental Chart
                     </a>
-                    <a href="#" class="btn btn-warning text-white">
-                        <i class="fas fa-calendar-plus"></i> Schedule Follow-up
+                    <a href="{% url 'appointments:list' %}?date={{ appointment.appointment_date|date:'Y-m-d' }}" class="btn btn-warning text-white">
+                        <i class="fas fa-calendar-day"></i> View Day Schedule
                     </a>
                 </div>
             </div>

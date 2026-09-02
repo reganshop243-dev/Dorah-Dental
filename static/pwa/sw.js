@@ -1,5 +1,5 @@
-const CACHE = 'dora-dental-static-v3';
-const STATIC_ASSETS = ['/offline/', '/static/pwa/manifest.webmanifest', '/static/pwa/icon-192.png', '/static/pwa/icon-512.png'];
+const CACHE = 'dora-dental-static-v4';
+const STATIC_ASSETS = ['/offline/', '/static/pwa/manifest.webmanifest', '/static/css/app.css', '/static/pwa/icon-192.png', '/static/pwa/icon-512.png'];
 self.addEventListener('install', event => event.waitUntil(caches.open(CACHE).then(c => c.addAll(STATIC_ASSETS)).then(() => self.skipWaiting())));
 self.addEventListener('activate', event => event.waitUntil(self.clients.claim()));
 self.addEventListener('fetch', event => {

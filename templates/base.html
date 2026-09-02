@@ -21,436 +21,15 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-        
-        body {
-            font-family: 'Poppins', sans-serif;
-            background: #f0f2f5;
-        }
-        
-        /* ======================= */
-        /* SIDEBAR - UPDATED COLORS */
-        /* ======================= */
-        .sidebar {
-            min-height: 100vh;
-            /* UPDATED: Dark Navy gradient to match logo */
-            background: linear-gradient(180deg, #13163b 0%, #1a1f52 100%);
-            padding-top: 20px;
-            padding-bottom: 20px;
-            position: fixed;
-            left: 0;
-            top: 0;
-            width: 250px;
-            z-index: 1000;
-            transition: all 0.3s;
-            overflow-y: auto;
-            overflow-x: hidden;
-            height: 100vh;
-            display: flex;
-            flex-direction: column;
-        }
-        
-        .sidebar::-webkit-scrollbar {
-            width: 5px;
-        }
-        .sidebar::-webkit-scrollbar-track {
-            background: rgba(255, 255, 255, 0.05);
-        }
-        .sidebar::-webkit-scrollbar-thumb {
-            background: rgba(255, 255, 255, 0.2);
-            border-radius: 10px;
-        }
-        .sidebar::-webkit-scrollbar-thumb:hover {
-            background: rgba(255, 255, 255, 0.3);
-        }
-        .sidebar {
-            scrollbar-width: thin;
-            scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
-        }
-        
-        /* BRAND SECTION WITH YOUR LOGO */
-        .sidebar .brand {
-            text-align: center;
-            padding: 10px 20px 25px;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-            margin-bottom: 15px;
-            flex-shrink: 0;
-        }
-        
-        .sidebar .brand .logo-wrapper {
-            display: inline-block;
-            width: 70px;
-            height: 70px;
-            background: #ffffff;
-            border-radius: 50%;
-            padding: 5px;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
-            margin-bottom: 10px;
-            border: 2px solid #5faad5;
-        }
-        .sidebar .brand .logo-wrapper img {
-            width: 100%;
-            height: 100%;
-            object-fit: contain;
-            border-radius: 50%;
-        }
-        
-        .sidebar .brand h3 {
-            font-family: 'Playfair Display', serif;
-            color: white;
-            font-size: 20px;
-            margin: 0;
-        }
-        .sidebar .brand h3 span {
-            color: #5faad5; /* Light blue from logo */
-        }
-        .sidebar .brand .tagline {
-            color: rgba(255, 255, 255, 0.6);
-            font-size: 11px;
-            letter-spacing: 2px;
-            text-transform: uppercase;
-            margin-top: 2px;
-        }
-        
-        .sidebar .nav {
-            flex: 1;
-            padding-bottom: 20px;
-        }
-        
-        .sidebar .nav-link {
-            color: rgba(255, 255, 255, 0.7);
-            padding: 10px 20px;
-            margin: 2px 12px;
-            border-radius: 10px;
-            transition: all 0.3s;
-            font-size: 14px;
-            font-weight: 500;
-        }
-        
-        .sidebar .nav-link:hover {
-            background: rgba(255, 255, 255, 0.1);
-            color: #fff;
-            transform: translateX(5px);
-        }
-        
-        .sidebar .nav-link.active {
-            background: #5faad5; /* Light blue background */
-            color: #13163b; /* Dark text for contrast */
-            box-shadow: 0 4px 15px rgba(95, 170, 213, 0.4);
-            font-weight: 600;
-        }
-        
-        .sidebar .nav-link i {
-            margin-right: 12px;
-            width: 20px;
-            text-align: center;
-            font-size: 16px;
-        }
-        
-        .sidebar .nav-divider {
-            border-top: 1px solid rgba(255, 255, 255, 0.08);
-            margin: 10px 20px;
-        }
-        
-        .sidebar .nav-label {
-            color: rgba(255, 255, 255, 0.3);
-            font-size: 10px;
-            text-transform: uppercase;
-            letter-spacing: 2px;
-            padding: 10px 20px 5px;
-        }
-        
-        /* ======================= */
-        /* MAIN CONTENT */
-        /* ======================= */
-        .main-content {
-            margin-left: 250px;
-            padding: 20px 30px;
-            min-height: 100vh;
-        }
-        
-        .top-navbar {
-            background: white;
-            border-radius: 16px;
-            padding: 12px 25px;
-            margin-bottom: 25px;
-            box-shadow: 0 2px 15px rgba(0, 0, 0, 0.05);
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-        
-        .top-navbar .page-title {
-            font-family: 'Playfair Display', serif;
-            font-size: 22px;
-            font-weight: 700;
-            color: #13163b;
-        }
-        
-        .top-navbar .page-title i {
-            color: #5faad5;
-            margin-right: 10px;
-        }
-        
-        .top-navbar .user-info {
-            display: flex;
-            align-items: center;
-            gap: 15px;
-        }
-        
-        .top-navbar .user-info .clock {
-            color: #636e72;
-            font-size: 13px;
-        }
-        .top-navbar .user-info .clock i {
-            margin-right: 5px;
-        }
-        
-        .top-navbar .user-dropdown .btn {
-            background: #f8f9fa;
-            border: none;
-            border-radius: 50px;
-            padding: 8px 18px;
-            font-weight: 500;
-            color: #2d3436;
-            transition: all 0.3s;
-        }
-        .top-navbar .user-dropdown .btn:hover {
-            background: #e9ecef;
-        }
-        .top-navbar .user-dropdown .btn .role-badge {
-            background: #13163b;
-            color: white;
-            padding: 2px 10px;
-            border-radius: 20px;
-            font-size: 11px;
-            margin-left: 5px;
-        }
-        
-        /* ======================= */
-        /* CARDS & STATS */
-        /* ======================= */
-        .card {
-            border-radius: 16px;
-            box-shadow: 0 2px 15px rgba(0, 0, 0, 0.05);
-            border: none;
-            transition: all 0.3s;
-        }
-        .card:hover {
-            box-shadow: 0 5px 25px rgba(0, 0, 0, 0.08);
-        }
-        .card-header {
-            background: white;
-            border-bottom: 2px solid #f0f2f5;
-            font-weight: 600;
-            padding: 18px 25px;
-            border-radius: 16px 16px 0 0 !important;
-        }
-        .card-body {
-            padding: 25px;
-        }
-        
-        .stat-card {
-            background: white;
-            border-radius: 16px;
-            padding: 25px;
-            box-shadow: 0 2px 15px rgba(0, 0, 0, 0.05);
-            transition: all 0.3s;
-            height: 100%;
-            border: 1px solid rgba(0, 0, 0, 0.02);
-        }
-        .stat-card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.1);
-        }
-        .stat-card .stat-icon {
-            font-size: 2.5rem;
-            opacity: 0.8;
-            margin-bottom: 10px;
-        }
-        .stat-card .stat-number {
-            font-size: 2.2rem;
-            font-weight: 700;
-            margin: 5px 0;
-        }
-        .stat-card .stat-label {
-            color: #636e72;
-            font-size: 0.9rem;
-            font-weight: 400;
-        }
-        
-        /* ======================= */
-        /* TOAST MESSAGES */
-        /* ======================= */
-        .toast-container {
-            position: fixed;
-            top: 20px;
-            right: 20px;
-            z-index: 1050;
-        }
-        .toast {
-            border: none;
-            border-radius: 12px;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
-        }
-        
-        /* ======================= */
-        /* BUTTONS */
-        /* ======================= */
-        .btn-primary {
-            background: #13163b;
-            border: none;
-            padding: 10px 25px;
-            border-radius: 10px;
-            font-weight: 500;
-            transition: all 0.3s;
-        }
-        .btn-primary:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 20px rgba(19, 22, 59, 0.4);
-            background: #1a1f52;
-        }
-        .btn-outline-primary {
-            border-color: #5faad5;
-            color: #5faad5;
-        }
-        .btn-outline-primary:hover {
-            background: #5faad5;
-            color: #13163b;
-        }
-        
-        /* ======================= */
-        /* RESPONSIVE */
-        /* ======================= */
-        @media (max-width: 768px) {
-            .sidebar {
-                width: 70px;
-                padding-top: 10px;
-            }
-            .sidebar .brand h3,
-            .sidebar .brand .tagline,
-            .sidebar .nav-link span,
-            .sidebar .nav-label {
-                display: none;
-            }
-            .sidebar .brand .logo-wrapper {
-                width: 45px;
-                height: 45px;
-                padding: 3px;
-            }
-            .sidebar .nav-link {
-                padding: 10px;
-                margin: 2px 8px;
-                text-align: center;
-            }
-            .sidebar .nav-link i {
-                margin-right: 0;
-                font-size: 18px;
-            }
-            .main-content {
-                margin-left: 70px;
-                padding: 15px;
-            }
-            .top-navbar .page-title {
-                font-size: 18px;
-            }
-            .stat-card .stat-number {
-                font-size: 1.5rem;
-            }
-        }
-        
-        @media (max-width: 576px) {
-            .top-navbar {
-                flex-direction: column;
-                gap: 10px;
-                text-align: center;
-            }
-            .main-content {
-                padding: 10px;
-            }
-        }
-    </style>
-    {% block extra_css %}{% endblock %}
+    <link rel="stylesheet" href="{% static 'css/app.css' %}">
 
-<style>
-/* Modern responsive layer */
-:root{--brand:#13163b;--brand-2:#5faad5;--surface:#fff;--page:#f5f8fb;--border:#e6ebf0}
-body{background:var(--page);color:#243447}
-.card,.stat-card{border:1px solid var(--border);border-radius:16px;box-shadow:0 6px 24px rgba(19,22,59,.06)}
-.btn{min-height:40px}
-.form-control,.form-select{min-height:44px;border-radius:10px}
-.table-responsive{border-radius:12px}
-.mobile-menu-toggle{display:none}
-@media(max-width:991.98px){
- .sidebar{transform:translateX(-100%);width:280px;box-shadow:10px 0 30px rgba(0,0,0,.2)}
- .sidebar.mobile-open{transform:translateX(0)}
- .main-content{margin-left:0;padding:14px}
- .mobile-menu-toggle{display:inline-flex;align-items:center;justify-content:center;width:42px;height:42px;border:0;border-radius:10px;background:#13163b;color:#fff;margin-right:10px}
- .top-navbar{padding:10px 12px;margin-bottom:16px;position:sticky;top:8px;z-index:900}
- .top-navbar .clock{display:none}
- .top-navbar .page-title{font-size:18px}
- .user-info{gap:6px!important}
- .user-dropdown .role-badge{display:none}
- .sidebar-backdrop{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:999}
- .sidebar-backdrop.show{display:block}
- .table{font-size:13px}
- .btn-sm{min-height:36px}
-}
-@media(max-width:575.98px){
- .main-content{padding:10px}
- .top-navbar{border-radius:12px}
- .card-body{padding:14px}
- .stat-card{padding:16px!important}
- h1{font-size:1.45rem} h2{font-size:1.25rem} h3{font-size:1.1rem}
- .table-responsive{overflow-x:auto;-webkit-overflow-scrolling:touch}
-}
-
-<style>
-/* Phone-first usability improvements */
-html,body{max-width:100%;overflow-x:hidden;-webkit-text-size-adjust:100%}
-img,video,canvas,svg{max-width:100%;height:auto}
-input,select,textarea,button{font-size:16px}
-.table-responsive{width:100%;overflow-x:auto}
-@media(max-width:767.98px){
-  .top-navbar{position:relative;top:auto;flex-wrap:wrap;align-items:center}
-  .top-navbar .page-title{flex:1;min-width:0;text-align:left;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-  .top-navbar .user-info{width:auto;max-width:55%;overflow:hidden}
-  .top-navbar .user-dropdown .btn{padding:8px 10px}
-  .card-header{padding:14px 16px}
-  .card-body{padding:14px}
-  .row>[class*=col-]{margin-bottom:12px}
-  .btn{width:auto;max-width:100%}
-  .btn-group{flex-wrap:wrap;gap:6px}
-  .btn-group>.btn{border-radius:8px!important}
-  .modal-dialog{margin:.5rem}
-  .modal-body{padding:14px}
-  .form-label{margin-bottom:5px;font-weight:600}
-  .stat-card .stat-number{font-size:1.35rem}
-  .sidebar{width:min(86vw,300px)}
-}
-@media(max-width:420px){
-  .main-content{padding:8px}
-  .top-navbar{padding:9px;border-radius:10px}
-  .top-navbar .page-title{font-size:16px}
-  .top-navbar .user-info{max-width:48%}
-  .card,.stat-card{border-radius:12px}
-  .card-body{padding:12px}
-  .table{font-size:12px}
-}
-</style>
-</style>
 </head>
 <body>
     {% if user.is_authenticated %}
         <!-- ======================= -->
         <!-- SIDEBAR -->
         <!-- ======================= -->
-        <div class="sidebar">
+        <div class="sidebar" id="appSidebar">
             <div class="brand">
                 <div class="logo-wrapper">
                     <!-- Your Actual Tooth Logo -->
@@ -463,19 +42,7 @@ input,select,textarea,button{font-size:16px}
             <nav class="nav flex-column">
                 <!-- Dashboard Link -->
                 <a class="nav-link {% if request.resolver_match.url_name == 'dashboard' or request.resolver_match.url_name == 'admin_dashboard' or request.resolver_match.url_name == 'doctor_dashboard' or request.resolver_match.url_name == 'receptionist_dashboard' or request.resolver_match.url_name == 'accountant_dashboard' %}active{% endif %}" 
-                   href="
-                   {% if user.profile.role == 'admin' %}
-                       {% url 'core:admin_dashboard' %}
-                   {% elif user.profile.role == 'doctor' %}
-                       {% url 'core:doctor_dashboard' %}
-                   {% elif user.profile.role == 'receptionist' %}
-                       {% url 'core:receptionist_dashboard' %}
-                   {% elif user.profile.role == 'accountant' %}
-                       {% url 'core:accountant_dashboard' %}
-                   {% else %}
-                       {% url 'core:dashboard' %}
-                   {% endif %}
-                ">
+                   href="{% if user.profile.role == 'admin' %}{% url 'core:admin_dashboard' %}{% elif user.profile.role == 'doctor' %}{% url 'core:doctor_dashboard' %}{% elif user.profile.role == 'receptionist' %}{% url 'core:receptionist_dashboard' %}{% elif user.profile.role == 'accountant' %}{% url 'core:accountant_dashboard' %}{% else %}{% url 'core:dashboard' %}{% endif %}">
                     <i class="fas fa-chart-pie"></i> <span>Dashboard</span>
                 </a>
                 
@@ -600,7 +167,7 @@ input,select,textarea,button{font-size:16px}
         <div class="main-content">
             <!-- Top Navbar -->
             <div class="top-navbar">
-                <div class="page-title"><button class="mobile-menu-toggle" id="mobileMenuToggle" type="button" aria-label="Open navigation"><i class="fas fa-bars"></i></button>
+                <div class="page-title page-title-wrap"><button class="mobile-menu-toggle" id="mobileMenuToggle" type="button" aria-label="Open navigation" aria-controls="appSidebar" aria-expanded="false"><i class="fas fa-bars"></i></button>
                     <i class="fas fa-gem"></i> {% block page_title %}Dashboard{% endblock %}
                 </div>
                 <div class="user-info">
@@ -614,19 +181,7 @@ input,select,textarea,button{font-size:16px}
                         </button>
                         <ul class="dropdown-menu dropdown-menu-end">
                             <li>
-                                <a class="dropdown-item" href="
-                                {% if user.profile.role == 'admin' %}
-                                    {% url 'core:admin_dashboard' %}
-                                {% elif user.profile.role == 'doctor' %}
-                                    {% url 'core:doctor_dashboard' %}
-                                {% elif user.profile.role == 'receptionist' %}
-                                    {% url 'core:receptionist_dashboard' %}
-                                {% elif user.profile.role == 'accountant' %}
-                                    {% url 'core:accountant_dashboard' %}
-                                {% else %}
-                                    {% url 'core:dashboard' %}
-                                {% endif %}
-                                ">
+                                <a class="dropdown-item" href="{% if user.profile.role == 'admin' %}{% url 'core:admin_dashboard' %}{% elif user.profile.role == 'doctor' %}{% url 'core:doctor_dashboard' %}{% elif user.profile.role == 'receptionist' %}{% url 'core:receptionist_dashboard' %}{% elif user.profile.role == 'accountant' %}{% url 'core:accountant_dashboard' %}{% else %}{% url 'core:dashboard' %}{% endif %}">
                                     <i class="fas fa-home"></i> Dashboard
                                 </a>
                             </li>
@@ -679,12 +234,15 @@ input,select,textarea,button{font-size:16px}
 
 <script>
 (function(){
- const sidebar=document.querySelector('.sidebar'), toggle=document.getElementById('mobileMenuToggle'), backdrop=document.getElementById('sidebarBackdrop');
- function close(){sidebar&&sidebar.classList.remove('mobile-open');backdrop&&backdrop.classList.remove('show');}
- toggle&&toggle.addEventListener('click',()=>{sidebar.classList.toggle('mobile-open');backdrop.classList.toggle('show');});
+ const sidebar=document.getElementById('appSidebar'), toggle=document.getElementById('mobileMenuToggle'), backdrop=document.getElementById('sidebarBackdrop');
+ function close(){ if(sidebar) sidebar.classList.remove('mobile-open'); if(backdrop) backdrop.classList.remove('show'); if(toggle) toggle.setAttribute('aria-expanded','false'); document.body.classList.remove('sidebar-open'); }
+ function open(){ if(sidebar) sidebar.classList.add('mobile-open'); if(backdrop) backdrop.classList.add('show'); if(toggle) toggle.setAttribute('aria-expanded','true'); document.body.classList.add('sidebar-open'); }
+ toggle&&toggle.addEventListener('click',function(){ sidebar&&sidebar.classList.contains('mobile-open') ? close() : open(); });
  backdrop&&backdrop.addEventListener('click',close);
- document.querySelectorAll('.sidebar .nav-link').forEach(a=>a.addEventListener('click',close));
- if('serviceWorker' in navigator){window.addEventListener('load',()=>navigator.serviceWorker.register('/sw.js',{scope:'/'}).then(reg=>reg.update()).catch(()=>{}));}
+ document.querySelectorAll('.sidebar .nav-link').forEach(function(a){a.addEventListener('click',close);});
+ document.addEventListener('keydown',function(e){if(e.key==='Escape') close();});
+ window.addEventListener('resize',function(){if(window.innerWidth>991) close();});
+ if('serviceWorker' in navigator){window.addEventListener('load',function(){navigator.serviceWorker.register('/sw.js',{scope:'/'}).then(function(reg){return reg.update();}).catch(function(){});});}
 })();
 </script>
 </body>
