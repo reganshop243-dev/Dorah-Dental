@@ -1,596 +1,69 @@
 {% extends 'base.html' %}
-{% load static %}
 {% load humanize %}
 
 {% block page_title %}Admin Dashboard{% endblock %}
 
 {% block content %}
-<!-- ==================== STATS ROW ==================== -->
-<div class="row mb-4">
-    <div class="col-md-3 mb-3">
-        <div class="stat-card">
-            <div class="d-flex justify-content-between">
-                <div>
-                    <div class="stat-number">{{ total_patients }}</div>
-                    <div class="stat-label">Total Patients</div>
-                </div>
-                <div class="stat-icon text-primary">
-                    <i class="fas fa-users"></i>
-                </div>
-            </div>
-            <small class="text-muted">+{{ new_patients_today }} today</small>
-        </div>
-    </div>
-    <div class="col-md-3 mb-3">
-        <div class="stat-card">
-            <div class="d-flex justify-content-between">
-                <div>
-                    <div class="stat-number">{{ total_doctors }}</div>
-                    <div class="stat-label">Total Doctors</div>
-                </div>
-                <div class="stat-icon text-info">
-                    <i class="fas fa-user-md"></i>
-                </div>
-            </div>
-            <small class="text-muted">{{ total_services }} services</small>
-        </div>
-    </div>
-    <div class="col-md-3 mb-3">
-        <div class="stat-card">
-            <div class="d-flex justify-content-between">
-                <div>
-                    <div class="stat-number">{{ total_users }}</div>
-                    <div class="stat-label">Total Users</div>
-                </div>
-                <div class="stat-icon text-warning">
-                    <i class="fas fa-users-cog"></i>
-                </div>
-            </div>
-            <small class="text-muted">{{ active_users }} active</small>
-        </div>
-    </div>
-    <div class="col-md-3 mb-3">
-        <div class="stat-card">
-            <div class="d-flex justify-content-between">
-                <div>
-                    <div class="stat-number text-success">UGX {{ total_revenue|floatformat:0|intcomma }}</div>
-                    <div class="stat-label">Total Revenue</div>
-                </div>
-                <div class="stat-icon text-success">
-                    <i class="fas fa-money-bill-wave"></i>
-                </div>
-            </div>
-            <small class="text-muted">UGX {{ daily_revenue|floatformat:0|intcomma }} today</small>
-        </div>
-    </div>
+<div class="dashboard-hero">
+  <div>
+    <h1>Good day, {{ user.first_name|default:user.username }}</h1>
+    <p>Here is the current overview of Dora's Dental Gem.</p>
+  </div>
+  <div class="dashboard-actions">
+    <a href="{% url 'patients:add' %}" class="btn btn-primary"><i class="fas fa-user-plus me-1"></i> Add Patient</a>
+    <a href="{% url 'appointments:add' %}" class="btn btn-outline-primary"><i class="fas fa-calendar-plus me-1"></i> Appointment</a>
+  </div>
 </div>
 
-<!-- ==================== FINANCIAL ROW ==================== -->
-<div class="row mb-4">
-    <div class="col-md-3">
-        <div class="stat-card">
-            <div class="d-flex justify-content-between">
-                <div>
-                    <div class="stat-number text-warning">UGX {{ weekly_revenue|floatformat:0|intcomma }}</div>
-                    <div class="stat-label">This Week</div>
-                </div>
-                <div class="stat-icon text-warning">
-                    <i class="fas fa-calendar-week"></i>
-                </div>
-            </div>
-        </div>
-    </div>
-    <div class="col-md-3">
-        <div class="stat-card">
-            <div class="d-flex justify-content-between">
-                <div>
-                    <div class="stat-number text-primary">UGX {{ monthly_revenue|floatformat:0|intcomma }}</div>
-                    <div class="stat-label">This Month</div>
-                </div>
-                <div class="stat-icon text-primary">
-                    <i class="fas fa-calendar-alt"></i>
-                </div>
-            </div>
-        </div>
-    </div>
-    <div class="col-md-3">
-        <div class="stat-card">
-            <div class="d-flex justify-content-between">
-                <div>
-                    <div class="stat-number text-danger">{{ total_outstanding|floatformat:0|intcomma }}</div>
-                    <div class="stat-label">Outstanding Balance</div>
-                </div>
-                <div class="stat-icon text-danger">
-                    <i class="fas fa-clock"></i>
-                </div>
-            </div>
-        </div>
-    </div>
-    <div class="col-md-3">
-        <div class="stat-card">
-            <div class="d-flex justify-content-between">
-                <div>
-                    <div class="stat-number">{{ pending_invoices }}</div>
-                    <div class="stat-label">Pending Invoices</div>
-                </div>
-                <div class="stat-icon text-warning">
-                    <i class="fas fa-file-invoice"></i>
-                </div>
-            </div>
-        </div>
-    </div>
+<div class="row g-3 mb-3">
+  <div class="col-6 col-xl-3"><div class="stat-card"><div class="d-flex justify-content-between gap-2"><div><div class="stat-number">{{ total_patients }}</div><div class="stat-label">Active Patients</div></div><div class="stat-icon"><i class="fas fa-users"></i></div></div><small>+{{ new_patients_today }} today</small></div></div>
+  <div class="col-6 col-xl-3"><div class="stat-card"><div class="d-flex justify-content-between gap-2"><div><div class="stat-number">{{ today_appointments_count }}</div><div class="stat-label">Today's Appointments</div></div><div class="stat-icon"><i class="fas fa-calendar-check"></i></div></div><small>{{ status_dict.checked_in|default:0 }} checked in</small></div></div>
+  <div class="col-6 col-xl-3"><div class="stat-card"><div class="d-flex justify-content-between gap-2"><div><div class="stat-number">UGX {{ daily_revenue|floatformat:0|intcomma }}</div><div class="stat-label">Today's Revenue</div></div><div class="stat-icon"><i class="fas fa-coins"></i></div></div><small>UGX {{ monthly_revenue|floatformat:0|intcomma }} this month</small></div></div>
+  <div class="col-6 col-xl-3"><div class="stat-card"><div class="d-flex justify-content-between gap-2"><div><div class="stat-number">UGX {{ total_outstanding|floatformat:0|intcomma }}</div><div class="stat-label">Outstanding</div></div><div class="stat-icon"><i class="fas fa-clock"></i></div></div><small>{{ pending_invoices }} pending invoices</small></div></div>
 </div>
 
-<!-- ==================== APPOINTMENTS ROW ==================== -->
-<div class="row mb-4">
-    <div class="col-md-6">
-        <div class="card">
-            <div class="card-header d-flex justify-content-between align-items-center">
-                <span><i class="fas fa-calendar-check text-primary"></i> Today's Appointments</span>
-                <span class="badge bg-primary">{{ today_appointments_count }}</span>
-            </div>
-            <div class="card-body">
-                {% if today_appointments %}
-                    <div class="table-responsive">
-                        <table class="table table-sm table-hover">
-                            <thead>
-                                <tr>
-                                    <th>Time</th>
-                                    <th>Patient</th>
-                                    <th>Doctor</th>
-                                    <th>Service</th>
-                                    <th>Status</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for appt in today_appointments|slice:":10" %}
-                                <tr>
-                                    <td>{{ appt.appointment_time|time:"H:i" }}</td>
-                                    <td>{{ appt.patient.full_name }}</td>
-                                    <td>Dr. {{ appt.doctor.name }}</td>
-                                    <td>{{ appt.service.name }}</td>
-                                    <td>
-                                        <span class="badge {% if appt.status == 'scheduled' %}bg-primary{% elif appt.status == 'completed' %}bg-success{% elif appt.status == 'cancelled' %}bg-danger{% else %}bg-warning{% endif %}">
-                                            {{ appt.get_status_display }}
-                                        </span>
-                                    </td>
-                                </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
-                        {% if today_appointments|length > 10 %}
-                            <a href="{% url 'appointments:list' %}" class="btn btn-sm btn-outline-primary">View All</a>
-                        {% endif %}
-                    </div>
-                {% else %}
-                    <p class="text-muted text-center py-3">No appointments today</p>
-                {% endif %}
-            </div>
-        </div>
+<div class="card mb-3">
+  <div class="card-header d-flex justify-content-between align-items-center gap-2"><span><i class="fas fa-bolt me-2"></i>Quick Actions</span><span class="small text-muted">Common tasks</span></div>
+  <div class="card-body">
+    <div class="quick-actions">
+      <a class="quick-action" href="{% url 'patients:add' %}"><i class="fas fa-user-plus"></i><span>Register Patient</span></a>
+      <a class="quick-action" href="{% url 'appointments:add' %}"><i class="fas fa-calendar-plus"></i><span>Book Appointment</span></a>
+      <a class="quick-action" href="{% url 'billing:add' %}"><i class="fas fa-file-invoice"></i><span>Create Invoice</span></a>
+      <a class="quick-action" href="{% url 'inventory:add' %}"><i class="fas fa-box"></i><span>Add Stock</span></a>
     </div>
-    <div class="col-md-6">
-        <div class="card">
-            <div class="card-header">
-                <i class="fas fa-chart-bar text-success"></i> Appointment Status
-            </div>
-            <div class="card-body">
-                <div class="row text-center">
-                    <div class="col-3">
-                        <h4 class="text-primary">{{ status_dict.scheduled|default:0 }}</h4>
-                        <small class="text-muted">Scheduled</small>
-                    </div>
-                    <div class="col-3">
-                        <h4 class="text-info">{{ status_dict.checked_in|default:0 }}</h4>
-                        <small class="text-muted">Checked In</small>
-                    </div>
-                    <div class="col-3">
-                        <h4 class="text-success">{{ status_dict.completed|default:0 }}</h4>
-                        <small class="text-muted">Completed</small>
-                    </div>
-                    <div class="col-3">
-                        <h4 class="text-danger">{{ status_dict.cancelled|default:0 }}</h4>
-                        <small class="text-muted">Cancelled</small>
-                    </div>
-                </div>
-                <div class="mt-3">
-                    <div class="d-flex justify-content-between">
-                        <span>Total: {{ total_appointments }}</span>
-                        <span>Completed: {{ completed_appointments }}</span>
-                        <span>Cancelled: {{ cancelled_appointments }}</span>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
+  </div>
 </div>
 
-<!-- ==================== SERVICES & DOCTORS ROW ==================== -->
-<div class="row mb-4">
-    <div class="col-md-6">
-        <div class="card">
-            <div class="card-header d-flex justify-content-between align-items-center">
-                <span><i class="fas fa-notes-medical text-primary"></i> Recent Services</span>
-                <a href="{% url 'appointments:services' %}" class="btn btn-sm btn-primary">
-                    <i class="fas fa-plus"></i> Add Service
-                </a>
-            </div>
-            <div class="card-body">
-                {% if services %}
-                    <div class="table-responsive">
-                        <table class="table table-sm table-hover">
-                            <thead>
-                                <tr>
-                                    <th>Service</th>
-                                    <th>Price</th>
-                                    <th>Duration</th>
-                                    <th>Status</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for service in services|slice:":10" %}
-                                <tr>
-                                    <td>{{ service.name }}</td>
-                                    <td>UGX {{ service.price|floatformat:0|intcomma }}</td>
-                                    <td>{{ service.duration_minutes }} min</td>
-                                    <td>
-                                        {% if service.is_active %}
-                                            <span class="badge bg-success">Active</span>
-                                        {% else %}
-                                            <span class="badge bg-danger">Inactive</span>
-                                        {% endif %}
-                                    </td>
-                                </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
-                    </div>
-                    <a href="{% url 'appointments:services' %}" class="btn btn-sm btn-outline-primary">View All Services</a>
-                {% else %}
-                    <p class="text-muted text-center py-3">No services available</p>
-                    <a href="{% url 'appointments:service_add' %}" class="btn btn-sm btn-primary">Add First Service</a>
-                {% endif %}
-            </div>
-        </div>
+<div class="row g-3 mb-3">
+  <div class="col-lg-8">
+    <div class="card">
+      <div class="card-header d-flex justify-content-between align-items-center"><span><i class="fas fa-calendar-day me-2"></i>Today's Schedule</span><a href="{% url 'appointments:list' %}" class="btn btn-sm btn-outline-primary">View all</a></div>
+      <div class="card-body">
+      {% if today_appointments %}<div class="table-responsive"><table class="table table-hover align-middle"><thead><tr><th>Time</th><th>Patient</th><th>Doctor</th><th>Service</th><th>Status</th></tr></thead><tbody>
+      {% for appt in today_appointments|slice:":10" %}<tr><td><strong>{{ appt.appointment_time|time:"H:i" }}</strong></td><td>{{ appt.patient.full_name }}</td><td>Dr. {{ appt.doctor.name }}</td><td>{{ appt.service.name }}</td><td><span class="badge {% if appt.status == 'scheduled' %}bg-primary{% elif appt.status == 'checked_in' %}bg-info{% elif appt.status == 'completed' %}bg-success{% elif appt.status == 'cancelled' %}bg-danger{% else %}bg-warning{% endif %}">{{ appt.get_status_display }}</span></td></tr>{% endfor %}
+      </tbody></table></div>{% else %}<div class="text-center py-4 text-muted"><i class="fas fa-calendar-plus fa-2x mb-2"></i><div>No appointments scheduled today.</div></div>{% endif %}
+      </div>
     </div>
-    <div class="col-md-6">
-        <div class="card">
-            <div class="card-header d-flex justify-content-between align-items-center">
-                <span><i class="fas fa-user-md text-info"></i> Recent Doctors</span>
-                <a href="{% url 'appointments:doctor_add' %}" class="btn btn-sm btn-primary">
-                    <i class="fas fa-plus"></i> Add Doctor
-                </a>
-            </div>
-            <div class="card-body">
-                {% if doctors %}
-                    <div class="table-responsive">
-                        <table class="table table-sm table-hover">
-                            <thead>
-                                <tr>
-                                    <th>Doctor</th>
-                                    <th>Specialization</th>
-                                    <th>Phone</th>
-                                    <th>Status</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for doctor in doctors|slice:":10" %}
-                                <tr>
-                                    <td>Dr. {{ doctor.name }}</td>
-                                    <td>{{ doctor.specialization|default:"General" }}</td>
-                                    <td>{{ doctor.phone|default:"-" }}</td>
-                                    <td>
-                                        {% if doctor.is_active %}
-                                            <span class="badge bg-success">Active</span>
-                                        {% else %}
-                                            <span class="badge bg-danger">Inactive</span>
-                                        {% endif %}
-                                    </td>
-                                </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
-                    </div>
-                    <a href="{% url 'appointments:doctors' %}" class="btn btn-sm btn-outline-primary">View All Doctors</a>
-                {% else %}
-                    <p class="text-muted text-center py-3">No doctors available</p>
-                    <a href="{% url 'appointments:doctor_add' %}" class="btn btn-sm btn-primary">Add First Doctor</a>
-                {% endif %}
-            </div>
-        </div>
-    </div>
+  </div>
+  <div class="col-lg-4">
+    <div class="card h-100"><div class="card-header"><i class="fas fa-chart-pie me-2"></i>Appointment Status</div><div class="card-body">
+      <div class="row g-2 text-center">
+        <div class="col-6"><div class="p-2 rounded bg-light"><strong class="fs-5 text-primary">{{ status_dict.scheduled|default:0 }}</strong><div class="small text-muted">Scheduled</div></div></div>
+        <div class="col-6"><div class="p-2 rounded bg-light"><strong class="fs-5 text-info">{{ status_dict.checked_in|default:0 }}</strong><div class="small text-muted">Checked In</div></div></div>
+        <div class="col-6"><div class="p-2 rounded bg-light"><strong class="fs-5 text-success">{{ status_dict.completed|default:0 }}</strong><div class="small text-muted">Completed</div></div></div>
+        <div class="col-6"><div class="p-2 rounded bg-light"><strong class="fs-5 text-danger">{{ status_dict.cancelled|default:0 }}</strong><div class="small text-muted">Cancelled</div></div></div>
+      </div>
+      <hr><div class="d-flex justify-content-between small text-muted"><span>{{ total_appointments }} total</span><span>{{ completed_appointments }} completed</span></div>
+    </div></div>
+  </div>
 </div>
 
-<!-- ==================== USER MANAGEMENT ROW ==================== -->
-<div class="row mb-4">
-    <div class="col-md-12">
-        <div class="card">
-            <div class="card-header d-flex justify-content-between align-items-center">
-                <span><i class="fas fa-users-cog text-warning"></i> User Management</span>
-                <a href="{% url 'core:user_add' %}" class="btn btn-sm btn-primary">
-                    <i class="fas fa-plus"></i> Add User
-                </a>
-            </div>
-            <div class="card-body">
-                {% if users %}
-                    <div class="table-responsive">
-                        <table class="table table-sm table-hover">
-                            <thead>
-                                <tr>
-                                    <th>Username</th>
-                                    <th>Name</th>
-                                    <th>Email</th>
-                                    <th>Role</th>
-                                    <th>Status</th>
-                                    <th>Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for user in users|slice:":10" %}
-                                <tr>
-                                    <td><strong>{{ user.username }}</strong></td>
-                                    <td>{{ user.get_full_name|default:"-" }}</td>
-                                    <td>{{ user.email|default:"-" }}</td>
-                                    <td>
-                                        <span class="badge {% if user.profile.role == 'admin' %}bg-danger{% elif user.profile.role == 'doctor' %}bg-primary{% elif user.profile.role == 'accountant' %}bg-success{% elif user.profile.role == 'receptionist' %}bg-info{% else %}bg-secondary{% endif %}">
-                                            {{ user.profile.get_role_display }}
-                                        </span>
-                                    </td>
-                                    <td>
-                                        {% if user.is_active %}
-                                            <span class="badge bg-success">Active</span>
-                                        {% else %}
-                                            <span class="badge bg-danger">Inactive</span>
-                                        {% endif %}
-                                    </td>
-                                    <td>
-                                        <div class="btn-group btn-group-sm">
-                                            <a href="{% url 'core:user_edit' user.pk %}" class="btn btn-outline-primary">
-                                                <i class="fas fa-edit"></i>
-                                            </a>
-                                            {% if user.is_active %}
-                                                <a href="{% url 'core:user_delete' user.pk %}" class="btn btn-outline-danger">
-                                                    <i class="fas fa-ban"></i>
-                                                </a>
-                                            {% else %}
-                                                <a href="{% url 'core:user_activate' user.pk %}" class="btn btn-outline-success">
-                                                    <i class="fas fa-check"></i>
-                                                </a>
-                                            {% endif %}
-                                        </div>
-                                    </td>
-                                </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
-                    </div>
-                    <a href="{% url 'core:user_list' %}" class="btn btn-sm btn-outline-primary">View All Users</a>
-                    <a href="{% url 'core:role_management' %}" class="btn btn-sm btn-outline-secondary ms-2">Role Management</a>
-                {% else %}
-                    <p class="text-muted text-center py-3">No users found</p>
-                    <a href="{% url 'core:user_add' %}" class="btn btn-sm btn-primary">Add First User</a>
-                {% endif %}
-            </div>
-        </div>
-    </div>
+<div class="row g-3 mb-3">
+  <div class="col-lg-6"><div class="card h-100"><div class="card-header d-flex justify-content-between"><span><i class="fas fa-user-clock me-2"></i>Recent Patients</span><a href="{% url 'patients:list' %}" class="small">View all</a></div><div class="card-body p-0">{% if recent_patients %}<div class="list-group list-group-flush">{% for patient in recent_patients|slice:":6" %}<a href="{% url 'patients:detail' patient.pk %}" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center"><div><strong>{{ patient.full_name }}</strong><div class="small text-muted">{{ patient.phone|default:"No phone" }}</div></div><small class="text-muted">{{ patient.registered_at|timesince }} ago</small></a>{% endfor %}</div>{% else %}<div class="p-4 text-center text-muted">No recent patients.</div>{% endif %}</div></div></div>
+  <div class="col-lg-6"><div class="card h-100"><div class="card-header d-flex justify-content-between"><span><i class="fas fa-money-bill-wave me-2"></i>Recent Payments</span><a href="{% url 'billing:list' %}" class="small">View invoices</a></div><div class="card-body">{% if recent_payments %}<div class="table-responsive"><table class="table table-sm"><thead><tr><th>Patient</th><th>Amount</th><th>Date</th></tr></thead><tbody>{% for payment in recent_payments|slice:":6" %}<tr><td>{{ payment.invoice.patient_name }}</td><td><strong>UGX {{ payment.amount|floatformat:0|intcomma }}</strong></td><td>{{ payment.payment_date|date:"M d" }}</td></tr>{% endfor %}</tbody></table></div>{% else %}<div class="text-center py-4 text-muted">No recent payments.</div>{% endif %}</div></div></div>
 </div>
 
-<!-- ==================== RECENT ACTIVITY ROW ==================== -->
-<div class="row mb-4">
-    <div class="col-md-6">
-        <div class="card">
-            <div class="card-header">
-                <i class="fas fa-history text-primary"></i> Recent Patients
-            </div>
-            <div class="card-body">
-                {% if recent_patients %}
-                    <ul class="list-group list-group-flush">
-                    {% for patient in recent_patients %}
-                        <li class="list-group-item d-flex justify-content-between align-items-center">
-                            <div>
-                                <strong>{{ patient.full_name }}</strong>
-                                <br>
-                                <small class="text-muted">{{ patient.phone }}</small>
-                            </div>
-                            <small class="text-muted">{{ patient.registered_at|timesince }} ago</small>
-                        </li>
-                    {% endfor %}
-                    </ul>
-                    <a href="{% url 'patients:list' %}" class="btn btn-sm btn-outline-primary mt-2">View All Patients</a>
-                {% else %}
-                    <p class="text-muted text-center py-3">No recent patients</p>
-                {% endif %}
-            </div>
-        </div>
-    </div>
-    <div class="col-md-6">
-        <div class="card">
-            <div class="card-header">
-                <i class="fas fa-receipt text-success"></i> Recent Payments
-            </div>
-            <div class="card-body">
-                {% if recent_payments %}
-                    <div class="table-responsive">
-                        <table class="table table-sm">
-                            <thead>
-                                <tr>
-                                    <th>Patient</th>
-                                    <th>Amount</th>
-                                    <th>Method</th>
-                                    <th>Date</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for payment in recent_payments %}
-                                <tr>
-                                    <td>{{ payment.invoice.patient_name }}</td>
-                                    <td><strong>UGX {{ payment.amount|floatformat:0|intcomma }}</strong></td>
-                                    <td>{{ payment.get_payment_method_display }}</td>
-                                    <td>{{ payment.payment_date|date:"M d" }}</td>
-                                </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
-                    </div>
-                    <a href="{% url 'billing:list' %}" class="btn btn-sm btn-outline-success mt-2">View All Invoices</a>
-                {% else %}
-                    <p class="text-muted text-center py-3">No recent payments</p>
-                {% endif %}
-            </div>
-        </div>
-    </div>
-</div>
+{% if low_stock_items %}<div class="card border-warning mb-3"><div class="card-header bg-warning text-dark d-flex justify-content-between"><span><i class="fas fa-triangle-exclamation me-2"></i>Inventory Alerts</span><a href="{% url 'inventory:low_stock' %}" class="btn btn-sm btn-dark">View low stock</a></div><div class="card-body"><div class="row g-2">{% for item in low_stock_items|slice:":6" %}<div class="col-md-6 col-xl-4"><div class="alert alert-warning mb-0 h-100"><strong>{{ item.name }}</strong><div class="small">Stock: {{ item.quantity }} {{ item.get_unit_display }}</div></div></div>{% endfor %}</div></div></div>{% endif %}
 
-<!-- ==================== INVENTORY ALERTS ROW ==================== -->
-{% if low_stock_items %}
-<div class="row mb-4">
-    <div class="col-md-12">
-        <div class="card border-warning">
-            <div class="card-header bg-warning text-dark">
-                <i class="fas fa-exclamation-triangle"></i> Low Stock Alert
-                <span class="badge bg-dark float-end">{{ low_stock_items|length }} items</span>
-            </div>
-            <div class="card-body">
-                <div class="row">
-                    {% for item in low_stock_items %}
-                    <div class="col-md-3 mb-2">
-                        <div class="alert alert-warning mb-0">
-                            <strong>{{ item.name }}</strong><br>
-                            <small>Stock: {{ item.quantity }} {{ item.get_unit_display }}</small>
-                            <a href="{% url 'inventory:detail' item.pk %}" class="btn btn-sm btn-warning float-end">Restock</a>
-                        </div>
-                    </div>
-                    {% endfor %}
-                </div>
-                <a href="{% url 'inventory:low_stock' %}" class="btn btn-sm btn-warning mt-2">View All Low Stock</a>
-            </div>
-        </div>
-    </div>
-</div>
-{% endif %}
-
-<!-- ==================== TOP PATIENTS ==================== -->
-<div class="row">
-    <div class="col-md-12">
-        <div class="card">
-            <div class="card-header">
-                <i class="fas fa-trophy text-warning"></i> Top Patients by Spending
-            </div>
-            <div class="card-body">
-                {% if top_patients %}
-                    <div class="table-responsive">
-                        <table class="table table-hover">
-                            <thead>
-                                <tr>
-                                    <th>#</th>
-                                    <th>Patient</th>
-                                    <th>Total Spent</th>
-                                    <th>Visits</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for patient in top_patients %}
-                                <tr>
-                                    <td>
-                                        {% if forloop.counter == 1 %}
-                                            <span class="badge bg-warning">🏆</span>
-                                        {% elif forloop.counter == 2 %}
-                                            <span class="badge bg-secondary">🥈</span>
-                                        {% elif forloop.counter == 3 %}
-                                            <span class="badge bg-bronze">🥉</span>
-                                        {% else %}
-                                            <span class="badge bg-light text-dark">{{ forloop.counter }}</span>
-                                        {% endif %}
-                                    </td>
-                                    <td>{{ patient.patient__first_name }} {{ patient.patient__last_name }}</td>
-                                    <td><strong>UGX {{ patient.total_spent|floatformat:0|intcomma }}</strong></td>
-                                    <td>{{ patient.visit_count }} visits</td>
-                                </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
-                    </div>
-                {% else %}
-                    <p class="text-muted text-center py-3">No patient data available</p>
-                {% endif %}
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- ==================== QUICK ACTIONS ==================== -->
-<div class="row mt-3">
-    <div class="col-md-12">
-        <div class="card">
-            <div class="card-header">
-                <i class="fas fa-bolt text-warning"></i> Quick Actions
-            </div>
-            <div class="card-body">
-                <div class="row">
-                    <div class="col-md-2">
-                        <a href="{% url 'patients:add' %}" class="btn btn-primary w-100">
-                            <i class="fas fa-user-plus"></i> Add Patient
-                        </a>
-                    </div>
-                    <div class="col-md-2">
-                        <a href="{% url 'appointments:add' %}" class="btn btn-success w-100">
-                            <i class="fas fa-calendar-plus"></i> Book Appointment
-                        </a>
-                    </div>
-                    <div class="col-md-2">
-                        <a href="{% url 'billing:add' %}" class="btn btn-info w-100 text-white">
-                            <i class="fas fa-file-invoice"></i> Create Invoice
-                        </a>
-                    </div>
-                    <div class="col-md-2">
-                        <a href="{% url 'billing:expense_add' %}" class="btn btn-danger w-100">
-                            <i class="fas fa-money-bill-wave"></i> Add Expense
-                        </a>
-                    </div>
-                    <div class="col-md-2">
-                        <a href="{% url 'appointments:service_add' %}" class="btn btn-warning w-100">
-                            <i class="fas fa-notes-medical"></i> Add Service
-                        </a>
-                    </div>
-                    <div class="col-md-2">
-                        <a href="{% url 'appointments:doctor_add' %}" class="btn btn-secondary w-100">
-                            <i class="fas fa-user-md"></i> Add Doctor
-                        </a>
-                    </div>
-                </div>
-                <div class="row mt-2">
-                    <div class="col-md-2">
-                        <a href="{% url 'core:user_add' %}" class="btn btn-primary w-100">
-                            <i class="fas fa-user-plus"></i> Add User
-                        </a>
-                    </div>
-                    <div class="col-md-2">
-                        <a href="{% url 'inventory:add' %}" class="btn btn-success w-100">
-                            <i class="fas fa-box"></i> Add Stock
-                        </a>
-                    </div>
-                    <div class="col-md-2">
-                        <a href="{% url 'core:revenue_dashboard' %}" class="btn btn-info w-100 text-white">
-                            <i class="fas fa-chart-line"></i> Revenue Reports
-                        </a>
-                    </div>
-                    <div class="col-md-2">
-                        <a href="{% url 'billing:balance_sheet' %}" class="btn btn-warning w-100">
-                            <i class="fas fa-balance-scale"></i> Balance Sheet
-                        </a>
-                    </div>
-                    <div class="col-md-2">
-                        <a href="{% url 'core:user_list' %}" class="btn btn-secondary w-100">
-                            <i class="fas fa-users-cog"></i> All Users
-                        </a>
-                    </div>
-                    <div class="col-md-2">
-                        <a href="{% url 'core:role_management' %}" class="btn btn-danger w-100">
-                            <i class="fas fa-user-tag"></i> Role Management
-                        </a>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
+<div class="card"><div class="card-header"><i class="fas fa-chart-line me-2"></i>Financial Overview</div><div class="card-body"><div class="row g-3 text-center"><div class="col-6 col-md-3"><div class="small text-muted">Today</div><strong>UGX {{ daily_revenue|floatformat:0|intcomma }}</strong></div><div class="col-6 col-md-3"><div class="small text-muted">This Week</div><strong>UGX {{ weekly_revenue|floatformat:0|intcomma }}</strong></div><div class="col-6 col-md-3"><div class="small text-muted">This Month</div><strong>UGX {{ monthly_revenue|floatformat:0|intcomma }}</strong></div><div class="col-6 col-md-3"><div class="small text-muted">Paid Invoices</div><strong>{{ paid_invoices }}</strong></div></div></div></div>
 {% endblock %}

@@ -191,7 +191,7 @@
             <br>
             <small>Click the button below to generate portal access.</small>
         </div>
-        <a href="{% url 'patients:generate_portal_pin' patient.pk %}" class="btn btn-sm btn-primary">
+        <a href="{% url 'patient_portal:generate_portal_pin' patient.pk %}" class="btn btn-sm btn-primary">
             <i class="fas fa-key"></i> Generate Portal PIN
         </a>
     {% endif %}

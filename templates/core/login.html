@@ -13,6 +13,9 @@
     
     <!-- ✅ LOAD STATIC FILES AT THE TOP -->
     {% load static %}
+    <link rel="icon" type="image/png" sizes="64x64" href="{% static 'pwa/favicon-64.png' %}">
+    <link rel="manifest" href="{% static 'pwa/manifest.webmanifest' %}">
+    <link rel="apple-touch-icon" sizes="180x180" href="{% static 'pwa/apple-touch-icon.png' %}">
     
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
