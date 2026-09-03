@@ -5,7 +5,7 @@ from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import User
 from django.db import models
 from django.http import JsonResponse, HttpResponseNotAllowed
-from .models import UserProfile
+from .models import UserProfile, CompanySettings
 from .otp_service import OTPService
 from datetime import timedelta
 from django.utils import timezone
@@ -94,20 +94,20 @@ def login_view(request):
                 request.session['otp_verified'] = False
                 if not profile.phone:
                     messages.warning(request, 'No phone number registered for OTP. Please contact administrator.')
-                    return render(request, 'core/login.html')
+                    return render(request, 'core/login.html', {'company': CompanySettings.get_settings()})
 
                 success, message = OTPService().create_and_send_otp(authenticated_user)
                 if success:
                     messages.info(request, f'OTP sent to your registered phone number ({profile.phone})')
                     return redirect('core:otp_verify')
                 messages.error(request, f'Failed to send OTP: {message}')
-                return render(request, 'core/login.html')
+                return render(request, 'core/login.html', {'company': CompanySettings.get_settings()})
             else:
                 messages.error(request, 'Invalid username, phone number, or password.')
         else:
             messages.error(request, 'Invalid username, phone number, or password.')
     
-    return render(request, 'core/login.html')
+    return render(request, 'core/login.html', {'company': CompanySettings.get_settings()})
 
 
 def redirect_to_dashboard(user):

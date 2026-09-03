@@ -1,212 +1,48 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dora's Dental Gem - Login</title>
-    <!-- Bootstrap CSS -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <!-- Font Awesome -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <!-- Google Fonts -->
-    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
-    
-    <!-- ✅ LOAD STATIC FILES AT THE TOP -->
-    {% load static %}
-    <link rel="icon" type="image/png" sizes="64x64" href="{% static 'pwa/favicon-64.png' %}">
-    <link rel="manifest" href="{% static 'pwa/manifest.webmanifest' %}">
-    <link rel="apple-touch-icon" sizes="180x180" href="{% static 'pwa/apple-touch-icon.png' %}">
-    
-    <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body {
-            font-family: 'Poppins', sans-serif;
-            min-height: 100vh;
-            background: linear-gradient(135deg, #5faad5 0%, #13163b 100%);
-            display: flex; align-items: center; justify-content: center; padding: 20px;
-        }
-        .login-wrapper { width: 100%; max-width: 450px; }
-        .login-card {
-            background: rgba(255, 255, 255, 0.95);
-            backdrop-filter: blur(10px);
-            border-radius: 24px; padding: 45px 40px;
-            box-shadow: 0 20px 60px rgba(19, 22, 59, 0.4);
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            animation: slideUp 0.8s ease-out;
-        }
-        @keyframes slideUp {
-            from { opacity: 0; transform: translateY(30px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-        .logo-section { text-align: center; margin-bottom: 30px; }
-        
-        /* Logo Container */
-        .custom-logo-container {
-            display: inline-block;
-            width: 110px; height: 110px;
-            background: #ffffff;
-            border-radius: 50%;
-            padding: 8px;
-            box-shadow: 0 8px 25px rgba(19, 22, 59, 0.3);
-            margin-bottom: 15px;
-            transition: transform 0.3s;
-            overflow: hidden;
-            border: 3px solid #13163b;
-        }
-        .custom-logo-container:hover { transform: scale(1.05) rotate(-3deg); }
-        .custom-logo-container img {
-            width: 100%; height: 100%; object-fit: contain; border-radius: 50%;
-        }
-        
-        .clinic-name {
-            font-family: 'Playfair Display', serif;
-            font-size: 28px; font-weight: 700; color: #2d3436; margin-bottom: 5px;
-        }
-        .clinic-name span { 
-            background: linear-gradient(135deg, #13163b, #5faad5);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-        }
-        .clinic-tagline { 
-            color: #13163b; 
-            font-size: 15px; 
-            font-weight: 600; 
-            letter-spacing: 1px;
-        }
-        .login-title { font-size: 22px; font-weight: 600; color: #2d3436; margin-bottom: 8px; }
-        .login-subtitle { color: #636e72; font-size: 14px; margin-bottom: 25px; }
-        
-        .otp-info {
-            background: #eaf6fc;
-            border-radius: 12px; padding: 12px 15px; margin-bottom: 20px;
-            font-size: 13px; color: #1e3a4a; border-left: 4px solid #13163b;
-        }
-        .otp-info i { color: #13163b; margin-right: 8px; }
-        
-        .form-group { margin-bottom: 20px; position: relative; }
-        .form-group label { font-weight: 500; color: #2d3436; font-size: 14px; margin-bottom: 6px; display: block; }
-        .form-group .input-group { border-radius: 12px; overflow: hidden; box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05); transition: all 0.3s; }
-        .form-group .input-group:focus-within { box-shadow: 0 0 0 3px rgba(19, 22, 59, 0.2); }
-        .form-group .input-group-text { background: white; border: 1px solid #dfe6e9; border-right: none; color: #636e72; padding: 12px 15px; }
-        .form-group .form-control { border: 1px solid #dfe6e9; border-left: none; padding: 12px 15px; font-size: 14px; transition: all 0.3s; }
-        .form-group .form-control:focus { box-shadow: none; border-color: #13163b; }
-        .form-hint { font-size: 12px; color: #a0aec0; margin-top: 4px; display: block; }
-        
-        .btn-login {
-            background: #13163b;
-            color: white; border: none; padding: 14px; border-radius: 12px;
-            font-weight: 600; font-size: 16px; width: 100%;
-            transition: all 0.3s; box-shadow: 0 4px 15px rgba(19, 22, 59, 0.5);
-        }
-        .btn-login:hover { 
-            transform: translateY(-2px); 
-            box-shadow: 0 6px 25px rgba(19, 22, 59, 0.7); 
-            color: white; 
-            background: #1e2366;
-        }
-        .btn-login:active { transform: translateY(0); }
-        .btn-login i { margin-right: 8px; }
-        
-        .alert { border-radius: 12px; border: none; padding: 12px 18px; font-size: 14px; animation: shake 0.5s; }
-        @keyframes shake { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-10px); } 75% { transform: translateX(10px); } }
-        .alert-danger { background: #fee2e2; color: #991b1b; }
-        .alert-success { background: #d1fae5; color: #065f46; }
-        .alert-info { background: #dbeafe; color: #1e40af; }
-        
-        .footer-text { text-align: center; margin-top: 20px; color: #636e72; font-size: 12px; }
-        .footer-text i { color: #ef4444; }
-        
-        .decorative { position: fixed; border-radius: 50%; opacity: 0.1; pointer-events: none; }
-        .decorative-1 { width: 300px; height: 300px; background: #5faad5; top: -100px; right: -100px; }
-        .decorative-2 { width: 200px; height: 200px; background: #5faad5; bottom: -50px; left: -50px; }
-        
-        @media (max-width: 480px) {
-            .login-card { padding: 30px 20px; }
-            .clinic-name { font-size: 24px; }
-        }
-    </style>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{{ company.business_name|default:"Dora's Dental Gem" }} - Secure Login</title>
+{% load static %}
+<link rel="icon" type="image/png" href="{% static 'pwa/favicon-64.png' %}">
+<link rel="manifest" href="{% static 'pwa/manifest.webmanifest' %}">
+<link rel="apple-touch-icon" href="{% static 'pwa/apple-touch-icon.png' %}">
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@500;600;700;800&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box}body{margin:0;min-height:100vh;font-family:'DM Sans',sans-serif;background:#f4f8fb;color:#172033}
+.login-page{min-height:100vh;display:grid;grid-template-columns:1.05fr .95fr}
+.brand-panel{position:relative;overflow:hidden;background:linear-gradient(145deg,#11163d,#1d5e83 58%,#54afd1);color:#fff;padding:clamp(35px,7vw,90px);display:flex;align-items:center}
+.brand-panel:before,.brand-panel:after{content:"";position:absolute;border-radius:50%;border:1px solid rgba(255,255,255,.16)}.brand-panel:before{width:430px;height:430px;right:-180px;top:-130px}.brand-panel:after{width:260px;height:260px;left:-120px;bottom:-100px}
+.brand-content{position:relative;z-index:1;max-width:560px}.logo{width:88px;height:88px;border-radius:22px;background:#fff;padding:10px;object-fit:contain;box-shadow:0 12px 30px rgba(0,0,0,.2);margin-bottom:28px}
+.brand-content h1{font-family:Manrope,sans-serif;font-size:clamp(34px,4vw,58px);line-height:1.03;font-weight:800;margin:0 0 16px}.brand-content h1 span{color:#8fe2f3}.brand-content p{font-size:17px;line-height:1.7;max-width:470px;color:rgba(255,255,255,.82)}
+.feature-list{display:grid;gap:12px;margin-top:30px}.feature{display:flex;align-items:center;gap:12px;font-size:14px;color:rgba(255,255,255,.9)}.feature i{width:30px;height:30px;border-radius:9px;background:rgba(255,255,255,.12);display:grid;place-items:center}
+.form-panel{display:flex;align-items:center;justify-content:center;padding:35px}.login-box{width:100%;max-width:440px;background:#fff;border:1px solid #e5ebf1;border-radius:24px;padding:38px;box-shadow:0 20px 60px rgba(20,40,60,.10)}
+.login-box h2{font-family:Manrope,sans-serif;font-size:27px;font-weight:800;margin:0 0 7px}.subtitle{color:#667085;margin-bottom:25px;font-size:14px}.security{display:flex;gap:12px;padding:13px 14px;border-radius:12px;background:#eef8fb;border:1px solid #d8edf3;color:#24576b;font-size:13px;margin-bottom:22px}.security i{color:#197a9b;margin-top:2px}
+.form-label{font-size:13px;font-weight:700;color:#344054}.input-group{border:1px solid #d7dee7;border-radius:12px;overflow:hidden;background:#fff}.input-group:focus-within{border-color:#2878a8;box-shadow:0 0 0 3px rgba(40,120,168,.12)}.input-group-text{border:0;background:#f8fafc;color:#667085}.form-control{border:0;padding:12px 13px}.form-control:focus{box-shadow:none}.btn-login{width:100%;border:0;border-radius:12px;padding:13px;background:#141942;color:#fff;font-weight:700;font-size:15px;margin-top:5px}.btn-login:hover{background:#202865;transform:translateY(-1px)}.hint{font-size:11.5px;color:#98a2b3;margin-top:6px}.footer{text-align:center;color:#98a2b3;font-size:11px;margin-top:22px}
+.alert{border-radius:11px;font-size:13px;border:0}.decor{position:absolute;inset:0;pointer-events:none}
+@media(max-width:850px){.login-page{display:block}.brand-panel{padding:28px 24px 35px;min-height:auto}.brand-content h1{font-size:34px}.brand-content p,.feature-list{display:none}.logo{width:68px;height:68px;border-radius:17px;margin-bottom:16px}.form-panel{padding:22px 16px;align-items:flex-start}.login-box{padding:26px 20px;border-radius:18px;box-shadow:0 12px 35px rgba(20,40,60,.08)}}
+</style>
 </head>
 <body>
-    <div class="decorative decorative-1"></div>
-    <div class="decorative decorative-2"></div>
-    
-    <div class="login-wrapper">
-        <div class="login-card">
-            <!-- Logo Section - USING STATIC FILE -->
-            <div class="logo-section">
-                <div class="custom-logo-container">
-                    <!-- ✅ THIS LINE IS NOW USING YOUR STATIC FILE -->
-                    <img src="{% static 'images/dental_logo.png' %}" alt="Dora's Dental Logo">
-                </div>
-                <div class="clinic-name">
-                    Dora's <span>Dental Gem</span>
-                </div>
-                <div class="clinic-tagline">
-                    <i class="fas fa-tooth me-1" style="color:#5faad5;"></i> Your Smile Matters
-                </div>
-            </div>
-            
-            <div class="login-title">Welcome Back!</div>
-            <div class="login-subtitle">Sign in to manage your dental clinic</div>
-            
-            <div class="otp-info">
-                <i class="fas fa-shield-alt"></i>
-                <strong>Secure Login:</strong> After login, you'll receive a one-time password (OTP) via SMS for verification.
-            </div>
-            
-            <!-- Messages -->
-            {% if messages %}
-                {% for message in messages %}
-                    <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
-                        <i class="fas {% if message.tags == 'success' %}fa-check-circle{% elif message.tags == 'error' %}fa-exclamation-circle{% elif message.tags == 'info' %}fa-info-circle{% endif %} me-2"></i>
-                        {{ message }}
-                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-                    </div>
-                {% endfor %}
-            {% endif %}
-            
-            <!-- Login Form -->
-            <form method="post">
-                {% csrf_token %}
-                <div class="form-group">
-                    <label for="username">
-                        <i class="fas fa-user me-1"></i> Username or Phone Number
-                    </label>
-                    <div class="input-group">
-                        <span class="input-group-text"><i class="fas fa-user"></i></span>
-                        <input type="text" class="form-control" id="username" name="username" autocomplete="username"
-                               placeholder="Enter your username or phone number" required autofocus>
-                    </div>
-                    <small class="form-hint">Use your username or registered phone number (e.g., 0767425306)</small>
-                </div>
-                
-                <div class="form-group">
-                    <label for="password">
-                        <i class="fas fa-lock me-1"></i> Password
-                    </label>
-                    <div class="input-group">
-                        <span class="input-group-text"><i class="fas fa-lock"></i></span>
-                        <input type="password" class="form-control" id="password" name="password" autocomplete="current-password"
-                               placeholder="Enter your password" required>
-                        <button type="button" class="btn btn-light border" id="togglePassword" aria-label="Show password"><i class="fas fa-eye"></i></button>
-                    </div>
-                </div>
-                
-                <button type="submit" class="btn-login">
-                    <i class="fas fa-sign-in-alt"></i> Sign In
-                </button>
-            </form>
-            
-            <div class="footer-text">
-                <i class="fas fa-heart"></i> Dora's Dental Gem &bull; 2026
-            </div>
-        </div>
-    </div>
-    
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-<script>
-const p=document.getElementById('password'), t=document.getElementById('togglePassword');
-t&&t.addEventListener('click',()=>{const show=p.type==='password';p.type=show?'text':'password';t.innerHTML=show?'<i class="fas fa-eye-slash"></i>':'<i class="fas fa-eye"></i>';t.setAttribute('aria-label',show?'Hide password':'Show password');});
-</script>
-</body>
-</html>
+<div class="login-page">
+<section class="brand-panel"><div class="brand-content">
+{% if company.logo %}<img src="{{ company.logo.url }}" class="logo" alt="Clinic logo">{% else %}<img src="{% static 'images/dental_logo.png' %}" class="logo" alt="Dental logo">{% endif %}
+<h1>{{ company.business_name|default:"Dora's Dental Gem" }}</h1>
+<p>{{ company.tagline|default:"Professional dental care management, securely connected in one place." }}</p>
+<div class="feature-list"><div class="feature"><i class="fas fa-shield-halved"></i> Secure staff authentication with OTP verification</div><div class="feature"><i class="fas fa-calendar-check"></i> Manage patients, appointments and clinical records</div><div class="feature"><i class="fas fa-file-invoice-dollar"></i> Billing and financial records in one system</div></div>
+</div></section>
+<section class="form-panel"><div class="login-box">
+<h2>Welcome back</h2><div class="subtitle">Sign in to continue to your clinic workspace.</div>
+<div class="security"><i class="fas fa-shield-halved"></i><div><strong>Protected access</strong><br>After your password is accepted, a one-time verification code may be sent to your registered phone.</div></div>
+{% if messages %}{% for message in messages %}<div class="alert alert-{{ message.tags }} alert-dismissible fade show mb-3" role="alert">{{ message }}<button type="button" class="btn-close" data-bs-dismiss="alert"></button></div>{% endfor %}{% endif %}
+<form method="post">{% csrf_token %}
+<div class="mb-3"><label class="form-label" for="username">Username or phone number</label><div class="input-group"><span class="input-group-text"><i class="fas fa-user"></i></span><input class="form-control" id="username" name="username" autocomplete="username" placeholder="Enter username or phone" required autofocus></div><div class="hint">Use the username or registered phone number on your account.</div></div>
+<div class="mb-4"><label class="form-label" for="password">Password</label><div class="input-group"><span class="input-group-text"><i class="fas fa-lock"></i></span><input type="password" class="form-control" id="password" name="password" autocomplete="current-password" placeholder="Enter your password" required><button type="button" class="btn btn-light border-0" id="togglePassword" aria-label="Show password"><i class="fas fa-eye"></i></button></div></div>
+<button class="btn-login" type="submit"><i class="fas fa-arrow-right-to-bracket me-2"></i>Sign in securely</button>
+</form><div class="footer">© 2026 {{ company.business_name|default:"Dora's Dental Gem" }} · Authorized staff only</div>
+</div></section>
+</div>
+<script>const p=document.getElementById('password'),t=document.getElementById('togglePassword');t&&t.addEventListener('click',()=>{const s=p.type==='password';p.type=s?'text':'password';t.innerHTML=s?'<i class="fas fa-eye-slash"></i>':'<i class="fas fa-eye"></i>';});</script>
+</body></html>

@@ -37,43 +37,71 @@ def get_doctor_patients(doctor):
 # ====================
 @login_required
 def patient_list(request):
-    """Display all active patients with balances"""
+    """Display active patients with server-side filtering and pagination."""
+    from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
+    from django.db.models import Value
+    from django.db.models.functions import Coalesce
+
     user_profile = request.user.profile
-    
-    # ✅ If doctor, only show assigned patients
     if user_profile.role == 'doctor':
         doctor = user_profile.doctor
         patients = get_doctor_patients(doctor)
         is_doctor_user = True
     else:
-        patients = Patient.objects.filter(is_active=True).order_by('-registered_at')
+        patients = Patient.objects.filter(is_active=True)
         is_doctor_user = False
-    
-    # Search functionality
-    search = request.GET.get('search', '')
+
+    search = request.GET.get('search', '').strip()
+    balance_filter = request.GET.get('balance', '').strip()
+    sort = request.GET.get('sort', '-registered_at').strip()
+
+    allowed_sorts = {
+        '-registered_at', 'registered_at', 'first_name', '-first_name',
+        'last_name', '-last_name'
+    }
+    if sort not in allowed_sorts:
+        sort = '-registered_at'
+
     if search:
         patients = patients.filter(
-            models.Q(first_name__icontains=search) |
-            models.Q(last_name__icontains=search) |
-            models.Q(phone__icontains=search) |
-            models.Q(email__icontains=search)
+            Q(first_name__icontains=search) |
+            Q(last_name__icontains=search) |
+            Q(phone__icontains=search) |
+            Q(email__icontains=search)
         )
-    
-    # Calculate balance for each patient
-    patient_list = []
-    for patient in patients:
-        total_balance = Invoice.objects.filter(
-            patient=patient
-        ).aggregate(total=Sum('balance_due'))['total'] or 0
-        patient.balance = total_balance
-        patient_list.append(patient)
-    
+
+    patients = patients.annotate(
+        patient_balance=Coalesce(
+            Sum('invoice__balance_due'),
+            Value(0)
+        )
+    )
+
+    if balance_filter == 'has_balance':
+        patients = patients.filter(patient_balance__gt=0)
+    elif balance_filter == 'no_balance':
+        patients = patients.filter(patient_balance__lte=0)
+
+    patients = patients.order_by(sort)
+
+    paginator = Paginator(patients, 20)
+    page_number = request.GET.get('page', 1)
+    try:
+        patients_page = paginator.page(page_number)
+    except (PageNotAnInteger, EmptyPage):
+        patients_page = paginator.page(1)
+
     context = {
-        'patients': patient_list,
+        'patients': patients_page,
+        'page_obj': patients_page,
+        'paginator': paginator,
+        'is_paginated': patients_page.has_other_pages(),
+        'total_count': paginator.count,
         'search_query': search,
+        'balance_filter': balance_filter,
+        'sort_filter': sort,
         'is_doctor': is_doctor_user,
     }
-    # ✅ REMOVED THE EXTRA SPACE - now properly indented with 4 spaces
     return render(request, 'patients/list.html', context)
 
 

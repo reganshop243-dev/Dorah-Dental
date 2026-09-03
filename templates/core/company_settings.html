@@ -1,333 +1,119 @@
 {% extends 'base.html' %}
 {% load static %}
 
-{% block page_title %}Company Settings{% endblock %}
+{% block page_title %}Company Profile{% endblock %}
 
 {% block extra_css %}
 <style>
-    .settings-section {
-        background: #f8f9fa;
-        border-radius: 10px;
-        padding: 20px;
-        margin-bottom: 20px;
-        border-left: 4px solid #3498db;
-    }
-    .settings-section .section-title {
-        font-weight: 600;
-        color: #2c3e50;
-        margin-bottom: 15px;
-        font-size: 1.1rem;
-    }
-    .settings-section .section-title i {
-        color: #3498db;
-        margin-right: 10px;
-    }
-    .form-label {
-        font-weight: 500;
-        font-size: 0.9rem;
-        color: #2c3e50;
-    }
-    .help-text {
-        font-size: 0.8rem;
-        color: #6c757d;
-        margin-top: 2px;
-    }
-    .logo-preview {
-        width: 150px;
-        height: 150px;
-        object-fit: contain;
-        border: 2px solid #dee2e6;
-        border-radius: 8px;
-        padding: 10px;
-        background: white;
-    }
-    .favicon-preview {
-        width: 32px;
-        height: 32px;
-        object-fit: contain;
-        border: 1px solid #dee2e6;
-        border-radius: 4px;
-        padding: 4px;
-        background: white;
-    }
+.company-settings-shell{max-width:1180px;margin:auto}
+.settings-hero{background:linear-gradient(135deg,#13163b,#2878a8);color:#fff;border-radius:20px;padding:28px 30px;margin-bottom:22px;box-shadow:0 12px 35px rgba(19,22,59,.18)}
+.settings-hero h4{font-weight:700;margin:0 0 5px}.settings-hero p{margin:0;opacity:.82}
+.settings-section{background:#fff;border:1px solid #e8edf3;border-radius:16px;padding:22px;margin-bottom:18px;box-shadow:0 4px 18px rgba(19,22,59,.04)}
+.section-title{font-weight:700;color:#182230;font-size:1rem;margin-bottom:18px;display:flex;align-items:center;gap:10px}
+.section-title i{color:#2878a8}.form-label{font-weight:600;font-size:.86rem;color:#344054}.help-text{font-size:.76rem;color:#667085;margin-top:5px}
+.logo-box{display:flex;align-items:center;gap:18px;flex-wrap:wrap}.logo-preview{width:110px;height:110px;object-fit:contain;border:1px dashed #cbd5e1;border-radius:14px;padding:10px;background:#f8fafc}.favicon-preview{width:42px;height:42px;object-fit:contain;border:1px solid #dbe2ea;border-radius:8px;padding:5px;background:#fff}
+.save-bar{position:sticky;bottom:12px;background:rgba(255,255,255,.95);backdrop-filter:blur(10px);border:1px solid #e5e7eb;border-radius:14px;padding:12px 15px;box-shadow:0 8px 25px rgba(0,0,0,.08);z-index:5}
+@media(max-width:576px){.settings-hero{padding:22px 18px;border-radius:16px}.settings-section{padding:17px}.save-bar{bottom:8px}.logo-box{align-items:flex-start}}
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="d-flex justify-content-between align-items-center mb-4">
-    <h4><i class="fas fa-building text-primary"></i> Company Settings</h4>
-    <a href="{% url 'core:admin_dashboard' %}" class="btn btn-secondary">
-        <i class="fas fa-arrow-left"></i> Back to Dashboard
-    </a>
-</div>
+<div class="company-settings-shell">
+    <div class="settings-hero d-flex justify-content-between align-items-center gap-3">
+        <div>
+            <h4><i class="fas fa-building me-2"></i>Clinic Company Profile</h4>
+            <p>Manage the information printed on invoices, receipts and clinic documents.</p>
+        </div>
+        <a href="{% url 'core:admin_dashboard' %}" class="btn btn-light"><i class="fas fa-arrow-left me-1"></i> Dashboard</a>
+    </div>
 
-<form method="post" enctype="multipart/form-data">
-    {% csrf_token %}
-    
-    <!-- Business Information -->
-    <div class="settings-section">
-        <div class="section-title">
-            <i class="fas fa-info-circle"></i> Business Information
-        </div>
-        <div class="row">
-            <div class="col-md-6 mb-3">
-                <label class="form-label">Business Name *</label>
-                <input type="text" class="form-control" name="business_name" 
-                       value="{{ settings.business_name }}" required>
-            </div>
-            <div class="col-md-6 mb-3">
-                <label class="form-label">Short Name</label>
-                <input type="text" class="form-control" name="business_short_name" 
-                       value="{{ settings.business_short_name }}">
-                <div class="help-text">Used in sidebar and small spaces</div>
+    <form method="post" enctype="multipart/form-data">
+        {% csrf_token %}
+
+        <div class="settings-section">
+            <div class="section-title"><i class="fas fa-id-card"></i> Clinic Identity</div>
+            <div class="row">
+                <div class="col-md-6 mb-3"><label class="form-label">Clinic Name <span class="text-danger">*</span></label>
+                    <input type="text" class="form-control" name="business_name" value="{{ settings.business_name }}" required></div>
+                <div class="col-md-6 mb-3"><label class="form-label">Short Name</label>
+                    <input type="text" class="form-control" name="business_short_name" value="{{ settings.business_short_name }}"></div>
+                <div class="col-md-6 mb-3"><label class="form-label">Tagline</label>
+                    <input type="text" class="form-control" name="tagline" value="{{ settings.tagline }}"></div>
+                <div class="col-md-6 mb-3"><label class="form-label">Description</label>
+                    <textarea class="form-control" name="description" rows="2">{{ settings.description }}</textarea></div>
             </div>
         </div>
-        <div class="row">
-            <div class="col-md-6 mb-3">
-                <label class="form-label">Tagline</label>
-                <input type="text" class="form-control" name="tagline" 
-                       value="{{ settings.tagline }}">
-            </div>
-            <div class="col-md-6 mb-3">
-                <label class="form-label">Description</label>
-                <textarea class="form-control" name="description" rows="2">{{ settings.description }}</textarea>
-            </div>
-        </div>
-    </div>
-    
-    <!-- Contact Information -->
-    <div class="settings-section">
-        <div class="section-title">
-            <i class="fas fa-address-card"></i> Contact Information
-        </div>
-        <div class="row">
-            <div class="col-md-6 mb-3">
-                <label class="form-label">Phone Number *</label>
-                <input type="text" class="form-control" name="phone" 
-                       value="{{ settings.phone }}" required>
-            </div>
-            <div class="col-md-6 mb-3">
-                <label class="form-label">Email Address *</label>
-                <input type="email" class="form-control" name="email" 
-                       value="{{ settings.email }}" required>
+
+        <div class="settings-section">
+            <div class="section-title"><i class="fas fa-address-book"></i> Contact Information</div>
+            <div class="row">
+                <div class="col-md-6 mb-3"><label class="form-label">Phone <span class="text-danger">*</span></label>
+                    <input type="text" class="form-control" name="phone" value="{{ settings.phone }}" required></div>
+                <div class="col-md-6 mb-3"><label class="form-label">Email <span class="text-danger">*</span></label>
+                    <input type="email" class="form-control" name="email" value="{{ settings.email }}" required></div>
+                <div class="col-md-8 mb-3"><label class="form-label">Physical Address <span class="text-danger">*</span></label>
+                    <input type="text" class="form-control" name="address" value="{{ settings.address }}" required></div>
+                <div class="col-md-4 mb-3"><label class="form-label">Website <span class="text-muted">(optional)</span></label>
+                    <input type="url" class="form-control" name="website" value="{{ settings.website }}" placeholder="https://example.com">
+                    <div class="help-text">Leave blank if the clinic does not have a website.</div></div>
             </div>
         </div>
-        <div class="row">
-            <div class="col-md-6 mb-3">
-                <label class="form-label">Website</label>
-                <input type="url" class="form-control" name="website" 
-                       value="{{ settings.website }}">
+
+        <div class="settings-section">
+            <div class="section-title"><i class="fas fa-image"></i> Branding</div>
+            <div class="logo-box mb-3">
+                {% if settings.logo %}<img class="logo-preview" src="{{ settings.logo.url }}" alt="Clinic logo">
+                {% else %}<div class="logo-preview d-flex align-items-center justify-content-center text-muted"><i class="fas fa-tooth fa-2x"></i></div>{% endif %}
+                <div class="flex-grow-1"><label class="form-label">Clinic Logo</label>
+                    <input type="file" class="form-control" name="logo" accept="image/*">
+                    <div class="help-text">Use a clear PNG/JPG logo. It will appear on printed documents and invoices.</div></div>
             </div>
-            <div class="col-md-6 mb-3">
-                <label class="form-label">Address *</label>
-                <input type="text" class="form-control" name="address" 
-                       value="{{ settings.address }}" required>
-            </div>
-        </div>
-    </div>
-    
-    <!-- Social Media -->
-    <div class="settings-section">
-        <div class="section-title">
-            <i class="fas fa-share-alt"></i> Social Media
-        </div>
-        <div class="row">
-            <div class="col-md-3 mb-3">
-                <label class="form-label"><i class="fab fa-facebook text-primary"></i> Facebook</label>
-                <input type="url" class="form-control" name="facebook" 
-                       value="{{ settings.facebook }}" placeholder="https://facebook.com/...">
-            </div>
-            <div class="col-md-3 mb-3">
-                <label class="form-label"><i class="fab fa-twitter text-info"></i> Twitter</label>
-                <input type="url" class="form-control" name="twitter" 
-                       value="{{ settings.twitter }}" placeholder="https://twitter.com/...">
-            </div>
-            <div class="col-md-3 mb-3">
-                <label class="form-label"><i class="fab fa-instagram text-danger"></i> Instagram</label>
-                <input type="url" class="form-control" name="instagram" 
-                       value="{{ settings.instagram }}" placeholder="https://instagram.com/...">
-            </div>
-            <div class="col-md-3 mb-3">
-                <label class="form-label"><i class="fab fa-youtube text-danger"></i> YouTube</label>
-                <input type="url" class="form-control" name="youtube" 
-                       value="{{ settings.youtube }}" placeholder="https://youtube.com/...">
+            <div class="row">
+                <div class="col-md-6 mb-3"><label class="form-label">Favicon</label><input type="file" class="form-control" name="favicon" accept="image/*"></div>
+                {% if settings.favicon %}<div class="col-md-6 mb-3"><label class="form-label d-block">Current Favicon</label><img class="favicon-preview" src="{{ settings.favicon.url }}" alt="Favicon"></div>{% endif %}
             </div>
         </div>
-    </div>
-    
-    <!-- Business Hours -->
-    <div class="settings-section">
-        <div class="section-title">
-            <i class="fas fa-clock"></i> Business Hours
-        </div>
-        <div class="row">
-            <div class="col-md-4 mb-3">
-                <label class="form-label">Monday</label>
-                <input type="text" class="form-control" name="monday_hours" 
-                       value="{{ settings.monday_hours }}" placeholder="9:00 AM - 5:00 PM">
-            </div>
-            <div class="col-md-4 mb-3">
-                <label class="form-label">Tuesday</label>
-                <input type="text" class="form-control" name="tuesday_hours" 
-                       value="{{ settings.tuesday_hours }}" placeholder="9:00 AM - 5:00 PM">
-            </div>
-            <div class="col-md-4 mb-3">
-                <label class="form-label">Wednesday</label>
-                <input type="text" class="form-control" name="wednesday_hours" 
-                       value="{{ settings.wednesday_hours }}" placeholder="9:00 AM - 5:00 PM">
-            </div>
-            <div class="col-md-4 mb-3">
-                <label class="form-label">Thursday</label>
-                <input type="text" class="form-control" name="thursday_hours" 
-                       value="{{ settings.thursday_hours }}" placeholder="9:00 AM - 5:00 PM">
-            </div>
-            <div class="col-md-4 mb-3">
-                <label class="form-label">Friday</label>
-                <input type="text" class="form-control" name="friday_hours" 
-                       value="{{ settings.friday_hours }}" placeholder="9:00 AM - 5:00 PM">
-            </div>
-            <div class="col-md-4 mb-3">
-                <label class="form-label">Saturday</label>
-                <input type="text" class="form-control" name="saturday_hours" 
-                       value="{{ settings.saturday_hours }}" placeholder="Closed">
-            </div>
-            <div class="col-md-4 mb-3">
-                <label class="form-label">Sunday</label>
-                <input type="text" class="form-control" name="sunday_hours" 
-                       value="{{ settings.sunday_hours }}" placeholder="Closed">
+
+        <div class="settings-section">
+            <div class="section-title"><i class="fas fa-share-nodes"></i> Social Media <span class="text-muted fw-normal small">(optional)</span></div>
+            <div class="row">
+                <div class="col-md-3 mb-3"><label class="form-label">Facebook</label><input type="url" class="form-control" name="facebook" value="{{ settings.facebook }}"></div>
+                <div class="col-md-3 mb-3"><label class="form-label">Twitter / X</label><input type="url" class="form-control" name="twitter" value="{{ settings.twitter }}"></div>
+                <div class="col-md-3 mb-3"><label class="form-label">Instagram</label><input type="url" class="form-control" name="instagram" value="{{ settings.instagram }}"></div>
+                <div class="col-md-3 mb-3"><label class="form-label">YouTube</label><input type="url" class="form-control" name="youtube" value="{{ settings.youtube }}"></div>
             </div>
         </div>
-    </div>
-    
-    <!-- Currency & Region -->
-    <div class="settings-section">
-        <div class="section-title">
-            <i class="fas fa-globe"></i> Currency & Region
-        </div>
-        <div class="row">
-            <div class="col-md-3 mb-3">
-                <label class="form-label">Currency</label>
-                <input type="text" class="form-control" name="currency" 
-                       value="{{ settings.currency }}">
-            </div>
-            <div class="col-md-3 mb-3">
-                <label class="form-label">Currency Symbol</label>
-                <input type="text" class="form-control" name="currency_symbol" 
-                       value="{{ settings.currency_symbol }}">
-            </div>
-            <div class="col-md-3 mb-3">
-                <label class="form-label">Timezone</label>
-                <input type="text" class="form-control" name="timezone" 
-                       value="{{ settings.timezone }}">
-            </div>
-            <div class="col-md-3 mb-3">
-                <label class="form-label">Country</label>
-                <input type="text" class="form-control" name="country" 
-                       value="{{ settings.country }}">
+
+        <div class="settings-section">
+            <div class="section-title"><i class="fas fa-clock"></i> Business Hours</div>
+            <div class="row">
+                <div class="col-md-4 mb-3"><label class="form-label">Monday</label><input class="form-control" name="monday_hours" value="{{ settings.monday_hours }}" placeholder="9:00 AM - 5:00 PM"></div>
+                <div class="col-md-4 mb-3"><label class="form-label">Tuesday</label><input class="form-control" name="tuesday_hours" value="{{ settings.tuesday_hours }}" placeholder="9:00 AM - 5:00 PM"></div>
+                <div class="col-md-4 mb-3"><label class="form-label">Wednesday</label><input class="form-control" name="wednesday_hours" value="{{ settings.wednesday_hours }}" placeholder="9:00 AM - 5:00 PM"></div>
+                <div class="col-md-4 mb-3"><label class="form-label">Thursday</label><input class="form-control" name="thursday_hours" value="{{ settings.thursday_hours }}" placeholder="9:00 AM - 5:00 PM"></div>
+                <div class="col-md-4 mb-3"><label class="form-label">Friday</label><input class="form-control" name="friday_hours" value="{{ settings.friday_hours }}" placeholder="9:00 AM - 5:00 PM"></div>
+                <div class="col-md-4 mb-3"><label class="form-label">Saturday</label><input class="form-control" name="saturday_hours" value="{{ settings.saturday_hours }}" placeholder="9:00 AM - 1:00 PM"></div>
+                <div class="col-md-4 mb-3"><label class="form-label">Sunday</label><input class="form-control" name="sunday_hours" value="{{ settings.sunday_hours }}" placeholder="Closed"></div>
             </div>
         </div>
-    </div>
-    
-    <!-- Tax Settings -->
-    <div class="settings-section">
-        <div class="section-title">
-            <i class="fas fa-file-invoice-dollar"></i> Tax Settings
-        </div>
-        <div class="row">
-            <div class="col-md-6 mb-3">
-                <label class="form-label">Default Tax Rate (%)</label>
-                <input type="number" step="0.01" class="form-control" name="tax_rate" 
-                       value="{{ settings.tax_rate }}">
-            </div>
-            <div class="col-md-6 mb-3">
-                <label class="form-label">Tax ID / VAT Number</label>
-                <input type="text" class="form-control" name="tax_id" 
-                       value="{{ settings.tax_id }}">
+
+        <div class="settings-section">
+            <div class="section-title"><i class="fas fa-receipt"></i> Billing & Regional Settings</div>
+            <div class="row">
+                <div class="col-md-3 mb-3"><label class="form-label">Currency</label><input class="form-control" name="currency" value="{{ settings.currency }}"></div>
+                <div class="col-md-3 mb-3"><label class="form-label">Currency Symbol</label><input class="form-control" name="currency_symbol" value="{{ settings.currency_symbol }}"></div>
+                <div class="col-md-3 mb-3"><label class="form-label">Country</label><input class="form-control" name="country" value="{{ settings.country }}"></div>
+                <div class="col-md-3 mb-3"><label class="form-label">Tax Rate (%)</label><input type="number" step="0.01" class="form-control" name="tax_rate" value="{{ settings.tax_rate }}"></div>
+                <div class="col-md-6 mb-3"><label class="form-label">Tax ID</label><input class="form-control" name="tax_id" value="{{ settings.tax_id }}"></div>
+                <div class="col-md-6 mb-3"><label class="form-label">Invoice Prefix</label><input class="form-control" name="invoice_prefix" value="{{ settings.invoice_prefix }}"></div>
+                <div class="col-12 mb-3"><label class="form-label">Invoice Footer</label><textarea class="form-control" name="invoice_footer" rows="2">{{ settings.invoice_footer }}</textarea></div>
             </div>
         </div>
-    </div>
-    
-    <!-- Invoice Settings -->
-    <div class="settings-section">
-        <div class="section-title">
-            <i class="fas fa-file-invoice"></i> Invoice Settings
+
+        <div class="save-bar d-flex justify-content-end gap-2">
+            <a href="{% url 'core:admin_dashboard' %}" class="btn btn-outline-secondary">Cancel</a>
+            <button type="submit" class="btn btn-primary px-4"><i class="fas fa-save me-1"></i> Save Clinic Profile</button>
         </div>
-        <div class="row">
-            <div class="col-md-6 mb-3">
-                <label class="form-label">Invoice Prefix</label>
-                <input type="text" class="form-control" name="invoice_prefix" 
-                       value="{{ settings.invoice_prefix }}">
-                <div class="help-text">e.g., INV-, BILL-, etc.</div>
-            </div>
-            <div class="col-md-6 mb-3">
-                <label class="form-label">Invoice Footer</label>
-                <textarea class="form-control" name="invoice_footer" rows="2">{{ settings.invoice_footer }}</textarea>
-                <div class="help-text">Appears at the bottom of each invoice</div>
-            </div>
-        </div>
-    </div>
-    
-    <!-- Notification Settings -->
-    <div class="settings-section">
-        <div class="section-title">
-            <i class="fas fa-bell"></i> Notification Settings
-        </div>
-        <div class="row">
-            <div class="col-md-6 mb-3">
-                <label class="form-label">Notification Email</label>
-                <input type="email" class="form-control" name="notification_email" 
-                       value="{{ settings.notification_email }}">
-                <div class="help-text">For system notifications and alerts</div>
-            </div>
-            <div class="col-md-6 mb-3">
-                <label class="form-label">Notification Phone</label>
-                <input type="text" class="form-control" name="notification_phone" 
-                       value="{{ settings.notification_phone }}">
-                <div class="help-text">For SMS notifications</div>
-            </div>
-        </div>
-    </div>
-    
-    <!-- Logo & Branding -->
-    <div class="settings-section">
-        <div class="section-title">
-            <i class="fas fa-images"></i> Logo & Branding
-        </div>
-        <div class="row">
-            <div class="col-md-6 mb-3">
-                <label class="form-label">Company Logo</label>
-                <input type="file" class="form-control" name="logo" accept="image/*">
-                <div class="help-text">Recommended: 200x200 pixels</div>
-                {% if settings.logo %}
-                    <div class="mt-2">
-                        <img src="{{ settings.logo.url }}" alt="Logo" class="logo-preview">
-                        <br>
-                        <small class="text-muted">Current logo</small>
-                    </div>
-                {% endif %}
-            </div>
-            <div class="col-md-6 mb-3">
-                <label class="form-label">Favicon</label>
-                <input type="file" class="form-control" name="favicon" accept="image/*">
-                <div class="help-text">Recommended: 32x32 pixels</div>
-                {% if settings.favicon %}
-                    <div class="mt-2">
-                        <img src="{{ settings.favicon.url }}" alt="Favicon" class="favicon-preview">
-                        <br>
-                        <small class="text-muted">Current favicon</small>
-                    </div>
-                {% endif %}
-            </div>
-        </div>
-    </div>
-    
-    <div class="d-flex justify-content-between">
-        <a href="{% url 'core:admin_dashboard' %}" class="btn btn-secondary">
-            <i class="fas fa-arrow-left"></i> Cancel
-        </a>
-        <button type="submit" class="btn btn-primary">
-            <i class="fas fa-save"></i> Save Settings
-        </button>
-    </div>
-</form>
+    </form>
+</div>
 {% endblock %}

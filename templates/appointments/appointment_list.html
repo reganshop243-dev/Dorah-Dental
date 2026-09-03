@@ -1,117 +1,24 @@
 {% extends 'base.html' %}
 {% load static %}
-
 {% block page_title %}Appointments{% endblock %}
-
+{% block extra_css %}<style>.appointment-table th{white-space:nowrap;background:#f8fafc}.appointment-table td{vertical-align:middle}.filter-card{background:#fff;border:1px solid #e7edf3;border-radius:16px;padding:18px}.pagination .page-link{border-radius:8px;margin:0 2px}@media(max-width:768px){.appointment-table{min-width:850px}}</style>{% endblock %}
 {% block content %}
-<div class="d-flex justify-content-between align-items-center mb-4">
-    <h4><i class="fas fa-calendar-check text-primary"></i> Appointments</h4>
-    <a href="{% url 'appointments:add' %}" class="btn btn-primary">
-        <i class="fas fa-plus"></i> New Appointment
-    </a>
-</div>
-
-<!-- Filters -->
-<!-- Add this to the filter section -->
-<div class="col-md-3">
-    <select class="form-select" name="status" id="statusFilter">
-        <option value="">All Status</option>
-        {% for status_code, status_label in status_choices %}
-            <option value="{{ status_code }}" {% if status_filter == status_code %}selected{% endif %}>
-                {{ status_label }}
-            </option>
-        {% endfor %}
-    </select>
-</div>
-
-<div class="card mb-4">
-    <div class="card-body">
-        <form method="get" class="row g-3">
-            <div class="col-md-4">
-                <label for="status" class="form-label">Status</label>
-                <select class="form-select" id="status" name="status">
-                    <option value="">All Statuses</option>
-                    {% for status_code, status_label in status_choices %}
-                        <option value="{{ status_code }}" {% if status_filter == status_code %}selected{% endif %}>
-                            {{ status_label }}
-                        </option>
-                    {% endfor %}
-                </select>
-            </div>
-            <div class="col-md-4">
-                <label for="date" class="form-label">Date</label>
-                <input type="date" class="form-control" id="date" name="date" value="{{ date_filter }}">
-            </div>
-            <div class="col-md-4 d-flex align-items-end">
-                <button type="submit" class="btn btn-primary me-2">
-                    <i class="fas fa-filter"></i> Filter
-                </button>
-                <a href="{% url 'appointments:list' %}" class="btn btn-secondary">
-                    <i class="fas fa-undo"></i> Reset
-                </a>
-            </div>
-        </form>
-    </div>
-</div>
-
-<!-- Appointments Table -->
-<div class="card">
-    <div class="card-body">
-        {% if appointments %}
-            <div class="table-responsive">
-                <table class="table table-hover">
-                    <thead>
-                        <tr>
-                            <th>Date</th>
-                            <th>Time</th>
-                            <th>Patient</th>
-                            <th>Doctor</th>
-                            <th>Service</th>
-                            <th>Status</th>
-                            <th>Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for appt in appointments %}
-                        <tr>
-                            <td>{{ appt.appointment_date|date:"M d, Y" }}</td>
-                            <td>{{ appt.appointment_time|time:"H:i" }}</td>
-                            <td>
-                                <a href="{% url 'patients:detail' appt.patient.pk %}">
-                                    {{ appt.patient.full_name }}
-                                </a>
-                            </td>
-                            <td>Dr. {{ appt.doctor.name }}</td>
-                            <td>{{ appt.service.name }}</td>
-                            <td>
-                                <span class="badge {% if appt.status == 'scheduled' %}bg-primary{% elif appt.status == 'checked_in' %}bg-info{% elif appt.status == 'in_progress' %}bg-warning{% elif appt.status == 'completed' %}bg-success{% elif appt.status == 'cancelled' %}bg-danger{% elif appt.status == 'no_show' %}bg-secondary{% endif %}">
-                                    {{ appt.get_status_display }}
-                                </span>
-                            </td>
-                            <td>
-                                <div class="btn-group btn-group-sm">
-                                    <a href="{% url 'appointments:detail' appt.pk %}" class="btn btn-outline-primary">
-                                        <i class="fas fa-eye"></i>
-                                    </a>
-                                    <a href="{% url 'appointments:edit' appt.pk %}" class="btn btn-outline-secondary">
-                                        <i class="fas fa-edit"></i>
-                                    </a>
-                                    <a href="{% url 'appointments:delete' appt.pk %}" class="btn btn-outline-danger">
-                                        <i class="fas fa-trash"></i>
-                                    </a>
-                                </div>
-                            </td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-        {% else %}
-            <p class="text-muted text-center py-4">
-                <i class="fas fa-calendar-plus fa-2x d-block mb-2"></i>
-                No appointments found.
-            </p>
-        {% endif %}
-    </div>
-</div>
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3"><h4 class="mb-0"><i class="fas fa-calendar-check text-primary me-2"></i>Appointments</h4><a href="{% url 'appointments:add' %}" class="btn btn-primary"><i class="fas fa-plus me-1"></i>New Appointment</a></div>
+<div class="filter-card mb-4"><form method="get" class="row g-2 align-items-end">
+<div class="col-lg-3 col-md-6"><label class="form-label small fw-semibold">Search</label><input name="search" value="{{ search_query }}" class="form-control" placeholder="Patient, doctor, service or phone"></div>
+<div class="col-lg-2 col-md-6"><label class="form-label small fw-semibold">Status</label><select name="status" class="form-select"><option value="">All statuses</option>{% for code,label in status_choices %}<option value="{{ code }}" {% if status_filter == code %}selected{% endif %}>{{ label }}</option>{% endfor %}</select></div>
+{% if not is_doctor %}<div class="col-lg-2 col-md-6"><label class="form-label small fw-semibold">Doctor</label><select name="doctor" class="form-select"><option value="">All doctors</option>{% for doctor in doctors %}<option value="{{ doctor.pk }}" {% if doctor_filter == doctor.pk|stringformat:"s" %}selected{% endif %}>Dr. {{ doctor.name }}</option>{% endfor %}</select></div>{% endif %}
+<div class="col-lg-2 col-md-6"><label class="form-label small fw-semibold">Service</label><select name="service" class="form-select"><option value="">All services</option>{% for service in services %}<option value="{{ service.pk }}" {% if service_filter == service.pk|stringformat:"s" %}selected{% endif %}>{{ service.name }}</option>{% endfor %}</select></div>
+<div class="col-lg-1 col-md-6"><label class="form-label small fw-semibold">From</label><input type="date" name="date_from" value="{{ date_from }}" class="form-control"></div>
+<div class="col-lg-1 col-md-6"><label class="form-label small fw-semibold">To</label><input type="date" name="date_to" value="{{ date_to }}" class="form-control"></div>
+<div class="col-lg-1 d-flex gap-1"><button class="btn btn-primary flex-grow-1" title="Filter"><i class="fas fa-filter"></i></button><a href="{% url 'appointments:list' %}" class="btn btn-outline-secondary" title="Clear"><i class="fas fa-rotate-left"></i></a></div>
+</form><div class="small text-muted mt-3">{{ total_count }} appointment{{ total_count|pluralize }} found</div></div>
+<div class="card"><div class="card-body p-0">{% if appointments %}<div class="table-responsive"><table class="table table-hover appointment-table mb-0"><thead><tr><th>Date</th><th>Time</th><th>Patient</th><th>Doctor</th><th>Service</th><th>Status</th><th>Actions</th></tr></thead><tbody>
+{% for appt in appointments %}<tr><td>{{ appt.appointment_date|date:"M d, Y" }}</td><td>{{ appt.appointment_time|time:"H:i" }}</td><td><a href="{% url 'patients:detail' appt.patient.pk %}">{{ appt.patient.full_name }}</a></td><td>Dr. {{ appt.doctor.name }}</td><td>{{ appt.service.name }}</td><td><span class="badge {% if appt.status == 'scheduled' %}bg-primary{% elif appt.status == 'checked_in' %}bg-info{% elif appt.status == 'in_progress' %}bg-warning text-dark{% elif appt.status == 'completed' %}bg-success{% elif appt.status == 'cancelled' %}bg-danger{% else %}bg-secondary{% endif %}">{{ appt.get_status_display }}</span></td><td><div class="btn-group btn-group-sm"><a class="btn btn-outline-primary" href="{% url 'appointments:detail' appt.pk %}" title="View"><i class="fas fa-eye"></i></a><a class="btn btn-outline-secondary" href="{% url 'appointments:edit' appt.pk %}" title="Edit"><i class="fas fa-edit"></i></a><a class="btn btn-outline-danger" href="{% url 'appointments:delete' appt.pk %}" title="Delete"><i class="fas fa-trash"></i></a></div></td></tr>{% endfor %}
+</tbody></table></div>{% else %}<div class="text-center py-5"><i class="fas fa-calendar-xmark fa-2x text-muted mb-2"></i><h5>No appointments found</h5><p class="text-muted">Try changing your filters.</p></div>{% endif %}</div></div>
+{% if is_paginated %}<nav class="mt-4" aria-label="Appointments pagination"><ul class="pagination justify-content-center flex-wrap">
+{% if page_obj.has_previous %}<li class="page-item"><a class="page-link" href="?{% for k,v in request.GET.items %}{% if k != 'page' %}{{ k }}={{ v|urlencode }}&{% endif %}{% endfor %}page={{ page_obj.previous_page_number }}">Previous</a></li>{% endif %}
+{% for n in page_obj.paginator.page_range %}{% if n == page_obj.number %}<li class="page-item active"><span class="page-link">{{ n }}</span></li>{% elif n == 1 or n == page_obj.paginator.num_pages or n >= page_obj.number|add:"-2" and n <= page_obj.number|add:"2" %}<li class="page-item"><a class="page-link" href="?{% for k,v in request.GET.items %}{% if k != 'page' %}{{ k }}={{ v|urlencode }}&{% endif %}{% endfor %}page={{ n }}">{{ n }}</a></li>{% endif %}{% endfor %}
+{% if page_obj.has_next %}<li class="page-item"><a class="page-link" href="?{% for k,v in request.GET.items %}{% if k != 'page' %}{{ k }}={{ v|urlencode }}&{% endif %}{% endfor %}page={{ page_obj.next_page_number }}">Next</a></li>{% endif %}
+</ul></nav>{% endif %}
 {% endblock %}

@@ -124,36 +124,74 @@ def dashboard(request):
 
 @login_required
 def appointment_list(request):
-    """List all appointments with filters"""
+    """List appointments with server-side filters and pagination."""
+    from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
+
     user_profile = request.user.profile
-    
-    # ✅ If doctor, only show their appointments
     if is_doctor(request.user):
         doctor = user_profile.doctor
-        if doctor:
-            appointments = Appointment.objects.filter(
-                doctor=doctor
-            ).select_related('patient', 'doctor', 'service').order_by('-appointment_date', '-appointment_time')
-        else:
-            appointments = Appointment.objects.none()
+        appointments = (
+            Appointment.objects.filter(doctor=doctor)
+            if doctor else Appointment.objects.none()
+        )
     else:
-        appointments = Appointment.objects.all().select_related('patient', 'doctor', 'service').order_by('-appointment_date', '-appointment_time')
-    
-    # Filter by status
-    status_filter = request.GET.get('status', '')
+        appointments = Appointment.objects.all()
+
+    appointments = appointments.select_related(
+        'patient', 'doctor', 'service'
+    ).order_by('-appointment_date', '-appointment_time')
+
+    search_query = request.GET.get('search', '').strip()
+    status_filter = request.GET.get('status', '').strip()
+    doctor_filter = request.GET.get('doctor', '').strip()
+    service_filter = request.GET.get('service', '').strip()
+    date_from = request.GET.get('date_from', '').strip()
+    date_to = request.GET.get('date_to', '').strip()
+
+    if search_query:
+        appointments = appointments.filter(
+            Q(patient__first_name__icontains=search_query) |
+            Q(patient__last_name__icontains=search_query) |
+            Q(patient__phone__icontains=search_query) |
+            Q(doctor__name__icontains=search_query) |
+            Q(service__name__icontains=search_query)
+        )
     if status_filter:
         appointments = appointments.filter(status=status_filter)
-    
-    # Filter by date
-    date_filter = request.GET.get('date', '')
-    if date_filter:
-        appointments = appointments.filter(appointment_date=date_filter)
-    
+    if doctor_filter and not is_doctor(request.user):
+        appointments = appointments.filter(doctor_id=doctor_filter)
+    if service_filter:
+        appointments = appointments.filter(service_id=service_filter)
+    if date_from:
+        appointments = appointments.filter(appointment_date__gte=date_from)
+    if date_to:
+        appointments = appointments.filter(appointment_date__lte=date_to)
+
+    paginator = Paginator(appointments, 20)
+    page_number = request.GET.get('page', 1)
+    try:
+        appointments_page = paginator.page(page_number)
+    except (PageNotAnInteger, EmptyPage):
+        appointments_page = paginator.page(1)
+
+    doctors = Doctor.objects.filter(is_active=True).order_by('name')
+    services = Service.objects.filter(is_active=True).order_by('name')
+
     context = {
-        'appointments': appointments,
+        'appointments': appointments_page,
+        'page_obj': appointments_page,
+        'paginator': paginator,
+        'is_paginated': appointments_page.has_other_pages(),
+        'total_count': paginator.count,
+        'search_query': search_query,
         'status_filter': status_filter,
-        'date_filter': date_filter,
+        'doctor_filter': doctor_filter,
+        'service_filter': service_filter,
+        'date_from': date_from,
+        'date_to': date_to,
         'status_choices': Appointment.STATUS_CHOICES,
+        'doctors': doctors,
+        'services': services,
         'is_doctor': is_doctor(request.user),
     }
     return render(request, 'appointments/appointment_list.html', context)
