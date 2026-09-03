@@ -43,6 +43,7 @@ def patient_list(request):
     from django.db.models.functions import Coalesce
 
     user_profile = request.user.profile
+
     if user_profile.role == 'doctor':
         doctor = user_profile.doctor
         patients = get_doctor_patients(doctor)
@@ -56,36 +57,48 @@ def patient_list(request):
     sort = request.GET.get('sort', '-registered_at').strip()
 
     allowed_sorts = {
-        '-registered_at', 'registered_at', 'first_name', '-first_name',
-        'last_name', '-last_name'
+        '-registered_at',
+        'registered_at',
+        'first_name',
+        '-first_name',
+        'last_name',
+        '-last_name',
     }
+
     if sort not in allowed_sorts:
         sort = '-registered_at'
 
+    # Search
     if search:
         patients = patients.filter(
-            Q(first_name__icontains=search) |
-            Q(last_name__icontains=search) |
-            Q(phone__icontains=search) |
-            Q(email__icontains=search)
+            Q(first_name__icontains=search)
+            | Q(last_name__icontains=search)
+            | Q(phone__icontains=search)
+            | Q(email__icontains=search)
         )
 
+    # Calculate outstanding balance
     patients = patients.annotate(
         patient_balance=Coalesce(
-            Sum('invoice__balance_due'),
+            Sum('invoices__balance_due'),
             Value(0)
         )
     )
 
+    # Balance filter
     if balance_filter == 'has_balance':
         patients = patients.filter(patient_balance__gt=0)
+
     elif balance_filter == 'no_balance':
         patients = patients.filter(patient_balance__lte=0)
 
+    # Sorting
     patients = patients.order_by(sort)
 
+    # Pagination
     paginator = Paginator(patients, 20)
     page_number = request.GET.get('page', 1)
+
     try:
         patients_page = paginator.page(page_number)
     except (PageNotAnInteger, EmptyPage):
@@ -102,6 +115,7 @@ def patient_list(request):
         'sort_filter': sort,
         'is_doctor': is_doctor_user,
     }
+
     return render(request, 'patients/list.html', context)
 
 
