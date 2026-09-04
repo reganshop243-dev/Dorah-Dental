@@ -4,518 +4,1349 @@
 
 {% block page_title %}Patients{% endblock %}
 
-{% block extra_css %}
+{% block content %}
+
 <style>
-    .search-container {
-        position: relative;
-    }
-    .search-results-loading {
-        display: none;
-        text-align: center;
+    /* =========================
+       PATIENTS PAGE
+       ========================= */
+
+    .patients-page {
+        max-width: 1500px;
+        margin: 0 auto;
         padding: 20px;
     }
-    .patient-row {
-        transition: all 0.3s;
+
+    /* Header */
+    .patients-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 20px;
+        margin-bottom: 20px;
     }
-    .patient-row:hover {
-        background: #f8f9fa;
+
+    .patients-title {
+        display: flex;
+        align-items: center;
+        gap: 12px;
     }
-    .balance-badge {
-        font-size: 0.85rem;
-        padding: 4px 10px;
+
+    .patients-title-icon {
+        width: 42px;
+        height: 42px;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: rgba(37, 99, 235, .10);
+        color: #2563eb;
+        font-size: 18px;
     }
-    .search-highlight {
-        background: #fff3cd;
+
+    .patients-title h1 {
+        margin: 0;
+        font-size: 24px;
+        font-weight: 700;
+        color: var(--text-primary, #111827);
+    }
+
+    .patients-title p {
+        margin: 3px 0 0;
+        font-size: 12px;
+        color: var(--text-secondary, #6b7280);
+    }
+
+    .add-patient-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 10px 15px;
+        border-radius: 9px;
+        text-decoration: none;
+        background: #2563eb;
+        color: #fff;
+        font-size: 13px;
+        font-weight: 600;
+        transition: .2s ease;
+    }
+
+    .add-patient-btn:hover {
+        background: #1d4ed8;
+        color: #fff;
+        transform: translateY(-1px);
+    }
+
+    /* =========================
+       FILTERS
+       ========================= */
+
+    .filter-card {
+        background: var(--card-bg, #fff);
+        border: 1px solid var(--border-color, #e5e7eb);
+        border-radius: 12px;
+        padding: 14px;
+        margin-bottom: 18px;
+    }
+
+    .filter-form {
+        display: grid;
+        grid-template-columns: minmax(250px, 1fr) 180px 180px auto;
+        gap: 10px;
+        align-items: end;
+    }
+
+    .filter-field label {
+        display: block;
+        margin-bottom: 5px;
+        font-size: 10px;
+        font-weight: 700;
+        color: var(--text-secondary, #6b7280);
+        text-transform: uppercase;
+        letter-spacing: .04em;
+    }
+
+    .filter-input,
+    .filter-select {
+        width: 100%;
+        height: 38px;
+        padding: 0 11px;
+        border: 1px solid var(--border-color, #d1d5db);
+        border-radius: 8px;
+        background: var(--input-bg, #fff);
+        color: var(--text-primary, #111827);
+        font-size: 12px;
+        outline: none;
+        box-sizing: border-box;
+    }
+
+    .filter-input:focus,
+    .filter-select:focus {
+        border-color: #2563eb;
+        box-shadow: 0 0 0 3px rgba(37, 99, 235, .08);
+    }
+
+    .filter-actions {
+        display: flex;
+        gap: 7px;
+    }
+
+    .filter-btn,
+    .clear-btn {
+        height: 38px;
+        padding: 0 13px;
+        border-radius: 8px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+        text-decoration: none;
+        font-size: 12px;
+        font-weight: 600;
+        cursor: pointer;
+        border: 1px solid transparent;
+    }
+
+    .filter-btn {
+        background: #2563eb;
+        color: #fff;
+    }
+
+    .filter-btn:hover {
+        background: #1d4ed8;
+    }
+
+    .clear-btn {
+        background: transparent;
+        color: var(--text-secondary, #6b7280);
+        border-color: var(--border-color, #d1d5db);
+    }
+
+    .clear-btn:hover {
+        background: #f9fafb;
+        color: #111827;
+    }
+
+    /* =========================
+       SUMMARY
+       ========================= */
+
+    .patients-summary {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 10px;
         padding: 0 2px;
     }
-    .no-results {
-        padding: 40px 20px;
+
+    .patient-count {
+        font-size: 12px;
+        color: var(--text-secondary, #6b7280);
     }
-    .table-container {
-        min-height: 200px;
+
+    .patient-count strong {
+        color: var(--text-primary, #111827);
+        font-weight: 700;
     }
-    .quick-action-btn {
-        transition: all 0.2s;
+
+    /* =========================
+       DESKTOP TABLE
+       ========================= */
+
+    .patients-table-card {
+        background: var(--card-bg, #fff);
+        border: 1px solid var(--border-color, #e5e7eb);
+        border-radius: 12px;
+        overflow: hidden;
     }
-    .quick-action-btn:hover {
-        transform: scale(1.05);
+
+    .patients-table-wrapper {
+        width: 100%;
+        overflow-x: auto;
     }
-    .doctor-view-banner {
-        background: #e8f4fd;
-        border-left: 4px solid #3498db;
-        padding: 10px 15px;
-        border-radius: 8px;
-        margin-bottom: 15px;
+
+    .patients-table {
+        width: 100%;
+        border-collapse: collapse;
+        table-layout: fixed;
+    }
+
+    .patients-table th {
+        padding: 11px 14px;
+        text-align: left;
+        background: var(--table-header-bg, #f9fafb);
+        border-bottom: 1px solid var(--border-color, #e5e7eb);
+        color: var(--text-secondary, #6b7280);
+        font-size: 10px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: .045em;
+    }
+
+    .patients-table td {
+        padding: 13px 14px;
+        border-bottom: 1px solid var(--border-color, #f0f1f3);
+        vertical-align: middle;
+    }
+
+    .patients-table tbody tr:last-child td {
+        border-bottom: none;
+    }
+
+    .patients-table tbody tr {
+        transition: background .15s ease;
+    }
+
+    .patients-table tbody tr:hover {
+        background: rgba(37, 99, 235, .025);
+    }
+
+    /* Column widths */
+    .col-patient {
+        width: 28%;
+    }
+
+    .col-contact {
+        width: 25%;
+    }
+
+    .col-registered {
+        width: 16%;
+    }
+
+    .col-payment {
+        width: 14%;
+    }
+
+    .col-actions {
+        width: 17%;
+    }
+
+    /* Patient */
+    .patient-main {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        min-width: 0;
+    }
+
+    .patient-avatar {
+        width: 36px;
+        height: 36px;
+        min-width: 36px;
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: #eff6ff;
+        color: #2563eb;
+        font-size: 13px;
+        font-weight: 700;
+    }
+
+    .patient-info {
+        min-width: 0;
+    }
+
+    .patient-name {
+        display: block;
+        color: var(--text-primary, #111827);
+        font-size: 14px;
+        font-weight: 650;
+        line-height: 1.25;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .patient-meta {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        margin-top: 3px;
+        color: var(--text-secondary, #9ca3af);
+        font-size: 10px;
+    }
+
+    .meta-dot {
+        width: 3px;
+        height: 3px;
+        border-radius: 50%;
+        background: #cbd5e1;
+    }
+
+    /* Contact */
+    .contact-info {
+        min-width: 0;
+    }
+
+    .contact-line {
+        display: flex;
+        align-items: center;
+        gap: 7px;
+        color: var(--text-secondary, #6b7280);
+        font-size: 11px;
+        line-height: 1.5;
+        min-width: 0;
+    }
+
+    .contact-line + .contact-line {
+        margin-top: 2px;
+    }
+
+    .contact-line i {
+        width: 12px;
+        text-align: center;
+        color: #94a3b8;
+        font-size: 10px;
+    }
+
+    .contact-line span {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .no-contact {
+        color: #9ca3af;
+        font-size: 11px;
+    }
+
+    /* Registered */
+    .registered-date {
+        color: var(--text-primary, #374151);
+        font-size: 11px;
+        font-weight: 500;
+    }
+
+    .registered-time {
+        display: block;
+        margin-top: 2px;
+        color: #9ca3af;
+        font-size: 10px;
+    }
+
+    /* Payment */
+    .payment-status {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 11px;
+        font-weight: 650;
+        white-space: nowrap;
+    }
+
+    .payment-dot {
+        width: 7px;
+        height: 7px;
+        border-radius: 50%;
+        background: currentColor;
+    }
+
+    .payment-due {
+        color: #dc2626;
+    }
+
+    .payment-paid {
+        color: #16a34a;
+    }
+
+    .payment-credit {
+        color: #2563eb;
+    }
+
+    .payment-none {
+        color: #64748b;
+    }
+
+    .payment-amount {
+        display: block;
+        margin-top: 2px;
+        font-size: 10px;
+        color: #9ca3af;
+        font-weight: 500;
+    }
+
+    /* Actions */
+    .actions {
+        display: flex;
+        align-items: center;
+        justify-content: flex-end;
+        gap: 5px;
+    }
+
+    .action-btn {
+        width: 30px;
+        height: 30px;
+        border-radius: 7px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        text-decoration: none;
+        border: 1px solid var(--border-color, #e5e7eb);
+        background: var(--card-bg, #fff);
+        color: #64748b;
+        font-size: 11px;
+        transition: .15s ease;
+    }
+
+    .action-btn:hover {
+        color: #2563eb;
+        border-color: #bfdbfe;
+        background: #eff6ff;
+    }
+
+    .action-btn.primary {
+        background: #2563eb;
+        border-color: #2563eb;
+        color: #fff;
+    }
+
+    .action-btn.primary:hover {
+        background: #1d4ed8;
+        border-color: #1d4ed8;
+        color: #fff;
+    }
+
+    .action-btn.danger:hover {
+        color: #dc2626;
+        border-color: #fecaca;
+        background: #fef2f2;
+    }
+
+    /* =========================
+       MOBILE CARDS
+       ========================= */
+
+    .mobile-patients {
+        display: none;
+    }
+
+    .patient-card {
+        background: var(--card-bg, #fff);
+        border: 1px solid var(--border-color, #e5e7eb);
+        border-radius: 12px;
+        padding: 14px;
+        margin-bottom: 10px;
+    }
+
+    .patient-card-header {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 10px;
+    }
+
+    .mobile-patient-name {
+        font-size: 15px;
+        font-weight: 700;
+        color: var(--text-primary, #111827);
+        line-height: 1.25;
+    }
+
+    .mobile-patient-meta {
+        margin-top: 3px;
+        font-size: 10px;
+        color: #9ca3af;
+    }
+
+    .mobile-payment {
+        flex-shrink: 0;
+    }
+
+    .mobile-contact {
+        margin-top: 14px;
+        display: grid;
+        gap: 5px;
+    }
+
+    .mobile-contact-line {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        color: var(--text-secondary, #64748b);
+        font-size: 11px;
+        min-width: 0;
+    }
+
+    .mobile-contact-line i {
+        width: 13px;
+        text-align: center;
+        color: #94a3b8;
+    }
+
+    .mobile-contact-line span {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .mobile-registered {
+        margin-top: 12px;
+        padding-top: 10px;
+        border-top: 1px solid var(--border-color, #f0f1f3);
+        font-size: 10px;
+        color: #9ca3af;
+    }
+
+    .mobile-actions {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 7px;
+        margin-top: 12px;
+    }
+
+    .mobile-action {
+        height: 34px;
+        border-radius: 7px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+        text-decoration: none;
+        border: 1px solid var(--border-color, #e5e7eb);
+        color: #64748b;
+        background: var(--card-bg, #fff);
+        font-size: 10px;
+        font-weight: 600;
+    }
+
+    .mobile-action:hover {
+        background: #f8fafc;
+        color: #2563eb;
+    }
+
+    .mobile-action.primary {
+        background: #2563eb;
+        color: #fff;
+        border-color: #2563eb;
+    }
+
+    /* =========================
+       EMPTY STATE
+       ========================= */
+
+    .empty-state {
+        text-align: center;
+        padding: 55px 20px;
+    }
+
+    .empty-icon {
+        width: 52px;
+        height: 52px;
+        margin: 0 auto 12px;
+        border-radius: 14px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: #f1f5f9;
+        color: #94a3b8;
+        font-size: 20px;
+    }
+
+    .empty-state h3 {
+        margin: 0;
+        color: var(--text-primary, #374151);
+        font-size: 15px;
+    }
+
+    .empty-state p {
+        margin: 5px 0 15px;
+        color: #9ca3af;
+        font-size: 11px;
+    }
+
+    /* =========================
+       PAGINATION
+       ========================= */
+
+    .pagination-wrap {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 15px;
+        margin-top: 15px;
+    }
+
+    .pagination-info {
+        color: #9ca3af;
+        font-size: 10px;
+    }
+
+    .pagination {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+    }
+
+    .page-link {
+        min-width: 30px;
+        height: 30px;
+        padding: 0 8px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border: 1px solid var(--border-color, #e5e7eb);
+        border-radius: 7px;
+        background: var(--card-bg, #fff);
+        color: #64748b;
+        text-decoration: none;
+        font-size: 10px;
+        font-weight: 600;
+    }
+
+    .page-link:hover {
+        background: #eff6ff;
+        border-color: #bfdbfe;
+        color: #2563eb;
+    }
+
+    .page-link.active {
+        background: #2563eb;
+        border-color: #2563eb;
+        color: #fff;
+    }
+
+    .page-link.disabled {
+        opacity: .45;
+        pointer-events: none;
+    }
+
+    /* =========================
+       RESPONSIVE
+       ========================= */
+
+    @media (max-width: 1050px) {
+        .filter-form {
+            grid-template-columns: 1fr 1fr;
+        }
+
+        .filter-field.search-field {
+            grid-column: span 2;
+        }
+
+        .filter-actions {
+            grid-column: span 2;
+        }
+    }
+
+    @media (max-width: 800px) {
+        .patients-page {
+            padding: 14px;
+        }
+
+        .patients-header {
+            margin-bottom: 15px;
+        }
+
+        .patients-title h1 {
+            font-size: 20px;
+        }
+
+        .patients-title-icon {
+            width: 38px;
+            height: 38px;
+        }
+
+        .patients-table-card {
+            display: none;
+        }
+
+        .mobile-patients {
+            display: block;
+        }
+
+        .pagination-wrap {
+            flex-direction: column;
+            align-items: stretch;
+        }
+
+        .pagination {
+            justify-content: center;
+        }
+    }
+
+    @media (max-width: 560px) {
+        .patients-header {
+            align-items: flex-start;
+        }
+
+        .patients-title p {
+            display: none;
+        }
+
+        .add-patient-btn {
+            padding: 9px 11px;
+            font-size: 0;
+        }
+
+        .add-patient-btn i {
+            font-size: 13px;
+            margin: 0;
+        }
+
+        .filter-form {
+            grid-template-columns: 1fr;
+        }
+
+        .filter-field.search-field,
+        .filter-actions {
+            grid-column: auto;
+        }
+
+        .filter-actions {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+        }
+
+        .patients-summary {
+            margin-top: 3px;
+        }
+
+        .patient-card {
+            padding: 13px;
+        }
     }
 </style>
-{% endblock %}
+</style>
 
-{% block content %}
-<div class="d-flex justify-content-between align-items-center mb-4">
-    <h4><i class="fas fa-users text-primary"></i> Patients</h4>
-    <div>
-        <!-- ✅ Only show Add Patient button if NOT a doctor -->
+<div class="patients-page">
+
+    <!-- HEADER -->
+    <div class="patients-header">
+        <div class="patients-title">
+            <div class="patients-title-icon">
+                <i class="fas fa-users"></i>
+            </div>
+
+            <div>
+                <h1>Patients</h1>
+                <p>Manage your clinic patients and records</p>
+            </div>
+        </div>
+
         {% if not is_doctor %}
-        <a href="{% url 'patients:add' %}" class="btn btn-primary">
-            <i class="fas fa-plus"></i> Add Patient
+        <a href="{% url 'patients:add' %}" class="add-patient-btn">
+            <i class="fas fa-plus"></i>
+            <span>Add Patient</span>
         </a>
-        {% else %}
-        <span class="badge bg-info p-2">
-            <i class="fas fa-eye me-1"></i> View Only - Your Assigned Patients
-        </span>
         {% endif %}
     </div>
-</div>
 
-<!-- ✅ Doctor View Banner -->
-{% if is_doctor %}
-<div class="doctor-view-banner">
-    <i class="fas fa-info-circle text-primary me-2"></i>
-    <strong>Read-Only Access:</strong> As a doctor, you can only view patients assigned to you. 
-    You cannot add, edit, or delete patient records.
-</div>
-{% endif %}
 
-<div class="card">
-    <div class="card-body">
-        <!-- Live Search -->
-        <div class="search-container">
-            <div class="row g-2 mb-3">
-                <div class="col-md-6">
-                    <div class="input-group">
-                        <span class="input-group-text"><i class="fas fa-search"></i></span>
-                        <input type="text" id="patientSearch" class="form-control" 
-                               placeholder="Search by name, phone, or email..." 
-                               autocomplete="off"
-                               value="{{ search_query|default:'' }}">
-                        <button class="btn btn-outline-secondary" type="button" id="clearSearch" style="display: none;">
-                            <i class="fas fa-times"></i>
-                        </button>
-                    </div>
-                    <div id="searchLoading" class="search-results-loading">
-                        <i class="fas fa-spinner fa-spin"></i> Searching...
-                    </div>
-                </div>
-                <div class="col-md-3">
-                    <select class="form-select" id="balanceFilter">
-                        <option value="">All Patients</option>
-                        <option value="has_balance">With Balance</option>
-                        <option value="no_balance">Without Balance</option>
-                    </select>
-                </div>
-                <div class="col-md-3">
-                    <select class="form-select" id="sortFilter">
-                        <option value="-registered_at">Newest First</option>
-                        <option value="registered_at">Oldest First</option>
-                        <option value="first_name">Name A-Z</option>
-                        <option value="-first_name">Name Z-A</option>
-                    </select>
-                </div>
+    <!-- FILTERS -->
+    <div class="filter-card">
+        <form method="get" class="filter-form">
+
+            <div class="filter-field search-field">
+                <label for="patient-search">Search</label>
+                <input
+                    id="patient-search"
+                    type="text"
+                    name="search"
+                    value="{{ search_query }}"
+                    class="filter-input"
+                    placeholder="Search by name, phone or email..."
+                    autocomplete="off"
+                >
             </div>
-        </div>
-        
-        <!-- Results Count -->
-        <div class="d-flex justify-content-between align-items-center mb-2">
-            <span id="resultCount" class="text-muted"></span>
-            <span id="exportBtn" class="text-muted" style="cursor: pointer;">
-                <i class="fas fa-download"></i> Export
-            </span>
-        </div>
-        
-        <!-- Patients Table -->
-        <div class="table-container">
-            <div class="table-responsive">
-                <table class="table table-hover" id="patientTable">
-                    <thead>
-                        <tr>
-                            <th>Patient</th>
-                            <th>Phone</th>
-                            <th>Email</th>
-                            <th>Registered</th>
-                            <th>Balance</th>
-                            <th>Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody id="patientTableBody">
-                        {% if patients %}
-                            {% for patient in patients %}
-                            <tr class="patient-row" data-patient-id="{{ patient.pk }}">
-                                <td>
-                                    <a href="{% url 'patients:detail' patient.pk %}" class="fw-bold text-decoration-none">
-                                        {{ patient.full_name }}
-                                    </a>
-                                    <br>
-                                    <small class="text-muted">{{ patient.date_of_birth|date:"M d, Y" }}</small>
-                                    <br>
-                                    <small class="text-muted"><i class="fas fa-calendar"></i> {{ patient.age }} years</small>
-                                </td>
-                                <td>
-                                    <i class="fas fa-phone text-muted"></i> {{ patient.phone }}
-                                </td>
-                                <td>
-                                    {% if patient.email %}
-                                        <i class="fas fa-envelope text-muted"></i> {{ patient.email }}
-                                    {% else %}
-                                        <span class="text-muted">-</span>
-                                    {% endif %}
-                                </td>
-                                <td>{{ patient.registered_at|date:"M d, Y" }}</td>
-                                <td>
-                                    {% if patient.balance > 0 %}
-                                        <span class="badge bg-danger balance-badge">
-                                            <i class="fas fa-exclamation-circle"></i> UGX {{ patient.balance|floatformat:0|intcomma }}
-                                        </span>
-                                    {% elif patient.balance == 0 %}
-                                        <span class="badge bg-success balance-badge">
-                                            <i class="fas fa-check-circle"></i> Paid
-                                        </span>
-                                    {% else %}
-                                        <span class="badge bg-secondary balance-badge">N/A</span>
-                                    {% endif %}
-                                </td>
-                                <td>
-                                    <div class="btn-group btn-group-sm">
-                                        <a href="{% url 'patients:detail' patient.pk %}" class="btn btn-outline-primary quick-action-btn" title="View">
-                                            <i class="fas fa-eye"></i>
-                                        </a>
-                                        <!-- ✅ Only show Edit and Archive buttons if NOT a doctor -->
-                                        {% if not is_doctor %}
-                                        <a href="{% url 'patients:edit' patient.pk %}" class="btn btn-outline-secondary quick-action-btn" title="Edit">
-                                            <i class="fas fa-edit"></i>
-                                        </a>
-                                        {% endif %}
-                                        <a href="{% url 'appointments:add' %}?patient={{ patient.pk }}" class="btn btn-outline-success quick-action-btn" title="Book Appointment">
-                                            <i class="fas fa-calendar-plus"></i>
-                                        </a>
-                                        {% if patient.balance > 0 %}
-                                        <a href="{% url 'billing:add' %}?patient={{ patient.pk }}" class="btn btn-outline-warning quick-action-btn" title="Create Invoice">
-                                            <i class="fas fa-file-invoice"></i>
-                                        </a>
-                                        {% endif %}
-                                        <!-- ✅ Only show Archive button if NOT a doctor -->
-                                        {% if not is_doctor %}
-                                        <button type="button" class="btn btn-outline-danger quick-action-btn" title="Archive" 
-                                                onclick="if(confirm('Archive {{ patient.full_name }}?')) window.location.href='{% url 'patients:delete' patient.pk %}'">
-                                            <i class="fas fa-archive"></i>
-                                        </button>
-                                        {% endif %}
-                                    </div>
-                                </td>
-                            </tr>
-                            {% endfor %}
-                        {% else %}
-                            <tr id="noResultsRow">
-                                <td colspan="6">
-                                    <div class="text-center no-results">
-                                        <i class="fas fa-users fa-3x text-muted mb-3"></i>
-                                        <h5>No patients found</h5>
-                                        <p class="text-muted">Start by adding your first patient.</p>
-                                        <!-- ✅ Only show Add button if NOT a doctor -->
-                                        {% if not is_doctor %}
-                                        <a href="{% url 'patients:add' %}" class="btn btn-primary">
-                                            <i class="fas fa-plus"></i> Add Patient
-                                        </a>
-                                        {% else %}
-                                        <p class="text-muted"><i class="fas fa-info-circle"></i> You have no assigned patients yet.</p>
-                                        {% endif %}
-                                    </div>
-                                </td>
-                            </tr>
-                        {% endif %}
-                    </tbody>
-                </table>
+
+            <div class="filter-field">
+                <label for="balance-filter">Payment</label>
+                <select id="balance-filter" name="balance" class="filter-select">
+                    <option value="">All patients</option>
+                    <option value="has_balance" {% if balance_filter == 'has_balance' %}selected{% endif %}>
+                        Has balance
+                    </option>
+                    <option value="no_balance" {% if balance_filter == 'no_balance' %}selected{% endif %}>
+                        No balance
+                    </option>
+                </select>
             </div>
+
+            <div class="filter-field">
+                <label for="sort-filter">Sort by</label>
+                <select id="sort-filter" name="sort" class="filter-select">
+                    <option value="-registered_at" {% if sort_filter == '-registered_at' %}selected{% endif %}>
+                        Newest first
+                    </option>
+                    <option value="registered_at" {% if sort_filter == 'registered_at' %}selected{% endif %}>
+                        Oldest first
+                    </option>
+                    <option value="first_name" {% if sort_filter == 'first_name' %}selected{% endif %}>
+                        First name A–Z
+                    </option>
+                    <option value="-first_name" {% if sort_filter == '-first_name' %}selected{% endif %}>
+                        First name Z–A
+                    </option>
+                    <option value="last_name" {% if sort_filter == 'last_name' %}selected{% endif %}>
+                        Last name A–Z
+                    </option>
+                    <option value="-last_name" {% if sort_filter == '-last_name' %}selected{% endif %}>
+                        Last name Z–A
+                    </option>
+                </select>
+            </div>
+
+            <div class="filter-actions">
+                <button type="submit" class="filter-btn">
+                    <i class="fas fa-search"></i>
+                    Search
+                </button>
+
+                <a href="{% url 'patients:list' %}" class="clear-btn">
+                    <i class="fas fa-times"></i>
+                    Clear
+                </a>
+            </div>
+
+        </form>
+    </div>
+
+
+    <!-- SUMMARY -->
+    <div class="patients-summary">
+        <div class="patient-count">
+            <strong>{{ total_count|intcomma }}</strong>
+            patient{{ total_count|pluralize }}
         </div>
     </div>
-</div>
 
-<script>
-    // ==================== LIVE SEARCH ====================
-    let searchTimeout;
-    const searchInput = document.getElementById('patientSearch');
-    const clearSearch = document.getElementById('clearSearch');
-    const balanceFilter = document.getElementById('balanceFilter');
-    const sortFilter = document.getElementById('sortFilter');
-    const tableBody = document.getElementById('patientTableBody');
-    const resultCount = document.getElementById('resultCount');
-    const searchLoading = document.getElementById('searchLoading');
-    
-    // ✅ Check if user is doctor (from template context)
-    const isDoctor = {{ is_doctor|yesno:"true,false" }};
-    
-    // Initial result count
-    updateResultCount();
-    
-    // Search on input
-    searchInput.addEventListener('input', function() {
-        clearTimeout(searchTimeout);
-        const query = this.value.trim();
-        
-        // Show/hide clear button
-        if (query.length > 0) {
-            clearSearch.style.display = 'block';
-        } else {
-            clearSearch.style.display = 'none';
-        }
-        
-        // Show loading
-        searchLoading.style.display = 'block';
-        
-        // Debounce search
-        searchTimeout = setTimeout(() => {
-            performSearch();
-        }, 400);
-    });
-    
-    // Clear search
-    clearSearch.addEventListener('click', function() {
-        searchInput.value = '';
-        clearSearch.style.display = 'none';
-        performSearch();
-        searchInput.focus();
-    });
-    
-    // Filter on change
-    balanceFilter.addEventListener('change', function() {
-        performSearch();
-    });
-    
-    sortFilter.addEventListener('change', function() {
-        performSearch();
-    });
-    
-    // Enter key support
-    searchInput.addEventListener('keypress', function(e) {
-        if (e.key === 'Enter') {
-            e.preventDefault();
-            performSearch();
-        }
-    });
-    
-    function performSearch() {
-        const query = searchInput.value.trim();
-        const balance = balanceFilter.value;
-        const sort = sortFilter.value;
-        
-        // Show loading
-        searchLoading.style.display = 'block';
-        
-        // Build URL
-        let url = `/patients/api/search/?q=${encodeURIComponent(query)}&balance=${balance}&sort=${sort}`;
-        
-        console.log('🔍 Searching:', url);
-        
-        fetch(url)
-            .then(response => {
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                }
-                return response.json();
-            })
-            .then(data => {
-                console.log('📊 Data received:', data);
-                searchLoading.style.display = 'none';
-                
-                if (data.error) {
-                    console.error('❌ API Error:', data.error);
-                    resultCount.textContent = 'Error: ' + data.error;
-                    renderEmptyState();
-                    return;
-                }
-                
-                if (data.results && data.results.length > 0) {
-                    renderResults(data.results);
-                    resultCount.textContent = `Showing ${data.results.length} patient${data.results.length > 1 ? 's' : ''}`;
-                } else {
-                    renderEmptyState();
-                    resultCount.textContent = 'No patients found';
-                }
-            })
-            .catch(error => {
-                console.error('❌ Fetch error:', error);
-                searchLoading.style.display = 'none';
-                resultCount.textContent = 'Error searching patients';
-                tableBody.innerHTML = `
+
+    {% if patients %}
+
+    <!-- =========================
+         DESKTOP TABLE
+         ========================= -->
+    <div class="patients-table-card">
+        <div class="patients-table-wrapper">
+
+            <table class="patients-table">
+                <thead>
                     <tr>
-                        <td colspan="6">
-                            <div class="text-center no-results text-danger">
-                                <i class="fas fa-exclamation-triangle fa-3x mb-3"></i>
-                                <h5>Search Error</h5>
-                                <p class="text-muted">${error.message}</p>
-                                <button class="btn btn-primary" onclick="performSearch()">
-                                    <i class="fas fa-redo"></i> Retry
-                                </button>
+                        <th class="col-patient">Patient</th>
+                        <th class="col-contact">Contact</th>
+                        <th class="col-registered">Registered</th>
+                        <th class="col-payment">Payment</th>
+                        <th class="col-actions">Actions</th>
+                    </tr>
+                </thead>
+
+                <tbody>
+                    {% for patient in patients %}
+                    <tr>
+
+                        <!-- PATIENT -->
+                        <td>
+                            <div class="patient-main">
+
+                                <div class="patient-avatar">
+                                    {{ patient.first_name|first|upper }}{{ patient.last_name|first|upper }}
+                                </div>
+
+                                <div class="patient-info">
+                                    <span class="patient-name">
+                                        {{ patient.first_name }} {{ patient.last_name }}
+                                    </span>
+
+                                    <div class="patient-meta">
+                                        <span>#{{ patient.pk }}</span>
+
+                                        {% if patient.age is not None %}
+                                        <span class="meta-dot"></span>
+                                        <span>{{ patient.age }} yrs</span>
+                                        {% endif %}
+                                    </div>
+                                </div>
+
                             </div>
                         </td>
+
+
+                        <!-- CONTACT -->
+                        <td>
+                            <div class="contact-info">
+
+                                {% if patient.phone %}
+                                <div class="contact-line">
+                                    <i class="fas fa-phone"></i>
+                                    <span>{{ patient.phone }}</span>
+                                </div>
+                                {% endif %}
+
+                                {% if patient.email %}
+                                <div class="contact-line">
+                                    <i class="fas fa-envelope"></i>
+                                    <span>{{ patient.email }}</span>
+                                </div>
+                                {% endif %}
+
+                                {% if not patient.phone and not patient.email %}
+                                <span class="no-contact">No contact details</span>
+                                {% endif %}
+
+                            </div>
+                        </td>
+
+
+                        <!-- REGISTERED -->
+                        <td>
+                            {% if patient.registered_at %}
+                            <span class="registered-date">
+                                {{ patient.registered_at|date:"M d, Y" }}
+                            </span>
+
+                            <span class="registered-time">
+                                {{ patient.registered_at|date:"g:i A" }}
+                            </span>
+                            {% else %}
+                            <span class="registered-date">—</span>
+                            {% endif %}
+                        </td>
+
+
+                        <!-- PAYMENT -->
+                        <td>
+                            {% if patient.invoice_count == 0 %}
+
+                                <span class="payment-status payment-none">
+                                    <span class="payment-dot"></span>
+                                    No Invoice
+                                </span>
+
+                            {% elif patient.patient_balance > 0 %}
+
+                                <span class="payment-status payment-due">
+                                    <span class="payment-dot"></span>
+                                    Due
+                                </span>
+
+                                <span class="payment-amount">
+                                    UGX {{ patient.patient_balance|floatformat:0|intcomma }}
+                                </span>
+
+                            {% elif patient.patient_balance == 0 %}
+
+                                <span class="payment-status payment-paid">
+                                    <span class="payment-dot"></span>
+                                    Paid
+                                </span>
+
+                            {% else %}
+
+                                <span class="payment-status payment-credit">
+                                    <span class="payment-dot"></span>
+                                    Credit
+                                </span>
+
+                                <span class="payment-amount">
+                                    UGX {{ patient.patient_balance|floatformat:0|intcomma }}
+                                </span>
+
+                            {% endif %}
+                        </td>
+
+
+                        <!-- ACTIONS -->
+                        <td>
+                            <div class="actions">
+
+                                <!-- View -->
+                                <a
+                                    href="{% url 'patients:detail' patient.pk %}"
+                                    class="action-btn primary"
+                                    title="View patient"
+                                >
+                                    <i class="fas fa-eye"></i>
+                                </a>
+
+                                {% if not is_doctor %}
+
+                                <!-- Edit -->
+                                <a
+                                    href="{% url 'patients:edit' patient.pk %}"
+                                    class="action-btn"
+                                    title="Edit patient"
+                                >
+                                    <i class="fas fa-edit"></i>
+                                </a>
+
+                                {% endif %}
+
+                                <!-- Appointment -->
+                                <a
+                                    href="{% url 'appointments:add' %}?patient={{ patient.pk }}"
+                                    class="action-btn"
+                                    title="New appointment"
+                                >
+                                    <i class="fas fa-calendar-plus"></i>
+                                </a>
+
+                                <!-- Invoice -->
+                                <a
+                                    href="{% url 'billing:add' %}?patient={{ patient.pk }}"
+                                    class="action-btn"
+                                    title="Create invoice"
+                                >
+                                    <i class="fas fa-file-invoice-dollar"></i>
+                                </a>
+
+                                {% if not is_doctor %}
+
+                                <!-- Archive -->
+                                <a
+                                    href="{% url 'patients:delete' patient.pk %}"
+                                    class="action-btn danger"
+                                    title="Archive patient"
+                                >
+                                    <i class="fas fa-archive"></i>
+                                </a>
+
+                                {% endif %}
+
+                            </div>
+                        </td>
+
                     </tr>
-                `;
-            });
-    }
-    
-    function renderResults(patients) {
-        tableBody.innerHTML = '';
-        
-        patients.forEach((patient, index) => {
-            const row = document.createElement('tr');
-            row.className = 'patient-row';
-            row.style.animationDelay = `${index * 0.05}s`;
-            
-            // Balance badge
-            let balanceHtml = '';
-            const balance = parseFloat(patient.balance) || 0;
-            if (balance > 0) {
-                balanceHtml = `<span class="badge bg-danger balance-badge">
-                    <i class="fas fa-exclamation-circle"></i> UGX ${balance.toLocaleString()}
-                </span>`;
-            } else if (balance === 0) {
-                balanceHtml = `<span class="badge bg-success balance-badge">
-                    <i class="fas fa-check-circle"></i> Paid
-                </span>`;
-            } else {
-                balanceHtml = `<span class="badge bg-secondary balance-badge">N/A</span>`;
-            }
-            
-            // Get values with fallbacks
-            const fullName = patient.full_name || patient.first_name + ' ' + patient.last_name || 'Unknown';
-            const dateOfBirth = patient.date_of_birth || 'N/A';
-            const age = patient.age !== undefined && patient.age !== null && patient.age !== 'N/A' ? patient.age + ' years' : 'N/A';
-            const phone = patient.phone || 'N/A';
-            const email = patient.email || '';
-            const registeredAt = patient.registered_at || 'N/A';
-            
-            // ✅ Build action buttons based on role
-            let actionButtons = `
-                <a href="/patients/${patient.id}/" class="btn btn-outline-primary quick-action-btn" title="View">
+                    {% endfor %}
+                </tbody>
+            </table>
+
+        </div>
+    </div>
+
+
+    <!-- =========================
+         MOBILE CARDS
+         ========================= -->
+    <div class="mobile-patients">
+
+        {% for patient in patients %}
+
+        <div class="patient-card">
+
+            <div class="patient-card-header">
+
+                <div>
+                    <div class="mobile-patient-name">
+                        {{ patient.first_name }} {{ patient.last_name }}
+                    </div>
+
+                    <div class="mobile-patient-meta">
+                        #{{ patient.pk }}
+
+                        {% if patient.age is not None %}
+                        • {{ patient.age }} yrs
+                        {% endif %}
+                    </div>
+                </div>
+
+
+                <div class="mobile-payment">
+
+                    {% if patient.invoice_count == 0 %}
+
+                        <span class="payment-status payment-none">
+                            <span class="payment-dot"></span>
+                            No Invoice
+                        </span>
+
+                    {% elif patient.patient_balance > 0 %}
+
+                        <span class="payment-status payment-due">
+                            <span class="payment-dot"></span>
+                            Due
+                        </span>
+
+                    {% elif patient.patient_balance == 0 %}
+
+                        <span class="payment-status payment-paid">
+                            <span class="payment-dot"></span>
+                            Paid
+                        </span>
+
+                    {% else %}
+
+                        <span class="payment-status payment-credit">
+                            <span class="payment-dot"></span>
+                            Credit
+                        </span>
+
+                    {% endif %}
+
+                </div>
+
+            </div>
+
+
+            <!-- CONTACT -->
+            <div class="mobile-contact">
+
+                {% if patient.phone %}
+                <div class="mobile-contact-line">
+                    <i class="fas fa-phone"></i>
+                    <span>{{ patient.phone }}</span>
+                </div>
+                {% endif %}
+
+                {% if patient.email %}
+                <div class="mobile-contact-line">
+                    <i class="fas fa-envelope"></i>
+                    <span>{{ patient.email }}</span>
+                </div>
+                {% endif %}
+
+                {% if not patient.phone and not patient.email %}
+                <div class="mobile-contact-line">
+                    <i class="fas fa-minus-circle"></i>
+                    <span>No contact details</span>
+                </div>
+                {% endif %}
+
+            </div>
+
+
+            <!-- REGISTERED -->
+            <div class="mobile-registered">
+                <i class="far fa-clock"></i>
+
+                {% if patient.registered_at %}
+                    Registered {{ patient.registered_at|date:"M d, Y" }}
+                {% else %}
+                    Registration date unavailable
+                {% endif %}
+            </div>
+
+
+            <!-- PAYMENT AMOUNT -->
+            {% if patient.invoice_count > 0 and patient.patient_balance != 0 %}
+            <div class="mobile-registered" style="border-top:0; margin-top:4px; padding-top:0;">
+                {% if patient.patient_balance > 0 %}
+                    Balance due:
+                    <strong style="color:#dc2626;">
+                        UGX {{ patient.patient_balance|floatformat:0|intcomma }}
+                    </strong>
+                {% else %}
+                    Credit:
+                    <strong style="color:#2563eb;">
+                        UGX {{ patient.patient_balance|floatformat:0|intcomma }}
+                    </strong>
+                {% endif %}
+            </div>
+            {% endif %}
+
+
+            <!-- ACTIONS -->
+            <div class="mobile-actions">
+
+                <a
+                    href="{% url 'patients:detail' patient.pk %}"
+                    class="mobile-action primary"
+                >
                     <i class="fas fa-eye"></i>
+                    View
                 </a>
-            `;
-            
-            // Only show Edit if NOT a doctor
-            if (!isDoctor) {
-                actionButtons += `
-                <a href="/patients/${patient.id}/edit/" class="btn btn-outline-secondary quick-action-btn" title="Edit">
+
+                {% if not is_doctor %}
+                <a
+                    href="{% url 'patients:edit' patient.pk %}"
+                    class="mobile-action"
+                >
                     <i class="fas fa-edit"></i>
+                    Edit
                 </a>
-                `;
-            }
-            
-            actionButtons += `
-                <a href="/appointments/add/?patient=${patient.id}" class="btn btn-outline-success quick-action-btn" title="Book Appointment">
+                {% else %}
+                <a
+                    href="{% url 'appointments:add' %}?patient={{ patient.pk }}"
+                    class="mobile-action"
+                >
                     <i class="fas fa-calendar-plus"></i>
+                    Appointment
                 </a>
-            `;
-            
-            if (balance > 0) {
-                actionButtons += `
-                <a href="/billing/add/?patient=${patient.id}" class="btn btn-outline-warning quick-action-btn" title="Create Invoice">
-                    <i class="fas fa-file-invoice"></i>
+                {% endif %}
+
+                <a
+                    href="{% url 'billing:add' %}?patient={{ patient.pk }}"
+                    class="mobile-action"
+                >
+                    <i class="fas fa-file-invoice-dollar"></i>
+                    Invoice
                 </a>
-                `;
-            }
-            
-            // Only show Archive if NOT a doctor
-            if (!isDoctor) {
-                actionButtons += `
-                <button type="button" class="btn btn-outline-danger quick-action-btn" title="Archive" 
-                        onclick="if(confirm('Archive ${fullName}?')) window.location.href='/patients/${patient.id}/delete/'">
-                    <i class="fas fa-archive"></i>
-                </button>
-                `;
-            }
-            
-            row.innerHTML = `
-                <td>
-                    <a href="/patients/${patient.id}/" class="fw-bold text-decoration-none">
-                        ${fullName}
+
+            </div>
+
+        </div>
+
+        {% endfor %}
+
+    </div>
+
+
+    <!-- =========================
+         PAGINATION
+         ========================= -->
+    {% if is_paginated %}
+
+    <div class="pagination-wrap">
+
+        <div class="pagination-info">
+            Page {{ page_obj.number }} of {{ paginator.num_pages }}
+        </div>
+
+        <div class="pagination">
+
+            {% if page_obj.has_previous %}
+            <a
+                class="page-link"
+                href="?page={{ page_obj.previous_page_number }}&search={{ search_query|urlencode }}&balance={{ balance_filter }}&sort={{ sort_filter }}"
+                title="Previous page"
+            >
+                <i class="fas fa-chevron-left"></i>
+            </a>
+            {% else %}
+            <span class="page-link disabled">
+                <i class="fas fa-chevron-left"></i>
+            </span>
+            {% endif %}
+
+
+            {% for num in paginator.page_range %}
+
+                {% if num == page_obj.number %}
+
+                    <span class="page-link active">
+                        {{ num }}
+                    </span>
+
+                {% elif num >= page_obj.number|add:"-2" and num <= page_obj.number|add:"2" %}
+
+                    <a
+                        class="page-link"
+                        href="?page={{ num }}&search={{ search_query|urlencode }}&balance={{ balance_filter }}&sort={{ sort_filter }}"
+                    >
+                        {{ num }}
                     </a>
-                    <br>
-                    <small class="text-muted">${dateOfBirth}</small>
-                    <br>
-                    <small class="text-muted"><i class="fas fa-calendar"></i> ${age}</small>
-                </td>
-                <td>
-                    <i class="fas fa-phone text-muted"></i> ${phone}
-                </td>
-                <td>
-                    ${email ? `<i class="fas fa-envelope text-muted"></i> ${email}` : '<span class="text-muted">-</span>'}
-                </td>
-                <td>${registeredAt}</td>
-                <td>${balanceHtml}</td>
-                <td>
-                    <div class="btn-group btn-group-sm">
-                        ${actionButtons}
-                    </div>
-                </td>
-            `;
-            
-            tableBody.appendChild(row);
-        });
-    }
-    
-    function renderEmptyState() {
-        tableBody.innerHTML = `
-            <tr>
-                <td colspan="6">
-                    <div class="text-center no-results">
-                        <i class="fas fa-search fa-3x text-muted mb-3"></i>
-                        <h5>No patients found</h5>
-                        <p class="text-muted">Try adjusting your search or filters.</p>
-                        <button class="btn btn-primary" onclick="clearFilters()">
-                            <i class="fas fa-undo"></i> Clear Filters
-                        </button>
-                    </div>
-                </td>
-            </tr>
-        `;
-    }
-    
-    function clearFilters() {
-        searchInput.value = '';
-        balanceFilter.value = '';
-        sortFilter.value = '-registered_at';
-        clearSearch.style.display = 'none';
-        performSearch();
-    }
-    
-    function updateResultCount() {
-        const rows = tableBody.querySelectorAll('tr.patient-row');
-        if (rows.length > 0) {
-            resultCount.textContent = `Showing ${rows.length} patient${rows.length > 1 ? 's' : ''}`;
-        } else {
-            resultCount.textContent = '';
-        }
-    }
-    
-    // ==================== EXPORT ====================
-    document.getElementById('exportBtn').addEventListener('click', function() {
-        const rows = tableBody.querySelectorAll('tr.patient-row');
-        if (rows.length === 0) {
-            alert('No data to export');
-            return;
-        }
-        
-        let csv = 'Name,Phone,Email,Registered,Age,Balance\n';
-        
-        rows.forEach(row => {
-            const cells = row.querySelectorAll('td');
-            if (cells.length >= 5) {
-                const name = cells[0].textContent.trim().split('\n')[0];
-                const phone = cells[1].textContent.trim().replace('📱', '').trim();
-                const email = cells[2].textContent.trim() === '-' ? '' : cells[2].textContent.trim();
-                const registered = cells[3].textContent.trim();
-                const balance = cells[4].textContent.trim().replace('UGX', '').replace(',', '').trim();
-                
-                csv += `"${name}","${phone}","${email}","${registered}","${balance}"\n`;
-            }
-        });
-        
-        const blob = new Blob([csv], { type: 'text/csv' });
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `patients_${new Date().toISOString().slice(0,10)}.csv`;
-        a.click();
-        window.URL.revokeObjectURL(url);
-    });
-</script>
+
+                {% endif %}
+
+            {% endfor %}
+
+
+            {% if page_obj.has_next %}
+            <a
+                class="page-link"
+                href="?page={{ page_obj.next_page_number }}&search={{ search_query|urlencode }}&balance={{ balance_filter }}&sort={{ sort_filter }}"
+                title="Next page"
+            >
+                <i class="fas fa-chevron-right"></i>
+            </a>
+            {% else %}
+            <span class="page-link disabled">
+                <i class="fas fa-chevron-right"></i>
+            </span>
+            {% endif %}
+
+        </div>
+
+    </div>
+
+    {% endif %}
+
+
+    {% else %}
+
+    <!-- =========================
+         EMPTY STATE
+         ========================= -->
+    <div class="patients-table-card">
+
+        <div class="empty-state">
+
+            <div class="empty-icon">
+                <i class="fas fa-user-friends"></i>
+            </div>
+
+            {% if search_query or balance_filter %}
+
+                <h3>No patients found</h3>
+
+                <p>
+                    Try changing your search or payment filters.
+                </p>
+
+                <a
+                    href="{% url 'patients:list' %}"
+                    class="add-patient-btn"
+                >
+                    <i class="fas fa-times"></i>
+                    Clear Filters
+                </a>
+
+            {% else %}
+
+                <h3>No patients yet</h3>
+
+                <p>
+                    Add your first patient to get started.
+                </p>
+
+                {% if not is_doctor %}
+                <a
+                    href="{% url 'patients:add' %}"
+                    class="add-patient-btn"
+                >
+                    <i class="fas fa-plus"></i>
+                    Add Patient
+                </a>
+                {% endif %}
+
+            {% endif %}
+
+        </div>
+
+    </div>
+
+    {% endif %}
+
+</div>
 {% endblock %}

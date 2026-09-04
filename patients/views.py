@@ -2,7 +2,7 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.db import models
-from django.db.models import Q, Sum
+from django.db.models import Q, Sum, Value, DecimalField, Count
 from django.http import JsonResponse
 from django.utils import timezone
 from datetime import date, datetime
@@ -35,15 +35,18 @@ def get_doctor_patients(doctor):
 # ====================
 # PATIENT LIST
 # ====================
+
 @login_required
 def patient_list(request):
     """Display active patients with server-side filtering and pagination."""
     from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
-    from django.db.models import Value
     from django.db.models.functions import Coalesce
 
     user_profile = request.user.profile
 
+    # ---------------------------------------------------------
+    # BASE PATIENT QUERY
+    # ---------------------------------------------------------
     if user_profile.role == 'doctor':
         doctor = user_profile.doctor
         patients = get_doctor_patients(doctor)
@@ -52,6 +55,9 @@ def patient_list(request):
         patients = Patient.objects.filter(is_active=True)
         is_doctor_user = False
 
+    # ---------------------------------------------------------
+    # FILTER VALUES
+    # ---------------------------------------------------------
     search = request.GET.get('search', '').strip()
     balance_filter = request.GET.get('balance', '').strip()
     sort = request.GET.get('sort', '-registered_at').strip()
@@ -68,7 +74,9 @@ def patient_list(request):
     if sort not in allowed_sorts:
         sort = '-registered_at'
 
-    # Search
+    # ---------------------------------------------------------
+    # SEARCH
+    # ---------------------------------------------------------
     if search:
         patients = patients.filter(
             Q(first_name__icontains=search)
@@ -77,25 +85,56 @@ def patient_list(request):
             | Q(email__icontains=search)
         )
 
-    # Calculate outstanding balance
+    # ---------------------------------------------------------
+    # INVOICE + BALANCE CALCULATION
+    #
+    # invoice_count:
+    #   0 = patient has never been invoiced
+    #
+    # patient_balance:
+    #   > 0 = money still owed
+    #   0   = invoice fully paid
+    #   < 0 = credit/overpayment
+    # ---------------------------------------------------------
     patients = patients.annotate(
+        invoice_count=Count(
+            'invoices',
+            distinct=True
+        ),
+
         patient_balance=Coalesce(
             Sum('invoices__balance_due'),
-            Value(0)
+            Value(
+                0,
+                output_field=DecimalField(
+                    max_digits=12,
+                    decimal_places=2
+                )
+            )
         )
     )
 
-    # Balance filter
+    # ---------------------------------------------------------
+    # BALANCE FILTER
+    # ---------------------------------------------------------
     if balance_filter == 'has_balance':
-        patients = patients.filter(patient_balance__gt=0)
+        patients = patients.filter(
+            patient_balance__gt=0
+        )
 
     elif balance_filter == 'no_balance':
-        patients = patients.filter(patient_balance__lte=0)
+        patients = patients.filter(
+            patient_balance__lte=0
+        )
 
-    # Sorting
+    # ---------------------------------------------------------
+    # SORTING
+    # ---------------------------------------------------------
     patients = patients.order_by(sort)
 
-    # Pagination
+    # ---------------------------------------------------------
+    # PAGINATION
+    # ---------------------------------------------------------
     paginator = Paginator(patients, 20)
     page_number = request.GET.get('page', 1)
 
@@ -104,20 +143,29 @@ def patient_list(request):
     except (PageNotAnInteger, EmptyPage):
         patients_page = paginator.page(1)
 
+    # ---------------------------------------------------------
+    # CONTEXT
+    # ---------------------------------------------------------
     context = {
         'patients': patients_page,
         'page_obj': patients_page,
         'paginator': paginator,
         'is_paginated': patients_page.has_other_pages(),
+
         'total_count': paginator.count,
+
         'search_query': search,
         'balance_filter': balance_filter,
         'sort_filter': sort,
+
         'is_doctor': is_doctor_user,
     }
 
-    return render(request, 'patients/list.html', context)
-
+    return render(
+        request,
+        'patients/list.html',
+        context
+    )
 
 # ====================
 # PATIENT ADD (UPDATED WITH PORTAL PIN)
