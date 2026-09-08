@@ -4,301 +4,159 @@
 
 {% block page_title %}Revenue Dashboard{% endblock %}
 
-{% block extra_css %}
-<style>
-    .revenue-stat {
-        background: white;
-        border-radius: 16px;
-        padding: 20px;
-        box-shadow: 0 2px 15px rgba(0,0,0,0.05);
-        height: 100%;
-        transition: all 0.3s;
-        border-left: 4px solid #667eea;
-    }
-    .revenue-stat:hover {
-        transform: translateY(-5px);
-        box-shadow: 0 8px 30px rgba(0,0,0,0.1);
-    }
-    .revenue-stat .amount {
-        font-size: 2rem;
-        font-weight: 700;
-        color: #2d3436;
-        margin: 5px 0;
-    }
-    .revenue-stat .label {
-        color: #636e72;
-        font-size: 0.9rem;
-    }
-    .revenue-stat .icon {
-        font-size: 2rem;
-        opacity: 0.3;
-    }
-    .revenue-stat.total { border-left-color: #667eea; }
-    .revenue-stat.daily { border-left-color: #00b894; }
-    .revenue-stat.weekly { border-left-color: #fdcb6e; }
-    .revenue-stat.monthly { border-left-color: #e17055; }
-    .revenue-stat.yearly { border-left-color: #6c5ce7; }
-    .revenue-stat.outstanding { border-left-color: #e74c3c; }
-    .revenue-stat.period { border-left-color: #fd79a8; }
-    
-    .stat-icon.total i { color: #667eea; }
-    .stat-icon.daily i { color: #00b894; }
-    .stat-icon.weekly i { color: #fdcb6e; }
-    .stat-icon.monthly i { color: #e17055; }
-    .stat-icon.yearly i { color: #6c5ce7; }
-    .stat-icon.outstanding i { color: #e74c3c; }
-    .stat-icon.period i { color: #fd79a8; }
-    
-    .filter-card {
-        background: white;
-        border-radius: 16px;
-        padding: 20px;
-        box-shadow: 0 2px 15px rgba(0,0,0,0.05);
-        margin-bottom: 25px;
-    }
-    .filter-card .btn-group .btn {
-        border-radius: 8px;
-        padding: 8px 20px;
-        font-weight: 500;
-    }
-    .filter-card .btn-group .btn.active {
-        background: linear-gradient(135deg, #667eea, #764ba2);
-        color: white;
-        border-color: #667eea;
-    }
-    .period-badge {
-        background: linear-gradient(135deg, #667eea, #764ba2);
-        color: white;
-        padding: 5px 15px;
-        border-radius: 20px;
-        font-size: 13px;
-        font-weight: 500;
-    }
-    .chart-bar {
-        background: linear-gradient(180deg, #667eea, #764ba2);
-        border-radius: 8px 8px 0 0;
-        transition: all 0.3s;
-        position: relative;
-        min-height: 5px;
-        width: 100%;
-    }
-    .chart-bar:hover {
-        opacity: 0.8;
-        transform: scaleY(1.05);
-        transform-origin: bottom;
-    }
-    .chart-container {
-        height: 300px;
-        display: flex;
-        align-items: flex-end;
-        gap: 10px;
-        padding: 20px 0;
-    }
-    .chart-item {
-        flex: 1;
-        text-align: center;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: flex-end;
-        height: 100%;
-    }
-    .chart-value {
-        font-size: 11px;
-        color: #2d3436;
-        font-weight: 600;
-        margin-bottom: 4px;
-    }
-    .chart-label {
-        margin-top: 8px;
-        font-size: 11px;
-        color: #636e72;
-    }
-    .badge-bronze {
-        background: #cd7f32;
-        color: white;
-    }
-</style>
-{% endblock %}
-
 {% block content %}
-<!-- Date Filter -->
-<div class="filter-card">
-    <div class="row align-items-center">
-        <div class="col-md-3">
-            <strong><i class="fas fa-calendar-alt"></i> Period:</strong>
-        </div>
-        <div class="col-md-9">
-            <div class="btn-group mb-2 mb-md-0" role="group">
-                <a href="?period=today" class="btn btn-outline-primary {% if period == 'today' %}active{% endif %}">
-                    <i class="fas fa-calendar-day"></i> Today
-                </a>
-                <a href="?period=this_week" class="btn btn-outline-primary {% if period == 'this_week' %}active{% endif %}">
-                    <i class="fas fa-calendar-week"></i> This Week
-                </a>
-                <a href="?period=this_month" class="btn btn-outline-primary {% if period == 'this_month' %}active{% endif %}">
-                    <i class="fas fa-calendar-alt"></i> This Month
-                </a>
-                <a href="?period=this_year" class="btn btn-outline-primary {% if period == 'this_year' %}active{% endif %}">
-                    <i class="fas fa-calendar"></i> This Year
-                </a>
-                <a href="?period=all" class="btn btn-outline-primary {% if period == 'all' %}active{% endif %}">
-                    <i class="fas fa-infinity"></i> All Time
-                </a>
-            </div>
-        </div>
-    </div>
-    
-    <hr>
-    
-    <div class="row align-items-center">
-        <div class="col-md-3">
-            <strong><i class="fas fa-calendar-range"></i> Custom Range:</strong>
-        </div>
-        <div class="col-md-9">
-            <form method="get" class="row g-2">
-                <div class="col-md-4">
-                    <input type="date" class="form-control" name="start_date" value="{{ start_date_str }}" required>
-                </div>
-                <div class="col-md-4">
-                    <input type="date" class="form-control" name="end_date" value="{{ end_date_str }}" required>
-                </div>
-                <div class="col-md-4">
-                    <button type="submit" class="btn btn-primary w-100">
-                        <i class="fas fa-filter"></i> Apply Filter
-                    </button>
-                </div>
-            </form>
-        </div>
-    </div>
-    
-    {% if period == 'custom' or start_date_str %}
-    <div class="row mt-2">
-        <div class="col-md-12">
-            <span class="period-badge">
-                <i class="fas fa-calendar-check"></i> 
-                Showing: {{ start_date_display }} to {{ end_date_display }}
-            </span>
-            <a href="?period=this_month" class="btn btn-sm btn-secondary ms-2">
-                <i class="fas fa-times"></i> Clear Filter
-            </a>
-        </div>
-    </div>
-    {% endif %}
+
+<style>
+.revenue-dashboard {
+    --navy:#172033; --blue:#2563eb; --green:#059669; --amber:#d97706;
+    --red:#dc2626; --purple:#7c3aed; --muted:#64748b; --border:#e5e7eb;
+    background:#f6f8fb; margin:-1rem; padding:1.25rem; min-height:calc(100vh - 70px);
+}
+.revenue-dashboard .rd-header {
+    background:linear-gradient(135deg,#172033,#253b67); color:#fff; border-radius:18px;
+    padding:24px 26px; margin-bottom:18px; box-shadow:0 10px 28px rgba(23,32,51,.14);
+}
+.revenue-dashboard .rd-header h1 {font-size:1.55rem;font-weight:700;margin:0}
+.revenue-dashboard .rd-header p {margin:5px 0 0;color:rgba(255,255,255,.72);font-size:.88rem}
+.revenue-dashboard .rd-period {display:inline-flex;gap:7px;margin-top:13px;padding:7px 12px;border-radius:999px;background:rgba(255,255,255,.1);font-size:.78rem;font-weight:600}
+.revenue-dashboard .rd-filter,.revenue-dashboard .rd-card,.revenue-dashboard .rd-kpi {
+    background:#fff;border:1px solid var(--border);border-radius:16px;box-shadow:0 4px 18px rgba(15,23,42,.045)
+}
+.revenue-dashboard .rd-filter {padding:16px;margin-bottom:18px}
+.revenue-dashboard .rd-filter-title {font-size:.78rem;text-transform:uppercase;letter-spacing:.07em;font-weight:700;color:var(--muted);margin-bottom:9px}
+.revenue-dashboard .rd-filter .btn {border-radius:9px!important;font-size:.82rem;font-weight:600;padding:8px 13px}
+.revenue-dashboard .rd-filter .btn.active {background:var(--blue);border-color:var(--blue);color:#fff}
+.revenue-dashboard .rd-filter .form-control {border-radius:9px;min-height:40px}
+.revenue-dashboard .rd-filter .btn-primary {background:var(--blue);border-color:var(--blue);border-radius:9px;font-weight:600}
+.revenue-dashboard .rd-kpi {position:relative;overflow:hidden;height:100%;padding:18px}
+.revenue-dashboard .rd-kpi:before {content:"";position:absolute;inset:0 auto 0 0;width:4px;background:var(--blue)}
+.revenue-dashboard .rd-kpi.green:before{background:var(--green)} .revenue-dashboard .rd-kpi.red:before{background:var(--red)}
+.revenue-dashboard .rd-kpi.purple:before{background:var(--purple)}
+.revenue-dashboard .rd-kpi-label {color:var(--muted);font-size:.76rem;font-weight:700;text-transform:uppercase;letter-spacing:.045em}
+.revenue-dashboard .rd-kpi-value {color:var(--navy);font-size:clamp(1.15rem,2vw,1.7rem);font-weight:800;line-height:1.2;margin-top:8px;word-break:break-word}
+.revenue-dashboard .rd-kpi-meta {color:#94a3b8;font-size:.72rem;margin-top:6px}
+.revenue-dashboard .rd-kpi-icon {width:38px;height:38px;border-radius:11px;display:grid;place-items:center;background:#eff6ff;color:var(--blue)}
+.revenue-dashboard .rd-kpi.green .rd-kpi-icon{background:#ecfdf5;color:var(--green)}
+.revenue-dashboard .rd-kpi.red .rd-kpi-icon{background:#fef2f2;color:var(--red)}
+.revenue-dashboard .rd-kpi.purple .rd-kpi-icon{background:#f5f3ff;color:var(--purple)}
+.revenue-dashboard .rd-section-title {font-size:.92rem;font-weight:750;color:var(--navy);margin:0}
+.revenue-dashboard .rd-section-subtitle {color:#94a3b8;font-size:.72rem;margin-top:2px}
+.revenue-dashboard .rd-card-header {padding:16px 18px;border-bottom:1px solid #eef1f5}
+.revenue-dashboard .rd-card-body {padding:18px}
+.revenue-dashboard .rd-status-grid {display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+.revenue-dashboard .rd-status {text-align:center;padding:13px 8px;border-radius:12px;background:#f8fafc}
+.revenue-dashboard .rd-status-number {font-size:1.35rem;line-height:1;font-weight:800}
+.revenue-dashboard .rd-status-label {color:var(--muted);font-size:.7rem;margin-top:6px}
+.revenue-dashboard .rd-status.total .rd-status-number{color:var(--blue)}
+.revenue-dashboard .rd-status.paid .rd-status-number{color:var(--green)}
+.revenue-dashboard .rd-status.partial .rd-status-number{color:var(--amber)}
+.revenue-dashboard .rd-status.overdue .rd-status-number{color:var(--red)}
+.revenue-dashboard .rd-chart {height:310px;display:flex;align-items:stretch;gap:clamp(4px,1vw,12px);padding:15px 2px 0}
+.revenue-dashboard .rd-chart-item {flex:1;min-width:0;display:flex;flex-direction:column;justify-content:flex-end;align-items:center}
+.revenue-dashboard .rd-chart-value {font-size:.65rem;color:var(--navy);font-weight:700;min-height:16px;margin-bottom:5px;white-space:nowrap}
+.revenue-dashboard .rd-chart-track {height:225px;width:min(34px,70%);display:flex;align-items:flex-end}
+.revenue-dashboard .rd-chart-bar {width:100%;min-height:4px;border-radius:7px 7px 3px 3px;background:linear-gradient(180deg,#3b82f6,#2563eb);transition:transform .2s,opacity .2s}
+.revenue-dashboard .rd-chart-bar:hover {transform:scaleY(1.025);opacity:.82}
+.revenue-dashboard .rd-chart-label {color:var(--muted);font-size:.65rem;font-weight:600;margin-top:8px;white-space:nowrap}
+.revenue-dashboard .rd-table {margin:0}
+.revenue-dashboard .rd-table thead th {color:#94a3b8;font-size:.67rem;text-transform:uppercase;letter-spacing:.055em;font-weight:750;border-bottom:1px solid #eef1f5;padding:10px 9px;white-space:nowrap}
+.revenue-dashboard .rd-table tbody td {color:#334155;font-size:.78rem;padding:11px 9px;border-bottom:1px solid #f1f5f9;vertical-align:middle}
+.revenue-dashboard .rd-table tbody tr:last-child td {border-bottom:0}
+.revenue-dashboard .rd-table a {color:var(--blue);text-decoration:none;font-weight:650}
+.revenue-dashboard .rd-method {display:inline-flex;padding:4px 8px;border-radius:999px;background:#eff6ff;color:#1d4ed8;font-size:.65rem;font-weight:700}
+.revenue-dashboard .rd-money {font-weight:800;color:var(--navy);white-space:nowrap}
+.revenue-dashboard .rd-money.green {color:var(--green)}
+.revenue-dashboard .rd-rank {width:27px;height:27px;display:grid;place-items:center;border-radius:8px;background:#f1f5f9;color:#475569;font-size:.7rem;font-weight:800}
+.revenue-dashboard .rd-rank.first{background:#fef3c7;color:#92400e}.revenue-dashboard .rd-rank.second{background:#e2e8f0;color:#334155}.revenue-dashboard .rd-rank.third{background:#ffedd5;color:#9a3412}
+.revenue-dashboard .rd-period-badge {display:inline-flex;gap:6px;padding:6px 10px;border-radius:999px;background:#eff6ff;color:#1d4ed8;font-size:.7rem;font-weight:700}
+@media(max-width:991.98px){.revenue-dashboard .rd-status-grid{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:767.98px){
+ .revenue-dashboard{margin:-.75rem;padding:.75rem}.revenue-dashboard .rd-header{padding:20px;border-radius:15px}
+ .revenue-dashboard .rd-header h1{font-size:1.25rem}.revenue-dashboard .rd-filter{padding:13px}
+ .revenue-dashboard .rd-filter .btn-group{display:grid;grid-template-columns:repeat(2,1fr);width:100%}
+ .revenue-dashboard .rd-filter .btn{margin:2px}.revenue-dashboard .rd-kpi{padding:15px}
+ .revenue-dashboard .rd-kpi-value{font-size:1.15rem}.revenue-dashboard .rd-chart{height:250px;gap:3px}
+ .revenue-dashboard .rd-chart-track{height:185px}.revenue-dashboard .rd-chart-value{display:none}
+ .revenue-dashboard .rd-chart-label{font-size:.58rem}.revenue-dashboard .rd-card-body{padding:12px}
+ .revenue-dashboard .rd-table thead th,.revenue-dashboard .rd-table tbody td{font-size:.68rem;padding:9px 6px}
+}
+@media print{
+ .revenue-dashboard{margin:0;padding:0;background:#fff}.revenue-dashboard .rd-filter{display:none}
+ .revenue-dashboard .rd-header{color:#000;background:#fff;box-shadow:none;border:1px solid #ddd}
+ .revenue-dashboard .rd-card,.revenue-dashboard .rd-kpi{box-shadow:none}
+}
+</style>
+
+
+<div class="revenue-dashboard">
+<div class="rd-header">
+ <div class="d-flex flex-wrap justify-content-between align-items-start gap-3">
+  <div>
+   <h1><i class="fas fa-chart-line me-2"></i>Revenue Dashboard</h1>
+   <p>Monitor revenue, collections, invoices and patient spending.</p>
+   <span class="rd-period"><i class="fas fa-calendar-check"></i>{{ start_date_display }} — {{ end_date_display }}</span>
+  </div>
+  <div class="text-end"><small style="color:rgba(255,255,255,.58);font-size:.7rem;">REPORTING VIEW</small><strong class="d-block" style="font-size:.9rem;">Revenue Performance</strong></div>
+ </div>
 </div>
 
-<!-- Revenue Stats -->
-<div class="row mb-4">
-    <div class="col-md-3 mb-3">
-        <div class="revenue-stat period">
-            <div class="d-flex justify-content-between align-items-start">
-                <div>
-                    <div class="label">Period Revenue</div>
-                    <div class="amount text-primary">UGX {{ period_revenue|floatformat:0|intcomma }}</div>
-                    <small class="text-muted">{{ start_date_display }} - {{ end_date_display }}</small>
-                </div>
-                <div class="icon period">
-                    <i class="fas fa-chart-bar"></i>
-                </div>
-            </div>
-        </div>
-    </div>
-    <div class="col-md-3 mb-3">
-        <div class="revenue-stat total">
-            <div class="d-flex justify-content-between align-items-start">
-                <div>
-                    <div class="label">Total Revenue</div>
-                    <div class="amount">UGX {{ total_revenue|floatformat:0|intcomma }}</div>
-                    <small class="text-muted">All time</small>
-                </div>
-                <div class="icon total">
-                    <i class="fas fa-chart-line"></i>
-                </div>
-            </div>
-        </div>
-    </div>
-    <div class="col-md-3 mb-3">
-        <div class="revenue-stat daily">
-            <div class="d-flex justify-content-between align-items-start">
-                <div>
-                    <div class="label">Today's Revenue</div>
-                    <div class="amount">UGX {{ daily_revenue|floatformat:0|intcomma }}</div>
-                    <small class="text-muted">{{ today|date:"M d, Y" }}</small>
-                </div>
-                <div class="icon daily">
-                    <i class="fas fa-calendar-day"></i>
-                </div>
-            </div>
-        </div>
-    </div>
-    <div class="col-md-3 mb-3">
-        <div class="revenue-stat outstanding">
-            <div class="d-flex justify-content-between align-items-start">
-                <div>
-                    <div class="label">Outstanding Balance</div>
-                    <div class="amount text-danger">UGX {{ total_outstanding|floatformat:0|intcomma }}</div>
-                    <small class="text-muted">Pending payments</small>
-                </div>
-                <div class="icon outstanding">
-                    <i class="fas fa-clock"></i>
-                </div>
-            </div>
-        </div>
-    </div>
+<div class="rd-filter">
+ <div class="rd-filter-title"><i class="fas fa-sliders-h me-1"></i>Reporting Period</div>
+ <div class="btn-group flex-wrap mb-3" role="group">
+  <a href="?period=today" class="btn btn-outline-primary {% if period == 'today' %}active{% endif %}"><i class="fas fa-calendar-day me-1"></i>Today</a>
+  <a href="?period=this_week" class="btn btn-outline-primary {% if period == 'this_week' %}active{% endif %}"><i class="fas fa-calendar-week me-1"></i>This Week</a>
+  <a href="?period=this_month" class="btn btn-outline-primary {% if period == 'this_month' %}active{% endif %}"><i class="fas fa-calendar-alt me-1"></i>This Month</a>
+  <a href="?period=this_year" class="btn btn-outline-primary {% if period == 'this_year' %}active{% endif %}"><i class="fas fa-calendar me-1"></i>This Year</a>
+  <a href="?period=all" class="btn btn-outline-primary {% if period == 'all' %}active{% endif %}"><i class="fas fa-infinity me-1"></i>All Time</a>
+ </div>
+ <form method="get" class="row g-2 align-items-end">
+  <div class="col-12 col-md-4"><label class="form-label mb-1 small fw-semibold text-muted">Start date</label><input type="date" class="form-control" name="start_date" value="{{ start_date_str }}" required></div>
+  <div class="col-12 col-md-4"><label class="form-label mb-1 small fw-semibold text-muted">End date</label><input type="date" class="form-control" name="end_date" value="{{ end_date_str }}" required></div>
+  <div class="col-12 col-md-4"><button type="submit" class="btn btn-primary w-100"><i class="fas fa-filter me-1"></i>Apply Custom Range</button></div>
+ </form>
+ {% if period == 'custom' or start_date_str %}
+ <div class="mt-3 d-flex align-items-center flex-wrap gap-2"><span class="rd-period-badge"><i class="fas fa-calendar-check"></i>Showing {{ start_date_display }} to {{ end_date_display }}</span><a href="?period=this_month" class="btn btn-sm btn-light border"><i class="fas fa-times me-1"></i>Clear</a></div>
+ {% endif %}
 </div>
 
-<!-- Invoice Status -->
-<div class="row mb-4">
-    <div class="col-md-12">
-        <div class="card">
-            <div class="card-header">
-                <i class="fas fa-file-invoice"></i> Invoice Status ({{ start_date_display }} - {{ end_date_display }})
-            </div>
-            <div class="card-body">
-                <div class="row">
-                    <div class="col-md-3 text-center">
-                        <h3 class="text-primary">{{ total_invoices }}</h3>
-                        <p class="text-muted">Total Invoices</p>
-                    </div>
-                    <div class="col-md-3 text-center">
-                        <h3 class="text-success">{{ paid_invoices }}</h3>
-                        <p class="text-muted"><i class="fas fa-check-circle text-success"></i> Paid</p>
-                    </div>
-                    <div class="col-md-3 text-center">
-                        <h3 class="text-warning">{{ partially_paid_invoices }}</h3>
-                        <p class="text-muted"><i class="fas fa-clock text-warning"></i> Partially Paid</p>
-                    </div>
-                    <div class="col-md-3 text-center">
-                        <h3 class="text-danger">{{ overdue_invoices }}</h3>
-                        <p class="text-muted"><i class="fas fa-exclamation-circle text-danger"></i> Overdue</p>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
+<div class="row g-3 mb-4">
+ <div class="col-12 col-sm-6 col-xl-3"><div class="rd-kpi"><div class="d-flex justify-content-between align-items-start"><div><div class="rd-kpi-label">Period Revenue</div><div class="rd-kpi-value">UGX {{ period_revenue|floatformat:0|intcomma }}</div><div class="rd-kpi-meta">{{ start_date_display }} — {{ end_date_display }}</div></div><div class="rd-kpi-icon"><i class="fas fa-chart-column"></i></div></div></div></div>
+ <div class="col-12 col-sm-6 col-xl-3"><div class="rd-kpi green"><div class="d-flex justify-content-between align-items-start"><div><div class="rd-kpi-label">Today's Revenue</div><div class="rd-kpi-value">UGX {{ daily_revenue|floatformat:0|intcomma }}</div><div class="rd-kpi-meta">{{ today|date:"M d, Y" }}</div></div><div class="rd-kpi-icon"><i class="fas fa-calendar-day"></i></div></div></div></div>
+ <div class="col-12 col-sm-6 col-xl-3"><div class="rd-kpi purple"><div class="d-flex justify-content-between align-items-start"><div><div class="rd-kpi-label">Total Revenue</div><div class="rd-kpi-value">UGX {{ total_revenue|floatformat:0|intcomma }}</div><div class="rd-kpi-meta">All time</div></div><div class="rd-kpi-icon"><i class="fas fa-coins"></i></div></div></div></div>
+ <div class="col-12 col-sm-6 col-xl-3"><div class="rd-kpi red"><div class="d-flex justify-content-between align-items-start"><div><div class="rd-kpi-label">Outstanding Balance</div><div class="rd-kpi-value">UGX {{ total_outstanding|floatformat:0|intcomma }}</div><div class="rd-kpi-meta">Pending payments</div></div><div class="rd-kpi-icon"><i class="fas fa-hourglass-half"></i></div></div></div></div>
+</div>
+
+<div class="rd-card mb-4">
+ <div class="rd-card-header"><div class="rd-section-title"><i class="fas fa-file-invoice me-2 text-primary"></i>Invoice Performance</div><div class="rd-section-subtitle">{{ start_date_display }} — {{ end_date_display }}</div></div>
+ <div class="rd-card-body"><div class="rd-status-grid">
+  <div class="rd-status total"><div class="rd-status-number">{{ total_invoices }}</div><div class="rd-status-label">Total Invoices</div></div>
+  <div class="rd-status paid"><div class="rd-status-number">{{ paid_invoices }}</div><div class="rd-status-label"><i class="fas fa-check-circle me-1"></i>Paid</div></div>
+  <div class="rd-status partial"><div class="rd-status-number">{{ partially_paid_invoices }}</div><div class="rd-status-label"><i class="fas fa-clock me-1"></i>Partially Paid</div></div>
+  <div class="rd-status overdue"><div class="rd-status-number">{{ overdue_invoices }}</div><div class="rd-status-label"><i class="fas fa-circle-exclamation me-1"></i>Overdue</div></div>
+ </div></div>
 </div>
 
 <!-- Monthly Revenue Chart -->
 <div class="row mb-4">
     <div class="col-md-12">
-        <div class="card">
-            <div class="card-header">
+        <div class="rd-card">
+            <div class="rd-card-header">
                 <i class="fas fa-chart-bar text-primary"></i> Monthly Revenue (Last 12 Months)
             </div>
-            <div class="card-body">
+            <div class="rd-card-body">
                 {% if monthly_data %}
-                    <div class="chart-container">
+                    <div class="rd-chart">
                         {% for data in monthly_data %}
-                        <div class="chart-item">
+                        <div class="rd-chart-item">
                             {% if data.revenue > 0 %}
-                            <div class="chart-value">UGX {{ data.revenue|floatformat:0|intcomma }}</div>
+                            <div class="rd-chart-value">UGX {{ data.revenue|floatformat:0|intcomma }}</div>
                             {% endif %}
-                            <div class="chart-bar" 
+                            <div class="rd-chart-bar" 
                                  style="height: {% widthratio data.revenue max_monthly_revenue 100 %}%;
                                         {% if data.revenue == 0 %}opacity: 0.3;{% endif %}"
                                  title="UGX {{ data.revenue|floatformat:0|intcomma }}">
                             </div>
-                            <div class="chart-label">{{ data.month|slice:":3" }} {{ data.year|slice:"-2:" }}</div>
+                            <div class="rd-chart-label">{{ data.month|slice:":3" }} {{ data.year|slice:"-2:" }}</div>
                         </div>
                         {% endfor %}
                     </div>
@@ -310,19 +168,20 @@
     </div>
 </div>
 
+
 <!-- Recent Payments & Top Patients -->
 <div class="row">
     <!-- Recent Payments -->
     <div class="col-md-7">
-        <div class="card">
-            <div class="card-header">
+        <div class="rd-card">
+            <div class="rd-card-header">
                 <i class="fas fa-history text-primary"></i> Recent Payments
                 <span class="badge bg-secondary ms-2">{{ start_date_display }} - {{ end_date_display }}</span>
             </div>
-            <div class="card-body">
+            <div class="rd-card-body">
                 {% if recent_payments %}
                     <div class="table-responsive">
-                        <table class="table table-hover">
+                        <table class="table rd-table table-hover">
                             <thead>
                                 <tr>
                                     <th>Date</th>
@@ -344,7 +203,7 @@
                                     </td>
                                     <td><strong>UGX {{ payment.amount|floatformat:0|intcomma }}</strong></td>
                                     <td>
-                                        <span class="badge bg-info">
+                                        <span class="rd-method">
                                             {{ payment.get_payment_method_display }}
                                         </span>
                                     </td>
@@ -365,25 +224,25 @@
     
     <!-- Top Patients -->
     <div class="col-md-5">
-        <div class="card">
-            <div class="card-header">
+        <div class="rd-card">
+            <div class="rd-card-header">
                 <i class="fas fa-trophy text-warning"></i> Top Patients by Spending
                 <span class="badge bg-secondary ms-2">{{ start_date_display }} - {{ end_date_display }}</span>
             </div>
-            <div class="card-body">
+            <div class="rd-card-body">
                 {% if top_patients %}
                     <div class="list-group list-group-flush">
                     {% for patient in top_patients %}
                         <div class="list-group-item d-flex justify-content-between align-items-center">
                             <div>
-                                <span class="badge {% if forloop.counter == 1 %}bg-warning{% elif forloop.counter == 2 %}bg-secondary{% elif forloop.counter == 3 %}badge-bronze{% else %}bg-light text-dark{% endif %} me-2">
+                                <span class="rd-rank {% if forloop.counter == 1 %}first{% elif forloop.counter == 2 %}second{% elif forloop.counter == 3 %}third{% endif %} me-2">
                                     {{ forloop.counter }}
                                 </span>
                                 <strong>{{ patient.patient__first_name }} {{ patient.patient__last_name }}</strong>
                                 <br>
                                 <small class="text-muted">{{ patient.visit_count }} visit{{ patient.visit_count|pluralize }}</small>
                             </div>
-                            <span class="badge bg-success">
+                            <span class="rd-money green">
                                 UGX {{ patient.total_spent|floatformat:0|intcomma }}
                             </span>
                         </div>
@@ -399,35 +258,5 @@
         </div>
     </div>
 </div>
-
-<!-- Summary Cards Footer -->
-<div class="row mt-4">
-    <div class="col-md-12">
-        <div class="card">
-            <div class="card-header">
-                <i class="fas fa-info-circle text-primary"></i> Quick Summary
-            </div>
-            <div class="card-body">
-                <div class="row">
-                    <div class="col-md-3 text-center">
-                        <h4 class="text-primary">{{ total_invoices }}</h4>
-                        <small class="text-muted">Invoices</small>
-                    </div>
-                    <div class="col-md-3 text-center">
-                        <h4 class="text-success">{{ paid_invoices }}</h4>
-                        <small class="text-muted">Paid</small>
-                    </div>
-                    <div class="col-md-3 text-center">
-                        <h4 class="text-warning">{{ partially_paid_invoices }}</h4>
-                        <small class="text-muted">Partially Paid</small>
-                    </div>
-                    <div class="col-md-3 text-center">
-                        <h4 class="text-danger">{{ overdue_invoices }}</h4>
-                        <small class="text-muted">Overdue</small>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
 </div>
 {% endblock %}

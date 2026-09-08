@@ -4,440 +4,952 @@
 
 {% block page_title %}Balance Sheet{% endblock %}
 
-{% block extra_css %}
+{% block content %}
 <style>
-    .balance-sheet-container {
-        background: #f8f9fa;
-        min-height: 100vh;
-        padding: 20px 0;
+/* =========================================================
+   DORA'S DENTAL GEM — BALANCE SHEET
+   Presentation only: existing Django variables and calculations
+   are preserved.
+   ========================================================= */
+
+.balance-sheet-page {
+    --bs-ink: #182338;
+    --bs-muted: #6f7c90;
+    --bs-line: #e6ebf2;
+    --bs-bg: #f5f7fb;
+    --bs-card: #ffffff;
+    --bs-blue: #315efb;
+    --bs-blue-soft: #edf2ff;
+    --bs-green: #159b6d;
+    --bs-green-soft: #e9f8f1;
+    --bs-amber: #d99520;
+    --bs-amber-soft: #fff6df;
+    --bs-red: #d95360;
+    --bs-red-soft: #ffedf0;
+
+    min-height: 100vh;
+    padding: 24px;
+    background:
+        radial-gradient(circle at 90% 0%, rgba(49,94,251,.06), transparent 360px),
+        var(--bs-bg);
+    color: var(--bs-ink);
+}
+
+.balance-sheet-page .bs-shell {
+    max-width: 1450px;
+    margin: 0 auto;
+}
+
+/* Header */
+.balance-sheet-page .bs-header {
+    background: linear-gradient(135deg, #17243f 0%, #233d76 58%, #315efb 100%);
+    color: #fff;
+    border-radius: 22px;
+    padding: 25px 28px;
+    margin-bottom: 16px;
+    box-shadow: 0 15px 38px rgba(31, 53, 104, .18);
+    position: relative;
+    overflow: hidden;
+}
+
+.balance-sheet-page .bs-header::after {
+    content: "";
+    position: absolute;
+    width: 260px;
+    height: 260px;
+    right: -85px;
+    top: -125px;
+    border: 1px solid rgba(255,255,255,.13);
+    border-radius: 50%;
+    box-shadow:
+        0 0 0 38px rgba(255,255,255,.035),
+        0 0 0 76px rgba(255,255,255,.022);
+}
+
+.balance-sheet-page .bs-header-content {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 20px;
+}
+
+.balance-sheet-page .bs-heading {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+}
+
+.balance-sheet-page .bs-heading-icon {
+    width: 52px;
+    height: 52px;
+    display: grid;
+    place-items: center;
+    border-radius: 15px;
+    background: rgba(255,255,255,.13);
+    border: 1px solid rgba(255,255,255,.16);
+    font-size: 21px;
+}
+
+.balance-sheet-page .bs-header h2 {
+    margin: 0;
+    font-size: 24px;
+    font-weight: 800;
+    letter-spacing: -.4px;
+}
+
+.balance-sheet-page .bs-period {
+    margin-top: 5px;
+    color: rgba(255,255,255,.73);
+    font-size: 12px;
+}
+
+.balance-sheet-page .bs-header-actions {
+    display: flex;
+    gap: 8px;
+    position: relative;
+    z-index: 1;
+}
+
+.balance-sheet-page .bs-header-actions .btn {
+    border-radius: 10px;
+    padding: 9px 14px;
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.balance-sheet-page .bs-light-btn {
+    color: #fff;
+    background: rgba(255,255,255,.12);
+    border: 1px solid rgba(255,255,255,.18);
+}
+
+.balance-sheet-page .bs-light-btn:hover {
+    color: #fff;
+    background: rgba(255,255,255,.2);
+}
+
+/* Filter */
+.balance-sheet-page .bs-filter {
+    background: var(--bs-card);
+    border: 1px solid var(--bs-line);
+    border-radius: 17px;
+    padding: 16px;
+    margin-bottom: 16px;
+    box-shadow: 0 9px 28px rgba(31,45,61,.055);
+}
+
+.balance-sheet-page .bs-filter-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 15px;
+    margin-bottom: 12px;
+}
+
+.balance-sheet-page .bs-filter-title {
+    font-size: 12px;
+    font-weight: 800;
+    letter-spacing: .6px;
+    text-transform: uppercase;
+}
+
+.balance-sheet-page .bs-filter-title i {
+    color: var(--bs-blue);
+    margin-right: 6px;
+}
+
+.balance-sheet-page .bs-date-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    background: var(--bs-blue-soft);
+    color: #3153c8;
+    border-radius: 999px;
+    padding: 6px 11px;
+    font-size: 11px;
+    font-weight: 750;
+}
+
+.balance-sheet-page .bs-filter .form-label {
+    color: var(--bs-muted);
+    font-size: 11px;
+    font-weight: 650;
+}
+
+.balance-sheet-page .bs-filter .form-control {
+    height: 42px;
+    border-radius: 10px;
+    border: 1px solid #dce3ec;
+    box-shadow: none;
+    font-size: 12px;
+}
+
+.balance-sheet-page .bs-filter .form-control:focus {
+    border-color: var(--bs-blue);
+    box-shadow: 0 0 0 3px rgba(49,94,251,.1);
+}
+
+.balance-sheet-page .bs-apply {
+    height: 42px;
+    border: 0;
+    border-radius: 10px;
+    width: 100%;
+    background: var(--bs-blue);
+    font-size: 12px;
+    font-weight: 750;
+}
+
+/* KPI */
+.balance-sheet-page .bs-kpis {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 13px;
+    margin-bottom: 13px;
+}
+
+.balance-sheet-page .bs-kpi {
+    min-height: 132px;
+    background: var(--bs-card);
+    border: 1px solid var(--bs-line);
+    border-radius: 17px;
+    padding: 17px 18px;
+    box-shadow: 0 9px 28px rgba(31,45,61,.055);
+    position: relative;
+    overflow: hidden;
+}
+
+.balance-sheet-page .bs-kpi::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 4px;
+    background: var(--accent);
+}
+
+.balance-sheet-page .bs-kpi-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+}
+
+.balance-sheet-page .bs-kpi-label {
+    color: var(--bs-muted);
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: .65px;
+    text-transform: uppercase;
+}
+
+.balance-sheet-page .bs-kpi-icon {
+    width: 34px;
+    height: 34px;
+    display: grid;
+    place-items: center;
+    border-radius: 10px;
+    background: var(--tint);
+    color: var(--accent);
+    font-size: 13px;
+}
+
+.balance-sheet-page .bs-kpi-value {
+    margin-top: 13px;
+    font-size: clamp(18px, 2vw, 25px);
+    line-height: 1.15;
+    font-weight: 800;
+    letter-spacing: -.5px;
+    white-space: nowrap;
+}
+
+.balance-sheet-page .bs-kpi-sub {
+    margin-top: 5px;
+    color: var(--bs-muted);
+    font-size: 10px;
+}
+
+.balance-sheet-page .bs-revenue { --accent:#159b6d; --tint:#e9f8f1; }
+.balance-sheet-page .bs-paid { --accent:#315efb; --tint:#edf2ff; }
+.balance-sheet-page .bs-pending { --accent:#d99520; --tint:#fff6df; }
+.balance-sheet-page .bs-expenses { --accent:#d95360; --tint:#ffedf0; }
+
+/* Profit */
+.balance-sheet-page .bs-profit {
+    background: var(--bs-card);
+    border: 1px solid #dfe6f6;
+    border-radius: 17px;
+    padding: 18px 21px;
+    margin-bottom: 13px;
+    box-shadow: 0 9px 28px rgba(31,45,61,.055);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 20px;
+}
+
+.balance-sheet-page .bs-profit-main {
+    display: flex;
+    align-items: center;
+    gap: 13px;
+}
+
+.balance-sheet-page .bs-profit-icon {
+    width: 45px;
+    height: 45px;
+    display: grid;
+    place-items: center;
+    border-radius: 13px;
+    background: var(--bs-blue-soft);
+    color: var(--bs-blue);
+}
+
+.balance-sheet-page .bs-profit-label {
+    color: var(--bs-muted);
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: .65px;
+    text-transform: uppercase;
+}
+
+.balance-sheet-page .bs-profit-value {
+    margin-top: 3px;
+    font-size: 24px;
+    font-weight: 800;
+    letter-spacing: -.4px;
+}
+
+.balance-sheet-page .bs-profit-sub {
+    color: var(--bs-muted);
+    font-size: 10px;
+}
+
+.balance-sheet-page .bs-profit-status {
+    border-radius: 999px;
+    padding: 8px 14px;
+    font-size: 11px;
+    font-weight: 750;
+}
+
+/* Detail cards */
+.balance-sheet-page .bs-details {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0,1fr));
+    gap: 13px;
+}
+
+.balance-sheet-page .bs-card {
+    background: var(--bs-card);
+    border: 1px solid var(--bs-line);
+    border-radius: 17px;
+    overflow: hidden;
+    box-shadow: 0 9px 28px rgba(31,45,61,.055);
+}
+
+.balance-sheet-page .bs-card-head {
+    padding: 15px 18px;
+    border-bottom: 1px solid var(--bs-line);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+}
+
+.balance-sheet-page .bs-card-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+    font-weight: 800;
+}
+
+.balance-sheet-page .bs-card-title i {
+    color: var(--bs-blue);
+}
+
+.balance-sheet-page .bs-card-body {
+    padding: 5px 18px 14px;
+}
+
+.balance-sheet-page .bs-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 15px;
+    padding: 12px 0;
+    border-bottom: 1px solid #f0f3f7;
+}
+
+.balance-sheet-page .bs-row:last-child {
+    border-bottom: 0;
+}
+
+.balance-sheet-page .bs-row-label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: #566377;
+    font-size: 11px;
+    font-weight: 600;
+}
+
+.balance-sheet-page .bs-row-value {
+    color: var(--bs-ink);
+    font-size: 12px;
+    font-weight: 750;
+    text-align: right;
+}
+
+.balance-sheet-page .bs-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    flex: 0 0 auto;
+    background: var(--dot);
+}
+
+.balance-sheet-page .bs-total {
+    border-top: 2px solid #e5eaf2;
+    margin-top: 3px;
+    padding-top: 14px;
+}
+
+.balance-sheet-page .bs-total .bs-row-label {
+    color: var(--bs-ink);
+    font-weight: 800;
+}
+
+.balance-sheet-page .bs-total .bs-row-value {
+    color: var(--bs-blue);
+    font-size: 14px;
+    font-weight: 850;
+}
+
+/* Invoice status */
+.balance-sheet-page .bs-status-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 9px;
+    padding: 13px 0 10px;
+}
+
+.balance-sheet-page .bs-status {
+    text-align: center;
+    padding: 13px 6px;
+    border-radius: 12px;
+    background: #f7f9fc;
+}
+
+.balance-sheet-page .bs-status-number {
+    font-size: 20px;
+    line-height: 1;
+    font-weight: 850;
+}
+
+.balance-sheet-page .bs-status-label {
+    margin-top: 6px;
+    color: var(--bs-muted);
+    font-size: 9px;
+    font-weight: 750;
+    letter-spacing: .35px;
+    text-transform: uppercase;
+}
+
+.balance-sheet-page .status-total { color: var(--bs-blue); }
+.balance-sheet-page .status-paid { color: var(--bs-green); }
+.balance-sheet-page .status-pending { color: var(--bs-amber); }
+
+.balance-sheet-page .bs-status-bar {
+    display: flex;
+    height: 7px;
+    overflow: hidden;
+    border-radius: 999px;
+    background: #edf0f4;
+    margin: 3px 0 9px;
+}
+
+.balance-sheet-page .bs-status-bar > span {
+    height: 100%;
+    display: block;
+}
+
+.balance-sheet-page .bs-bar-paid { background: #159b6d; }
+.balance-sheet-page .bs-bar-pending { background: #d99520; }
+
+.balance-sheet-page .bs-empty {
+    text-align: center;
+    padding: 26px 8px;
+    color: #9aa5b5;
+    font-size: 11px;
+}
+
+.balance-sheet-page .bs-empty i {
+    display: block;
+    margin-bottom: 7px;
+    font-size: 22px;
+    opacity: .45;
+}
+
+.balance-sheet-page .bs-footer {
+    text-align: center;
+    margin-top: 13px;
+    color: #9aa5b5;
+    font-size: 9px;
+}
+
+/* Print */
+@media print {
+    .no-print { display: none !important; }
+
+    .balance-sheet-page {
+        padding: 0 !important;
+        background: #fff !important;
     }
-    
-    .balance-sheet-header {
-        background: white;
-        border-radius: 16px;
-        padding: 25px 30px;
-        margin-bottom: 25px;
-        box-shadow: 0 2px 15px rgba(0,0,0,0.05);
+
+    .balance-sheet-page .bs-shell {
+        max-width: none;
     }
-    
-    .balance-sheet-header h3 {
-        font-family: 'Playfair Display', serif;
-        color: #2d3436;
-        margin: 0;
+
+    .balance-sheet-page .bs-header {
+        color: #111 !important;
+        background: #fff !important;
+        border: 2px solid #222 !important;
+        box-shadow: none !important;
     }
-    
-    .balance-sheet-header .subtitle {
-        color: #636e72;
-        font-size: 14px;
+
+    .balance-sheet-page .bs-period {
+        color: #555 !important;
     }
-    
-    .filter-card {
-        background: white;
-        border-radius: 16px;
-        padding: 20px 25px;
-        margin-bottom: 25px;
-        box-shadow: 0 2px 15px rgba(0,0,0,0.05);
+
+    .balance-sheet-page .bs-heading-icon {
+        color: #222 !important;
+        background: #f4f4f4 !important;
+        border-color: #ddd !important;
     }
-    
-    .filter-card .btn-group .btn {
-        border-radius: 8px;
-        padding: 8px 20px;
-        font-weight: 500;
+
+    .balance-sheet-page .bs-card,
+    .balance-sheet-page .bs-kpi,
+    .balance-sheet-page .bs-profit,
+    .balance-sheet-page .bs-filter {
+        box-shadow: none !important;
+        break-inside: avoid;
     }
-    
-    .filter-card .btn-group .btn.active {
-        background: linear-gradient(135deg, #667eea, #764ba2);
-        color: white;
-        border-color: #667eea;
+}
+
+/* Responsive */
+@media (max-width: 992px) {
+    .balance-sheet-page .bs-kpis {
+        grid-template-columns: repeat(2, 1fr);
     }
-    
-    .stat-card {
-        background: white;
-        border-radius: 16px;
-        padding: 20px 25px;
-        box-shadow: 0 2px 15px rgba(0,0,0,0.05);
-        height: 100%;
-        transition: all 0.3s;
-        border-left: 4px solid #667eea;
+}
+
+@media (max-width: 768px) {
+    .balance-sheet-page {
+        padding: 12px;
     }
-    
-    .stat-card:hover {
-        transform: translateY(-3px);
-        box-shadow: 0 8px 30px rgba(0,0,0,0.1);
+
+    .balance-sheet-page .bs-header {
+        padding: 19px;
+        border-radius: 17px;
     }
-    
-    .stat-card .stat-label {
-        color: #636e72;
-        font-size: 13px;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-        font-weight: 600;
+
+    .balance-sheet-page .bs-header-content {
+        align-items: flex-start;
+        flex-direction: column;
     }
-    
-    .stat-card .stat-value {
-        font-size: 28px;
-        font-weight: 700;
-        margin: 5px 0;
-        color: #2d3436;
-    }
-    
-    .stat-card .stat-sub {
-        color: #b2bec3;
-        font-size: 12px;
-    }
-    
-    .stat-card.revenue { border-left-color: #00b894; }
-    .stat-card.revenue .stat-value { color: #00b894; }
-    
-    .stat-card.expenses { border-left-color: #e74c3c; }
-    .stat-card.expenses .stat-value { color: #e74c3c; }
-    
-    .stat-card.profit { border-left-color: #667eea; }
-    .stat-card.profit .stat-value { color: #667eea; }
-    
-    .stat-card.pending { border-left-color: #fdcb6e; }
-    .stat-card.pending .stat-value { color: #fdcb6e; }
-    
-    .stat-card.paid { border-left-color: #2ecc71; }
-    .stat-card.paid .stat-value { color: #2ecc71; }
-    
-    .stat-card.invoices { border-left-color: #0984e3; }
-    .stat-card.invoices .stat-value { color: #0984e3; }
-    
-    .detail-card {
-        background: white;
-        border-radius: 16px;
-        box-shadow: 0 2px 15px rgba(0,0,0,0.05);
-        overflow: hidden;
-        margin-bottom: 25px;
-    }
-    
-    .detail-card .card-header {
-        background: white;
-        padding: 15px 25px;
-        border-bottom: 2px solid #f0f2f5;
-        font-weight: 600;
-        font-size: 16px;
-        color: #2d3436;
-    }
-    
-    .detail-card .card-header i {
-        margin-right: 10px;
-        color: #667eea;
-    }
-    
-    .detail-card .card-body {
-        padding: 20px 25px;
-    }
-    
-    .summary-table {
+
+    .balance-sheet-page .bs-header-actions {
         width: 100%;
     }
-    
-    .summary-table tr td {
-        padding: 12px 0;
-        border-bottom: 1px solid #f0f2f5;
-    }
-    
-    .summary-table tr:last-child td {
-        border-bottom: none;
-    }
-    
-    .summary-table .label {
-        color: #636e72;
-        font-weight: 500;
-    }
-    
-    .summary-table .value {
-        font-weight: 600;
-        text-align: right;
-    }
-    
-    .summary-table .value.positive { color: #00b894; }
-    .summary-table .value.negative { color: #e74c3c; }
-    .summary-table .value.total { color: #667eea; font-size: 18px; }
-    
-    .badge-status {
-        padding: 4px 12px;
-        border-radius: 20px;
-        font-size: 12px;
-        font-weight: 500;
-    }
-    .badge-status.paid { background: #e8f5e9; color: #2e7d32; }
-    .badge-status.partially_paid { background: #fff3e0; color: #e65100; }
-    .badge-status.draft { background: #f5f5f5; color: #616161; }
-    .badge-status.sent { background: #e3f2fd; color: #1976d2; }
-    .badge-status.overdue { background: #fce4ec; color: #c62828; }
-    
-    .period-badge {
-        background: linear-gradient(135deg, #667eea, #764ba2);
-        color: white;
-        padding: 5px 15px;
-        border-radius: 20px;
-        font-size: 13px;
-        font-weight: 500;
-    }
-    
-    .print-btn {
-        background: #2d3436;
-        color: white;
-        border: none;
-        padding: 8px 20px;
-        border-radius: 8px;
-        font-weight: 500;
-        transition: all 0.3s;
-    }
-    
-    .print-btn:hover {
-        background: #1a1a2e;
-        color: white;
-    }
-    
-    @media print {
-        .no-print { display: none !important; }
-        .balance-sheet-container { background: white !important; padding: 0 !important; }
-        .stat-card { box-shadow: none !important; border: 1px solid #ddd !important; }
-        .detail-card { box-shadow: none !important; border: 1px solid #ddd !important; }
-        .filter-card { box-shadow: none !important; border: 1px solid #ddd !important; }
-    }
-</style>
-{% endblock %}
 
-{% block content %}
-<div class="balance-sheet-container">
-    <!-- Header -->
-    <div class="balance-sheet-header">
-        <div class="d-flex justify-content-between align-items-center flex-wrap">
-            <div>
-                <h3><i class="fas fa-balance-scale text-primary"></i> Balance Sheet</h3>
-                <div class="subtitle">
-                    <i class="fas fa-calendar-alt me-1"></i>
-                    {{ start_date_display }} - {{ end_date_display }}
-                </div>
-            </div>
-            <div>
-                <button onclick="window.print()" class="print-btn no-print">
-                    <i class="fas fa-print"></i> Print
-                </button>
-                <a href="{% url 'billing:balance_sheet' %}" class="btn btn-secondary no-print ms-2">
-                    <i class="fas fa-redo"></i> Reset
-                </a>
-            </div>
-        </div>
-    </div>
-    
-    <!-- Filter -->
-    <div class="filter-card no-print">
-        <div class="row align-items-center">
-            <div class="col-md-3">
-                <strong><i class="fas fa-calendar-range"></i> Date Range:</strong>
-            </div>
-            <div class="col-md-9">
-                <form method="get" class="row g-2">
-                    <div class="col-md-4">
-                        <input type="date" class="form-control" name="start_date" value="{{ start_date_str }}">
-                    </div>
-                    <div class="col-md-4">
-                        <input type="date" class="form-control" name="end_date" value="{{ end_date_str }}">
-                    </div>
-                    <div class="col-md-4">
-                        <button type="submit" class="btn btn-primary w-100">
-                            <i class="fas fa-filter"></i> Apply Filter
-                        </button>
-                    </div>
-                </form>
-            </div>
-        </div>
-        <div class="row mt-2">
-            <div class="col-md-12">
-                <span class="period-badge">
-                    <i class="fas fa-calendar-check"></i> 
-                    {{ start_date_display }} - {{ end_date_display }}
-                </span>
-                <a href="{% url 'billing:balance_sheet' %}" class="btn btn-sm btn-secondary ms-2 no-print">
-                    <i class="fas fa-times"></i> Clear
-                </a>
-            </div>
-        </div>
-    </div>
-    
-    <!-- Statistics Cards -->
-    <div class="row g-3 mb-4">
-        <div class="col-md-3 col-6">
-            <div class="stat-card revenue">
-                <div class="stat-label"><i class="fas fa-arrow-up"></i> Total Revenue</div>
-                <div class="stat-value">UGX {{ total_revenue|floatformat:0|intcomma }}</div>
-                <div class="stat-sub">{{ total_invoices }} invoices</div>
-            </div>
-        </div>
-        <div class="col-md-3 col-6">
-            <div class="stat-card paid">
-                <div class="stat-label"><i class="fas fa-check-circle"></i> Paid Amount</div>
-                <div class="stat-value">UGX {{ paid_amount|floatformat:0|intcomma }}</div>
-                <div class="stat-sub">Completed payments</div>
-            </div>
-        </div>
-        <div class="col-md-3 col-6">
-            <div class="stat-card pending">
-                <div class="stat-label"><i class="fas fa-clock"></i> Outstanding</div>
-                <div class="stat-value">UGX {{ pending_amount|floatformat:0|intcomma }}</div>
-                <div class="stat-sub">Pending balance</div>
-            </div>
-        </div>
-        <div class="col-md-3 col-6">
-            <div class="stat-card expenses">
-                <div class="stat-label"><i class="fas fa-arrow-down"></i> Total Expenses</div>
-                <div class="stat-value">UGX {{ total_expenses|floatformat:0|intcomma }}</div>
-                <div class="stat-sub">Operating costs</div>
-            </div>
-        </div>
-    </div>
-    
-    <!-- Net Profit -->
-    <div class="row g-3 mb-4">
-        <div class="col-md-12">
-            <div class="stat-card profit">
-                <div class="d-flex justify-content-between align-items-center">
-                    <div>
-                        <div class="stat-label"><i class="fas fa-chart-line"></i> Net Profit / Loss</div>
-                        <div class="stat-value">UGX {{ net_profit|floatformat:0|intcomma }}</div>
-                        <div class="stat-sub">Revenue - Expenses</div>
+    .balance-sheet-page .bs-header-actions .btn {
+        flex: 1;
+    }
+
+    .balance-sheet-page .bs-details {
+        grid-template-columns: 1fr;
+    }
+
+    .balance-sheet-page .bs-profit {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+}
+
+@media (max-width: 520px) {
+    .balance-sheet-page .bs-kpis {
+        gap: 8px;
+    }
+
+    .balance-sheet-page .bs-kpi {
+        min-height: 120px;
+        padding: 13px;
+        border-radius: 14px;
+    }
+
+    .balance-sheet-page .bs-kpi-value {
+        font-size: 16px;
+    }
+
+    .balance-sheet-page .bs-kpi-icon {
+        width: 30px;
+        height: 30px;
+    }
+
+    .balance-sheet-page .bs-filter-head {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+}
+</style>
+
+<div class="balance-sheet-page">
+    <div class="bs-shell">
+
+        <!-- BALANCE SHEET HEADER -->
+        <section class="bs-header">
+            <div class="bs-header-content">
+                <div class="bs-heading">
+                    <div class="bs-heading-icon">
+                        <i class="fas fa-balance-scale"></i>
                     </div>
                     <div>
-                        <span class="badge {% if net_profit >= 0 %}bg-success{% else %}bg-danger{% endif %}" style="font-size: 16px; padding: 8px 20px;">
-                            {% if net_profit >= 0 %}
-                                <i class="fas fa-arrow-up"></i> Profit
-                            {% else %}
-                                <i class="fas fa-arrow-down"></i> Loss
-                            {% endif %}
-                        </span>
+                        <h2>Balance Sheet</h2>
+                        <div class="bs-period">
+                            <i class="fas fa-calendar-alt me-1"></i>
+                            {{ start_date_display }} — {{ end_date_display }}
+                        </div>
                     </div>
                 </div>
-            </div>
-        </div>
-    </div>
-    
-    <!-- Detailed Breakdown -->
-    <div class="row g-3">
-        <!-- Financial Summary -->
-        <div class="col-md-6">
-            <div class="detail-card">
-                <div class="card-header">
-                    <i class="fas fa-file-invoice-dollar"></i> Financial Summary
-                </div>
-                <div class="card-body">
-                    <table class="summary-table">
-                        <tr>
-                            <td class="label">Total Revenue</td>
-                            <td class="value positive">UGX {{ total_revenue|floatformat:0|intcomma }}</td>
-                        </tr>
-                        <tr>
-                            <td class="label">Total Expenses</td>
-                            <td class="value negative">UGX {{ total_expenses|floatformat:0|intcomma }}</td>
-                        </tr>
-                        <tr>
-                            <td class="label">Paid Amount</td>
-                            <td class="value positive">UGX {{ paid_amount|floatformat:0|intcomma }}</td>
-                        </tr>
-                        <tr>
-                            <td class="label">Outstanding Balance</td>
-                            <td class="value negative">UGX {{ pending_amount|floatformat:0|intcomma }}</td>
-                        </tr>
-                        <tr style="border-top: 2px solid #667eea;">
-                            <td class="label" style="font-weight: 700;">Net Profit / Loss</td>
-                            <td class="value total {% if net_profit >= 0 %}positive{% else %}negative{% endif %}">
-                                UGX {{ net_profit|floatformat:0|intcomma }}
-                            </td>
-                        </tr>
-                    </table>
+
+                <div class="bs-header-actions no-print">
+                    <button onclick="window.print()" class="btn bs-light-btn">
+                        <i class="fas fa-print me-1"></i> Print
+                    </button>
+                    <a href="{% url 'billing:balance_sheet' %}" class="btn bs-light-btn">
+                        <i class="fas fa-redo me-1"></i> Reset
+                    </a>
                 </div>
             </div>
-        </div>
-        
-        <!-- Revenue by Payment Method -->
-        <div class="col-md-6">
-            <div class="detail-card">
-                <div class="card-header">
-                    <i class="fas fa-credit-card"></i> Revenue by Payment Method
+        </section>
+
+        <!-- REPORTING PERIOD -->
+        <section class="bs-filter no-print">
+            <div class="bs-filter-head">
+                <div class="bs-filter-title">
+                    <i class="fas fa-calendar-range"></i>
+                    Reporting Period
                 </div>
-                <div class="card-body">
+                <div class="bs-date-pill">
+                    <i class="fas fa-calendar-check"></i>
+                    {{ start_date_display }} — {{ end_date_display }}
+                </div>
+            </div>
+
+            <form method="get" class="row g-2 align-items-end">
+                <div class="col-md-4">
+                    <label class="form-label mb-1">Start Date</label>
+                    <input type="date" class="form-control" name="start_date" value="{{ start_date_str }}">
+                </div>
+
+                <div class="col-md-4">
+                    <label class="form-label mb-1">End Date</label>
+                    <input type="date" class="form-control" name="end_date" value="{{ end_date_str }}">
+                </div>
+
+                <div class="col-md-4">
+                    <button type="submit" class="btn btn-primary bs-apply">
+                        <i class="fas fa-filter me-1"></i> Apply Date Range
+                    </button>
+                </div>
+            </form>
+        </section>
+
+        <!-- FINANCIAL POSITION SUMMARY -->
+        <section class="bs-kpis">
+
+            <div class="bs-kpi bs-revenue">
+                <div class="bs-kpi-top">
+                    <div class="bs-kpi-label">Total Revenue</div>
+                    <div class="bs-kpi-icon">
+                        <i class="fas fa-arrow-trend-up"></i>
+                    </div>
+                </div>
+                <div class="bs-kpi-value">
+                    UGX {{ total_revenue|floatformat:0|intcomma }}
+                </div>
+                <div class="bs-kpi-sub">{{ total_invoices }} invoices in this period</div>
+            </div>
+
+            <div class="bs-kpi bs-paid">
+                <div class="bs-kpi-top">
+                    <div class="bs-kpi-label">Paid Amount</div>
+                    <div class="bs-kpi-icon">
+                        <i class="fas fa-circle-check"></i>
+                    </div>
+                </div>
+                <div class="bs-kpi-value">
+                    UGX {{ paid_amount|floatformat:0|intcomma }}
+                </div>
+                <div class="bs-kpi-sub">Completed payments</div>
+            </div>
+
+            <div class="bs-kpi bs-pending">
+                <div class="bs-kpi-top">
+                    <div class="bs-kpi-label">Outstanding</div>
+                    <div class="bs-kpi-icon">
+                        <i class="fas fa-clock"></i>
+                    </div>
+                </div>
+                <div class="bs-kpi-value">
+                    UGX {{ pending_amount|floatformat:0|intcomma }}
+                </div>
+                <div class="bs-kpi-sub">Pending balance</div>
+            </div>
+
+            <div class="bs-kpi bs-expenses">
+                <div class="bs-kpi-top">
+                    <div class="bs-kpi-label">Total Expenses</div>
+                    <div class="bs-kpi-icon">
+                        <i class="fas fa-receipt"></i>
+                    </div>
+                </div>
+                <div class="bs-kpi-value">
+                    UGX {{ total_expenses|floatformat:0|intcomma }}
+                </div>
+                <div class="bs-kpi-sub">Operating costs</div>
+            </div>
+
+        </section>
+
+        <!-- NET PROFIT / LOSS -->
+        <section class="bs-profit">
+            <div class="bs-profit-main">
+                <div class="bs-profit-icon">
+                    <i class="fas fa-chart-line"></i>
+                </div>
+                <div>
+                    <div class="bs-profit-label">Net Profit / Loss</div>
+                    <div class="bs-profit-value {% if net_profit >= 0 %}text-success{% else %}text-danger{% endif %}">
+                        UGX {{ net_profit|floatformat:0|intcomma }}
+                    </div>
+                    <div class="bs-profit-sub">Revenue minus operating expenses</div>
+                </div>
+            </div>
+
+            <span class="bs-profit-status {% if net_profit >= 0 %}bg-success{% else %}bg-danger{% endif %} text-white">
+                {% if net_profit >= 0 %}
+                    <i class="fas fa-arrow-up me-1"></i> Profit
+                {% else %}
+                    <i class="fas fa-arrow-down me-1"></i> Loss
+                {% endif %}
+            </span>
+        </section>
+
+        <!-- DETAILED BALANCE SHEET -->
+        <section class="bs-details">
+
+            <!-- FINANCIAL SUMMARY -->
+            <div class="bs-card">
+                <div class="bs-card-head">
+                    <div class="bs-card-title">
+                        <i class="fas fa-file-invoice-dollar"></i>
+                        Financial Summary
+                    </div>
+                </div>
+
+                <div class="bs-card-body">
+
+                    <div class="bs-row">
+                        <div class="bs-row-label">
+                            <span class="bs-dot" style="--dot:#159b6d"></span>
+                            Total Revenue
+                        </div>
+                        <div class="bs-row-value text-success">
+                            UGX {{ total_revenue|floatformat:0|intcomma }}
+                        </div>
+                    </div>
+
+                    <div class="bs-row">
+                        <div class="bs-row-label">
+                            <span class="bs-dot" style="--dot:#d95360"></span>
+                            Total Expenses
+                        </div>
+                        <div class="bs-row-value text-danger">
+                            UGX {{ total_expenses|floatformat:0|intcomma }}
+                        </div>
+                    </div>
+
+                    <div class="bs-row">
+                        <div class="bs-row-label">
+                            <span class="bs-dot" style="--dot:#315efb"></span>
+                            Paid Amount
+                        </div>
+                        <div class="bs-row-value text-primary">
+                            UGX {{ paid_amount|floatformat:0|intcomma }}
+                        </div>
+                    </div>
+
+                    <div class="bs-row">
+                        <div class="bs-row-label">
+                            <span class="bs-dot" style="--dot:#d99520"></span>
+                            Outstanding Balance
+                        </div>
+                        <div class="bs-row-value text-warning">
+                            UGX {{ pending_amount|floatformat:0|intcomma }}
+                        </div>
+                    </div>
+
+                    <div class="bs-row bs-total">
+                        <div class="bs-row-label">Net Profit / Loss</div>
+                        <div class="bs-row-value {% if net_profit >= 0 %}text-success{% else %}text-danger{% endif %}">
+                            UGX {{ net_profit|floatformat:0|intcomma }}
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+
+            <!-- PAYMENT METHOD -->
+            <div class="bs-card">
+                <div class="bs-card-head">
+                    <div class="bs-card-title">
+                        <i class="fas fa-credit-card"></i>
+                        Revenue by Payment Method
+                    </div>
+                </div>
+
+                <div class="bs-card-body">
                     {% if revenue_by_method %}
-                        <table class="summary-table">
-                            {% for method in revenue_by_method %}
-                            <tr>
-                                <td class="label">
-                                    <i class="fas fa-circle" style="color: #667eea; font-size: 10px;"></i>
-                                    {{ method.get_payment_method_display|default:"Not specified" }}
-                                </td>
-                                <td class="value">UGX {{ method.total|floatformat:0|intcomma }}</td>
-                            </tr>
-                            {% endfor %}
-                            <tr style="border-top: 2px solid #667eea;">
-                                <td class="label" style="font-weight: 700;">Total</td>
-                                <td class="value total">UGX {{ total_revenue|floatformat:0|intcomma }}</td>
-                            </tr>
-                        </table>
+                        {% for method in revenue_by_method %}
+                        <div class="bs-row">
+                            <div class="bs-row-label">
+                                <span class="bs-dot" style="--dot:#315efb"></span>
+                                {{ method.get_payment_method_display|default:"Not specified" }}
+                            </div>
+                            <div class="bs-row-value">
+                                UGX {{ method.total|floatformat:0|intcomma }}
+                            </div>
+                        </div>
+                        {% endfor %}
+
+                        <div class="bs-row bs-total">
+                            <div class="bs-row-label">Total</div>
+                            <div class="bs-row-value">
+                                UGX {{ total_revenue|floatformat:0|intcomma }}
+                            </div>
+                        </div>
                     {% else %}
-                        <p class="text-muted text-center py-3">No payment data available.</p>
+                        <div class="bs-empty">
+                            <i class="fas fa-credit-card"></i>
+                            No payment data available for this period.
+                        </div>
                     {% endif %}
                 </div>
             </div>
-        </div>
-        
-        <!-- Expenses by Category -->
-        <div class="col-md-6">
-            <div class="detail-card">
-                <div class="card-header">
-                    <i class="fas fa-receipt"></i> Expenses by Category
-                </div>
-                <div class="card-body">
-                    {% if expenses_by_category %}
-                        <table class="summary-table">
-                            {% for expense in expenses_by_category %}
-                            <tr>
-                                <td class="label">
-                                    <i class="fas fa-circle" style="color: #e74c3c; font-size: 10px;"></i>
-                                    {{ expense.get_category_display }}
-                                </td>
-                                <td class="value negative">UGX {{ expense.total|floatformat:0|intcomma }}</td>
-                            </tr>
-                            {% endfor %}
-                            <tr style="border-top: 2px solid #667eea;">
-                                <td class="label" style="font-weight: 700;">Total Expenses</td>
-                                <td class="value total">UGX {{ total_expenses|floatformat:0|intcomma }}</td>
-                            </tr>
-                        </table>
-                    {% else %}
-                        <p class="text-muted text-center py-3">No expense data available.</p>
-                    {% endif %}
-                </div>
-            </div>
-        </div>
-        
-        <!-- Invoice Status Summary -->
-        <div class="col-md-6">
-            <div class="detail-card">
-                <div class="card-header">
-                    <i class="fas fa-file-invoice"></i> Invoice Status Summary
-                </div>
-                <div class="card-body">
-                    <div class="row text-center">
-                        <div class="col-4">
-                            <h4 class="text-primary">{{ total_invoices }}</h4>
-                            <small class="text-muted">Total</small>
-                        </div>
-                        <div class="col-4">
-                            <h4 class="text-success">{{ paid_invoices|default:0 }}</h4>
-                            <small class="text-muted">Paid</small>
-                        </div>
-                        <div class="col-4">
-                            <h4 class="text-warning">{{ pending_invoices|default:0 }}</h4>
-                            <small class="text-muted">Pending</small>
-                        </div>
+
+            <!-- EXPENSES -->
+            <div class="bs-card">
+                <div class="bs-card-head">
+                    <div class="bs-card-title">
+                        <i class="fas fa-receipt"></i>
+                        Expenses by Category
                     </div>
                 </div>
+
+                <div class="bs-card-body">
+                    {% if expenses_by_category %}
+                        {% for expense in expenses_by_category %}
+                        <div class="bs-row">
+                            <div class="bs-row-label">
+                                <span class="bs-dot" style="--dot:#d95360"></span>
+                                {{ expense.get_category_display }}
+                            </div>
+                            <div class="bs-row-value text-danger">
+                                UGX {{ expense.total|floatformat:0|intcomma }}
+                            </div>
+                        </div>
+                        {% endfor %}
+
+                        <div class="bs-row bs-total">
+                            <div class="bs-row-label">Total Expenses</div>
+                            <div class="bs-row-value">
+                                UGX {{ total_expenses|floatformat:0|intcomma }}
+                            </div>
+                        </div>
+                    {% else %}
+                        <div class="bs-empty">
+                            <i class="fas fa-receipt"></i>
+                            No expense data available for this period.
+                        </div>
+                    {% endif %}
+                </div>
             </div>
+
+            <!-- INVOICE STATUS -->
+            <div class="bs-card">
+                <div class="bs-card-head">
+                    <div class="bs-card-title">
+                        <i class="fas fa-file-invoice"></i>
+                        Invoice Status Summary
+                    </div>
+                </div>
+
+                <div class="bs-card-body">
+
+                    <div class="bs-status-grid">
+                        <div class="bs-status">
+                            <div class="bs-status-number status-total">{{ total_invoices }}</div>
+                            <div class="bs-status-label">Total</div>
+                        </div>
+
+                        <div class="bs-status">
+                            <div class="bs-status-number status-paid">{{ paid_invoices|default:0 }}</div>
+                            <div class="bs-status-label">Paid</div>
+                        </div>
+
+                        <div class="bs-status">
+                            <div class="bs-status-number status-pending">{{ pending_invoices|default:0 }}</div>
+                            <div class="bs-status-label">Pending</div>
+                        </div>
+                    </div>
+
+                    {% if total_invoices %}
+                    <div class="bs-status-bar">
+                        <span class="bs-bar-paid"
+                              style="width:{% widthratio paid_invoices total_invoices 100 %}%"></span>
+                        <span class="bs-bar-pending"
+                              style="width:{% widthratio pending_invoices total_invoices 100 %}%"></span>
+                    </div>
+                    {% endif %}
+
+                    <div class="bs-row">
+                        <div class="bs-row-label">
+                            <span class="bs-dot" style="--dot:#159b6d"></span>
+                            Paid invoices
+                        </div>
+                        <div class="bs-row-value">{{ paid_invoices|default:0 }}</div>
+                    </div>
+
+                    <div class="bs-row">
+                        <div class="bs-row-label">
+                            <span class="bs-dot" style="--dot:#d99520"></span>
+                            Pending invoices
+                        </div>
+                        <div class="bs-row-value">{{ pending_invoices|default:0 }}</div>
+                    </div>
+
+                </div>
+            </div>
+
+        </section>
+
+        <div class="bs-footer no-print">
+            Balance Sheet — {{ start_date_display }} to {{ end_date_display }}
         </div>
+
     </div>
 </div>
 {% endblock %}
