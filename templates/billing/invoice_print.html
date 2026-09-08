@@ -182,7 +182,7 @@
                     <div class="col-md-6 text-end">
                         {% if invoice.payment_date %}
                             <p>
-                                <strong>Payment Date:</strong> {{ invoice.payment_date|date:"F d, Y H:i" }}
+                                <strong>Payment Date:</strong> {{ invoice.payment_date|date:"F d, Y" }}
                             </p>
                         {% endif %}
                     </div>
@@ -304,7 +304,7 @@
                         <tbody>
                             {% for payment in invoice.payments.all %}
                             <tr>
-                                <td>{{ payment.payment_date|date:"M d, Y H:i" }}</td>
+                                <td>{{ payment.payment_date|date:"M d, Y" }}</td>
                                 <td>
                                     {% with company=company %}
                                         {{ company.currency|default:"UGX" }} {{ payment.amount|floatformat:0 }}
