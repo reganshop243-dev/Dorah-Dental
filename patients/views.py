@@ -1,4 +1,4 @@
-from django.shortcuts import render, redirect, get_object_or_404
+﻿from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.db import models
@@ -9,7 +9,7 @@ from datetime import date, datetime
 from .models import Patient, DentalImage
 from appointments.models import Appointment, Treatment
 from billing.models import Invoice
-from patient_portal.models import PatientPortalAccess  # ✅ ADD THIS IMPORT
+from patient_portal.models import PatientPortalAccess  # âœ… ADD THIS IMPORT
 import random  # legacy compatibility
 import hashlib
 from appointments.models import DentalChart
@@ -178,7 +178,7 @@ def patient_add(request):
     
     # PREVENT doctors from adding patients
     if user_profile.role == 'doctor':
-        messages.error(request, '❌ Doctors are not allowed to add patients.')
+        messages.error(request, 'âŒ Doctors are not allowed to add patients.')
         return redirect('patients:list')
     
     # Initialize form data with default values
@@ -258,7 +258,7 @@ def patient_add(request):
             # If there are errors, show them and re-render with data
             if errors:
                 for error in errors:
-                    messages.error(request, f'❌ {error}')
+                    messages.error(request, f'âŒ {error}')
                 return render(request, 'patients/add.html', {'form_data': form_data})
             
             # Convert age to years if provided
@@ -330,8 +330,8 @@ def patient_add(request):
             
             messages.success(
                 request, 
-                f'✅ Patient {patient.full_name} registered successfully!\n'
-                f'🔑 Portal PIN: {portal_pin}'
+                f'âœ… Patient {patient.full_name} registered successfully!\n'
+                f'ðŸ”‘ Portal PIN: {portal_pin}'
             )
             
             # Store PIN in session
@@ -341,7 +341,7 @@ def patient_add(request):
             return redirect('patients:detail', pk=patient.pk)
             
         except Exception as e:
-            messages.error(request, f'❌ Error adding patient: {str(e)}')
+            messages.error(request, f'âŒ Error adding patient: {str(e)}')
             import traceback
             traceback.print_exc()
             return render(request, 'patients/add.html', {'form_data': form_data})
@@ -359,7 +359,7 @@ def patient_detail(request, pk):
     patient = get_object_or_404(Patient, pk=pk)
     user_profile = request.user.profile
     
-    # ✅ Check if doctor has access to this patient
+    # âœ… Check if doctor has access to this patient
     if user_profile.role == 'doctor':
         doctor = user_profile.doctor
         if doctor:
@@ -370,10 +370,10 @@ def patient_detail(request, pk):
             ).exists()
             
             if not has_access:
-                messages.error(request, '❌ You do not have access to this patient.')
+                messages.error(request, 'âŒ You do not have access to this patient.')
                 return redirect('patients:list')
         else:
-            messages.error(request, '❌ No doctor profile found.')
+            messages.error(request, 'âŒ No doctor profile found.')
             return redirect('patients:list')
     
     # Get patient's appointments (latest first)
@@ -396,24 +396,17 @@ def patient_detail(request, pk):
     # Calculate total amount
     total_amount = invoices.aggregate(Sum('total_amount'))['total_amount__sum'] or 0
     
-    # ✅ Get portal PIN if exists
+    # âœ… Get portal PIN if exists
     try:
         portal_access = patient.portal_access
         portal_pin = None
     except PatientPortalAccess.DoesNotExist:
         portal_pin = None
     
-    # ✅ Get new patient PIN from session (if just created)
+    # âœ… Get new patient PIN from session (if just created)
     new_patient_pin = request.session.pop('new_patient_pin', None)
     new_patient_id = request.session.pop('new_patient_id', None)
     
-    quadrants = []
-    for qname, arch, numbers in quadrant_numbers:
-        quadrants.append({
-            'name': qname,
-            'arch': arch,
-            'teeth': [tooth_map.get(num) or num for num in numbers],
-        })
 
     context = {
         'patient': patient,
@@ -424,9 +417,9 @@ def patient_detail(request, pk):
         'dental_chart_records': dental_chart_records,
         'dental_chart_count': dental_chart_records.count(),
         'is_doctor': user_profile.role == 'doctor',
-        'portal_pin': portal_pin,  # ✅ Pass portal PIN
-        'new_patient_pin': new_patient_pin,  # ✅ Pass new patient PIN
-        'new_patient_id': new_patient_id,  # ✅ Pass new patient ID
+        'portal_pin': portal_pin,  # âœ… Pass portal PIN
+        'new_patient_pin': new_patient_pin,  # âœ… Pass new patient PIN
+        'new_patient_id': new_patient_id,  # âœ… Pass new patient ID
     }
     return render(request, 'patients/detail.html', context)
 
@@ -440,9 +433,9 @@ def patient_edit(request, pk):
     """Edit patient information - Doctors are NOT allowed"""
     user_profile = request.user.profile
     
-    # ✅ PREVENT doctors from editing patients
+    # âœ… PREVENT doctors from editing patients
     if user_profile.role == 'doctor':
-        messages.error(request, '❌ Doctors are not allowed to edit patients.')
+        messages.error(request, 'âŒ Doctors are not allowed to edit patients.')
         return redirect('patients:list')
     
     patient = get_object_or_404(Patient, pk=pk)
@@ -506,9 +499,9 @@ def patient_delete(request, pk):
     """Archive/delete patient - Doctors are NOT allowed"""
     user_profile = request.user.profile
     
-    # ✅ PREVENT doctors from deleting patients
+    # âœ… PREVENT doctors from deleting patients
     if user_profile.role == 'doctor':
-        messages.error(request, '❌ Doctors are not allowed to delete patients.')
+        messages.error(request, 'âŒ Doctors are not allowed to delete patients.')
         return redirect('patients:list')
     
     patient = get_object_or_404(Patient, pk=pk)
@@ -538,7 +531,7 @@ def patient_status(request, pk):
     patient = get_object_or_404(Patient, pk=pk)
 
     if request.user.profile.role != 'admin':
-        messages.error(request, '❌ Access denied. Only administrators can change patient status.')
+        messages.error(request, 'âŒ Access denied. Only administrators can change patient status.')
         return redirect('patients:detail', pk=pk)
 
     if request.method == 'POST':
@@ -556,7 +549,7 @@ def patient_add_image(request, pk):
     patient = get_object_or_404(Patient, pk=pk)
     user_profile = request.user.profile
     
-    # ✅ Check if doctor has access to this patient
+    # âœ… Check if doctor has access to this patient
     if user_profile.role == 'doctor':
         doctor = user_profile.doctor
         if doctor:
@@ -565,10 +558,10 @@ def patient_add_image(request, pk):
                 doctor=doctor
             ).exists()
             if not has_access:
-                messages.error(request, '❌ You do not have access to this patient.')
+                messages.error(request, 'âŒ You do not have access to this patient.')
                 return redirect('patients:list')
         else:
-            messages.error(request, '❌ No doctor profile found.')
+            messages.error(request, 'âŒ No doctor profile found.')
             return redirect('patients:list')
     
     if request.method == 'POST':
@@ -606,9 +599,9 @@ def patient_add_image(request, pk):
 @login_required
 def generate_portal_pin(request, pk):
     """Generate portal PIN for existing patient"""
-    # ✅ Only admin and receptionist can generate PINs
+    # âœ… Only admin and receptionist can generate PINs
     if request.user.profile.role not in ['admin', 'receptionist']:
-        messages.error(request, '❌ Access denied. Only admin or receptionist can generate portal PINs.')
+        messages.error(request, 'âŒ Access denied. Only admin or receptionist can generate portal PINs.')
         return redirect('patients:detail', pk=pk)
     
     patient = get_object_or_404(Patient, pk=pk)
@@ -629,9 +622,9 @@ def generate_portal_pin(request, pk):
         portal_access.login_attempts = 0
         portal_access.locked_until = None
         portal_access.save()
-        messages.success(request, f'✅ Portal PIN updated for {patient.full_name}. New PIN: {portal_pin}')
+        messages.success(request, f'âœ… Portal PIN updated for {patient.full_name}. New PIN: {portal_pin}')
     else:
-        messages.success(request, f'✅ Portal access created for {patient.full_name}. PIN: {portal_pin}')
+        messages.success(request, f'âœ… Portal access created for {patient.full_name}. PIN: {portal_pin}')
     
     return redirect('patients:detail', pk=pk)
 
@@ -649,7 +642,7 @@ def patient_search_api(request):
         sort = request.GET.get('sort', '-registered_at')
         user_profile = request.user.profile
         
-        # ✅ If doctor, only show assigned patients
+        # âœ… If doctor, only show assigned patients
         if user_profile.role == 'doctor':
             doctor = user_profile.doctor
             if doctor:
@@ -707,7 +700,7 @@ def patient_search_api(request):
             elif patient.age_years is not None:
                 age = patient.age_years
             
-            # ✅ Get portal PIN
+            # âœ… Get portal PIN
             try:
                 portal_pin = patient.portal_access.portal_pin
             except PatientPortalAccess.DoesNotExist:
@@ -725,7 +718,7 @@ def patient_search_api(request):
                 'registered_at': patient.registered_at.strftime('%b %d, %Y'),
                 'balance': float(total_balance),
                 'gender': patient.get_gender_display(),
-                'portal_pin': portal_pin,  # ✅ Include portal PIN
+                'portal_pin': portal_pin,  # âœ… Include portal PIN
             })
         
         return JsonResponse({'results': results})
@@ -737,6 +730,54 @@ def patient_search_api(request):
         return JsonResponse({'results': [], 'error': str(e)}, status=500)
 
 
+
+def get_tooth_name(tooth_number):
+    """Get the clinical name of a permanent tooth using Universal Numbering."""
+
+    tooth_names = {
+        1: 'Right Maxillary 3rd Molar',
+        2: 'Right Maxillary 2nd Molar',
+        3: 'Right Maxillary 1st Molar',
+        4: 'Right Maxillary 2nd Premolar',
+        5: 'Right Maxillary 1st Premolar',
+        6: 'Right Maxillary Canine',
+        7: 'Right Maxillary Lateral Incisor',
+        8: 'Right Maxillary Central Incisor',
+
+        9: 'Left Maxillary Central Incisor',
+        10: 'Left Maxillary Lateral Incisor',
+        11: 'Left Maxillary Canine',
+        12: 'Left Maxillary 1st Premolar',
+        13: 'Left Maxillary 2nd Premolar',
+        14: 'Left Maxillary 1st Molar',
+        15: 'Left Maxillary 2nd Molar',
+        16: 'Left Maxillary 3rd Molar',
+
+        17: 'Left Mandibular 3rd Molar',
+        18: 'Left Mandibular 2nd Molar',
+        19: 'Left Mandibular 1st Molar',
+        20: 'Left Mandibular 2nd Premolar',
+        21: 'Left Mandibular 1st Premolar',
+        22: 'Left Mandibular Canine',
+        23: 'Left Mandibular Lateral Incisor',
+        24: 'Left Mandibular Central Incisor',
+
+        25: 'Right Mandibular Central Incisor',
+        26: 'Right Mandibular Lateral Incisor',
+        27: 'Right Mandibular Canine',
+        28: 'Right Mandibular 1st Premolar',
+        29: 'Right Mandibular 2nd Premolar',
+        30: 'Right Mandibular 1st Molar',
+        31: 'Right Mandibular 2nd Molar',
+        32: 'Right Mandibular 3rd Molar',
+    }
+
+    return tooth_names.get(
+        tooth_number,
+        f'Tooth #{tooth_number}'
+    )
+
+
 @login_required
 def dental_chart(request, pk):
     """View and edit a patient's 32-tooth odontogram."""
@@ -745,29 +786,60 @@ def dental_chart(request, pk):
     patient = get_object_or_404(Patient, pk=pk)
     user_profile = request.user.profile
 
-    # Doctors may only access their assigned patients. Admins have full access.
+    # Doctors may only access their assigned patients.
+    # Admins have full access.
     if user_profile.role == 'doctor':
         doctor = user_profile.doctor
-        if not doctor or not Appointment.objects.filter(patient=patient, doctor=doctor).exists():
-            messages.error(request, '❌ You do not have access to this patient.')
+        if not doctor or not Appointment.objects.filter(
+            patient=patient,
+            doctor=doctor
+        ).exists():
+            messages.error(
+                request,
+                '❌ You do not have access to this patient.'
+            )
             return redirect('patients:list')
 
-    # Only doctors and admins can write dental-chart records.
+    # Only doctors and admins can edit dental-chart records.
     can_edit = user_profile.role in ['doctor', 'admin']
 
     if request.method == 'POST':
         if not can_edit:
-            messages.error(request, '❌ Only doctors and administrators can update dental charts.')
-            return redirect('patients:dental_chart', pk=patient.pk)
+            messages.error(
+                request,
+                '❌ Only doctors and administrators can update dental charts.'
+            )
+            return redirect(
+                'patients:dental_chart',
+                pk=patient.pk
+            )
+
         try:
-            tooth_number = int(request.POST.get('tooth_number', '0'))
-            condition = request.POST.get('condition', '').strip()
-            surface = request.POST.get('surface', '').strip() or None
-            notes = request.POST.get('notes', '').strip()
+            tooth_number = int(
+                request.POST.get('tooth_number', '0')
+            )
+            condition = request.POST.get(
+                'condition',
+                ''
+            ).strip()
+            surface = request.POST.get(
+                'surface',
+                ''
+            ).strip() or None
+            notes = request.POST.get(
+                'notes',
+                ''
+            ).strip()
 
             if tooth_number < 1 or tooth_number > 32 or not condition:
-                messages.error(request, 'Tooth number and condition are required.')
-                return redirect('patients:dental_chart', pk=patient.pk)
+                messages.error(
+                    request,
+                    'Tooth number and condition are required.'
+                )
+                return redirect(
+                    'patients:dental_chart',
+                    pk=patient.pk
+                )
 
             record, created = DentalChart.objects.update_or_create(
                 patient=patient,
@@ -780,37 +852,116 @@ def dental_chart(request, pk):
                     'created_by': request.user,
                 }
             )
+
             action = 'recorded' if created else 'updated'
-            messages.success(request, f'✅ Tooth #{tooth_number} {action} as {record.get_condition_display()}.')
-            return redirect('patients:dental_chart', pk=patient.pk)
+
+            messages.success(
+                request,
+                f'✅ Tooth #{tooth_number} {action} as '
+                f'{record.get_condition_display()}.'
+            )
+
+            return redirect(
+                'patients:dental_chart',
+                pk=patient.pk
+            )
+
         except (ValueError, TypeError):
-            messages.error(request, '❌ Invalid tooth number.')
+            messages.error(
+                request,
+                '❌ Invalid tooth number.'
+            )
+
         except Exception as e:
-            messages.error(request, f'❌ Error updating dental chart: {str(e)}')
+            messages.error(
+                request,
+                f'❌ Error updating dental chart: {str(e)}'
+            )
 
-    chart_records = DentalChart.objects.filter(patient=patient).select_related('created_by')
-    tooth_map = {record.tooth_number: record for record in chart_records}
+    # Existing dental-chart records
+    chart_records = (
+        DentalChart.objects
+        .filter(patient=patient)
+        .select_related('created_by')
+    )
 
-    # Universal numbering arranged by quadrant for a clear clinical layout.
+    tooth_map = {
+        record.tooth_number: record
+        for record in chart_records
+    }
+
+    # Universal numbering arranged by quadrant.
     quadrant_numbers = [
-        ('Upper Right', 'Maxilla', list(range(8, 0, -1))),
-        ('Upper Left', 'Maxilla', list(range(9, 17))),
-        ('Lower Left', 'Mandible', list(range(17, 25))),
-        ('Lower Right', 'Mandible', list(range(32, 24, -1))),
+        (
+            'Upper Right',
+            'Maxilla',
+            list(range(8, 0, -1))
+        ),
+        (
+            'Upper Left',
+            'Maxilla',
+            list(range(9, 17))
+        ),
+        (
+            'Lower Left',
+            'Mandible',
+            list(range(17, 25))
+        ),
+        (
+            'Lower Right',
+            'Mandible',
+            list(range(32, 24, -1))
+        ),
     ]
 
+    # Build the quadrant data used by the template.
+    quadrants = []
+
+    for qname, arch, numbers in quadrant_numbers:
+        quadrants.append({
+            'name': qname,
+            'arch': arch,
+            'teeth': [
+                tooth_map.get(num) or num
+                for num in numbers
+            ],
+        })
+
+    # Build complete 32-tooth data.
     tooth_data = []
+
     for num in range(1, 33):
         record = tooth_map.get(num)
+
         tooth_data.append({
             'number': num,
             'has_record': bool(record),
-            'condition_display': record.get_condition_display() if record else None,
-            'condition': record.condition if record else '',
-            'surface': record.surface if record else '',
-            'notes': record.notes if record else '',
-            'tooth_name': record.tooth_name if record else get_tooth_name(num),
-            'updated_at': record.updated_at if record else None,
+            'condition_display': (
+                record.get_condition_display()
+                if record else None
+            ),
+            'condition': (
+                record.condition
+                if record else ''
+            ),
+            'surface': (
+                record.surface
+                if record else ''
+            ),
+            'notes': (
+                record.notes
+                if record else ''
+            ),
+            'tooth_name': (
+                record.tooth_name
+                if record
+                else get_tooth_name(num)
+            ),
+            'updated_at': (
+                record.updated_at
+                if record
+                else None
+            ),
         })
 
     context = {
@@ -825,26 +976,9 @@ def dental_chart(request, pk):
         'condition_choices': DentalChart.TOOTH_CONDITION_CHOICES,
         'surface_choices': DentalChart.SURFACE_CHOICES,
     }
-    return render(request, 'patients/dental_chart.html', context)
 
-def get_tooth_name(tooth_number):
-    """Get the name of a tooth based on universal numbering"""
-    tooth_names = {
-        1: 'Right Maxillary 3rd Molar', 2: 'Right Maxillary 2nd Molar',
-        3: 'Right Maxillary 1st Molar', 4: 'Right Maxillary 2nd Premolar',
-        5: 'Right Maxillary 1st Premolar', 6: 'Right Maxillary Canine',
-        7: 'Right Maxillary Lateral Incisor', 8: 'Right Maxillary Central Incisor',
-        9: 'Left Maxillary Central Incisor', 10: 'Left Maxillary Lateral Incisor',
-        11: 'Left Maxillary Canine', 12: 'Left Maxillary 1st Premolar',
-        13: 'Left Maxillary 2nd Premolar', 14: 'Left Maxillary 1st Molar',
-        15: 'Left Maxillary 2nd Molar', 16: 'Left Maxillary 3rd Molar',
-        17: 'Left Mandibular 3rd Molar', 18: 'Left Mandibular 2nd Molar',
-        19: 'Left Mandibular 1st Molar', 20: 'Left Mandibular 2nd Premolar',
-        21: 'Left Mandibular 1st Premolar', 22: 'Left Mandibular Canine',
-        23: 'Left Mandibular Lateral Incisor', 24: 'Left Mandibular Central Incisor',
-        25: 'Right Mandibular Central Incisor', 26: 'Right Mandibular Lateral Incisor',
-        27: 'Right Mandibular Canine', 28: 'Right Mandibular 1st Premolar',
-        29: 'Right Mandibular 2nd Premolar', 30: 'Right Mandibular 1st Molar',
-        31: 'Right Mandibular 2nd Molar', 32: 'Right Mandibular 3rd Molar'
-    }
-    return tooth_names.get(tooth_number, f'Tooth #{tooth_number}')
+    return render(
+        request,
+        'patients/dental_chart.html',
+        context
+    )
