@@ -41,7 +41,7 @@
                         <select class="form-select" id="service" name="service" required>
                             {% for service in services %}
                                 <option value="{{ service.pk }}" {% if appointment.service.pk == service.pk %}selected{% endif %}>
-                                    {{ service.name }} - UGX {{ service.price }}
+                                    {{ service.name }}{% if not is_doctor %} - UGX {{ service.price }}{% endif %}
                                 </option>
                             {% endfor %}
                         </select>
@@ -103,11 +103,10 @@
 </div>
 
 <div class="row">
-    <div class="col-md-6 mb-3">
+    {% if not is_doctor %}<div class="col-md-6 mb-3">
         <label for="treatment_cost" class="form-label">Treatment Cost (UGX)</label>
-        <input type="number" step="0.01" class="form-control" id="treatment_cost" name="treatment_cost" 
-               value="{{ appointment.treatment_cost }}">
-    </div>
+        <input type="number" step="0.01" class="form-control" id="treatment_cost" name="treatment_cost" value="{{ appointment.treatment_cost }}">
+    </div>{% endif %}
     <div class="col-md-6 mb-3">
         <label for="referred_to" class="form-label">Referred To</label>
         <input type="text" class="form-control" id="referred_to" name="referred_to" 

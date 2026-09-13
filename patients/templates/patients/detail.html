@@ -113,11 +113,26 @@
             {{ patient.full_name }}
         </h4>
         <small class="text-muted">
-            <i class="fas fa-calendar-alt me-1"></i> 
+            <i class="fas fa-calendar-alt me-1"></i>
             Patient since {{ patient.registered_at|date:"F d, Y" }}
         </small>
+        <div class="mt-2">
+            <span class="badge {% if patient.is_active %}bg-success{% else %}bg-secondary{% endif %}">
+                <i class="fas {% if patient.is_active %}fa-circle-check{% else %}fa-circle-xmark{% endif %} me-1"></i>
+                {% if patient.is_active %}Active{% else %}Inactive{% endif %}
+            </span>
+        </div>
     </div>
     <div class="action-buttons">
+        {% if user.profile.role == 'admin' %}
+        <form method="post" action="{% url 'patients:status' patient.pk %}" class="d-inline">
+            {% csrf_token %}
+            <button type="submit" class="btn {% if patient.is_active %}btn-outline-danger{% else %}btn-outline-success{% endif %} btn-sm" title="{% if patient.is_active %}Deactivate patient{% else %}Activate patient{% endif %}">
+                <i class="fas {% if patient.is_active %}fa-user-slash{% else %}fa-user-check{% endif %}"></i>
+                {% if patient.is_active %}Deactivate{% else %}Activate{% endif %}
+            </button>
+        </form>
+        {% endif %}
         <a href="{% url 'appointments:add' %}?patient={{ patient.pk }}" class="btn btn-success btn-sm">
             <i class="fas fa-calendar-plus"></i> Book Appointment
         </a>
@@ -366,6 +381,7 @@
                     <div class="stat-label">Invoices</div>
                 </div>
             </div>
+            {% if not is_doctor %}
             <div class="col-3">
                 <div class="stat-box danger">
                     <div class="stat-icon"><i class="fas fa-money-bill-wave"></i></div>
@@ -373,6 +389,7 @@
                     <div class="stat-label">Total Spent</div>
                 </div>
             </div>
+            {% endif %}
         </div>
         
         <!-- Appointments -->
@@ -435,6 +452,25 @@
             {% endif %}
         </div>
         
+        <!-- Dental Chart -->
+        <div class="info-card mt-3 border-start border-4 border-primary">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <h6 class="text-muted mb-0"><i class="fas fa-tooth me-2 text-primary"></i>Dental Chart</h6>
+                <a href="{% url 'patients:dental_chart' patient.pk %}" class="btn btn-sm btn-outline-primary">
+                    <i class="fas fa-tooth me-1"></i> {% if dental_chart_count %}Open Chart{% else %}Start Chart{% endif %}
+                </a>
+            </div>
+            {% if dental_chart_count %}
+                <div class="d-flex align-items-center gap-2">
+                    <span class="badge bg-success">{{ dental_chart_count }}/32 teeth recorded</span>
+                    <span class="text-muted small">Last updated {{ dental_chart_records.0.updated_at|date:"M d, Y H:i" }}</span>
+                </div>
+                <div class="small text-muted mt-2">Dental chart is in use for this patient.</div>
+            {% else %}
+                <div class="text-muted small">No dental chart records yet. Doctors and administrators can record tooth conditions here.</div>
+            {% endif %}
+        </div>
+        
         <!-- Treatments -->
         <div class="info-card mt-3">
             <h6 class="text-muted mb-3"><i class="fas fa-stethoscope me-2"></i>Treatment History</h6>
@@ -447,7 +483,7 @@
                                 <th>Date</th>
                                 <th>Service</th>
                                 <th>Doctor</th>
-                                <th>Amount</th>
+                                {% if not is_doctor %}<th>Amount</th>{% endif %}
                             </tr>
                         </thead>
                         <tbody>
@@ -456,12 +492,12 @@
                                 <td>{{ treatment.treatment_date|date:"M d, Y" }}</td>
                                 <td>{{ treatment.service.name }}</td>
                                 <td>Dr. {{ treatment.doctor.name }}</td>
-                                <td>UGX {{ treatment.amount|floatformat:0|intcomma }}</td>
+                                {% if not is_doctor %}<td>UGX {{ treatment.amount|floatformat:0|intcomma }}</td>{% endif %}
                             </tr>
                             {% endfor %}
                             {% if treatments|length > 10 %}
                                 <tr>
-                                    <td colspan="4" class="text-center text-muted">
+                                    <td colspan="{% if is_doctor %}3{% else %}4{% endif %}" class="text-center text-muted">
                                         <small>+ {{ treatments|length|add:"-10" }} more treatments</small>
                                     </td>
                                 </tr>
@@ -488,7 +524,7 @@
                             <tr>
                                 <th>Invoice #</th>
                                 <th>Date</th>
-                                <th>Total</th>
+                                {% if not is_doctor %}<th>Total</th>{% endif %}
                                 <th>Status</th>
                             </tr>
                         </thead>
@@ -501,7 +537,7 @@
                                     </a>
                                 </td>
                                 <td>{{ invoice.issue_date|date:"M d, Y" }}</td>
-                                <td>UGX {{ invoice.total_amount|floatformat:0|intcomma }}</td>
+                                {% if not is_doctor %}<td>UGX {{ invoice.total_amount|floatformat:0|intcomma }}</td>{% endif %}
                                 <td>
                                     <span class="badge-status {{ invoice.status }}">
                                         {{ invoice.get_status_display }}
@@ -511,7 +547,7 @@
                             {% endfor %}
                             {% if invoices|length > 10 %}
                                 <tr>
-                                    <td colspan="4" class="text-center text-muted">
+                                    <td colspan="{% if is_doctor %}3{% else %}4{% endif %}" class="text-center text-muted">
                                         <small>+ {{ invoices|length|add:"-10" }} more invoices</small>
                                     </td>
                                 </tr>

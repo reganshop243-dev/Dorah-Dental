@@ -409,6 +409,7 @@ def appointment_detail(request, pk):
     
     return render(request, 'appointments/appointment_detail.html', {
         'appointment': appointment,
+        'status_choices': Appointment.STATUS_CHOICES,
         'is_doctor': is_doctor(request.user),
     })
 
@@ -441,7 +442,8 @@ def appointment_edit(request, pk):
             appointment.consultation_notes = request.POST.get('consultation_notes', '')
             appointment.treatment_plan = request.POST.get('treatment_plan', '')
             appointment.prescription = request.POST.get('prescription', '')
-            appointment.treatment_cost = request.POST.get('treatment_cost') or None
+            if user_profile.role != 'doctor':
+                appointment.treatment_cost = request.POST.get('treatment_cost') or None
             appointment.referred_to = request.POST.get('referred_to', '')
             appointment.follow_up_date = request.POST.get('follow_up_date') or None
             appointment.follow_up_notes = request.POST.get('follow_up_notes', '')
@@ -487,6 +489,25 @@ def appointment_edit(request, pk):
         'is_doctor': is_doctor(request.user),
     }
     return render(request, 'appointments/appointment_edit.html', context)
+
+
+@login_required
+def appointment_status_update(request, pk):
+    """Update appointment workflow status - Admin quick action."""
+    appointment = get_object_or_404(Appointment, pk=pk)
+    if request.user.profile.role != 'admin':
+        messages.error(request, '❌ Only administrators can use appointment status controls.')
+        return redirect('appointments:detail', pk=pk)
+    if request.method == 'POST':
+        new_status = request.POST.get('status', '').strip()
+        allowed = {choice[0] for choice in Appointment.STATUS_CHOICES}
+        if new_status not in allowed:
+            messages.error(request, '❌ Invalid appointment status.')
+        else:
+            appointment.status = new_status
+            appointment.save(update_fields=['status', 'updated_at'])
+            messages.success(request, f'Appointment status changed to {appointment.get_status_display()}.')
+    return redirect('appointments:detail', pk=pk)
 
 
 @login_required

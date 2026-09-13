@@ -62,7 +62,7 @@
                             <select class="form-select" id="service" name="service" required>
                                 <option value="">Select Service</option>
                                 {% for service in services %}
-                                    <option value="{{ service.pk }}">{{ service.name }} - UGX {{ service.price }}</option>
+                                    <option value="{{ service.pk }}">{{ service.name }}{% if not is_doctor %} - UGX {{ service.price }}{% endif %}</option>
                                 {% endfor %}
                             </select>
                         </div>

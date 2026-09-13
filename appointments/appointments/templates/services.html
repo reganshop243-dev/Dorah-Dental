@@ -28,7 +28,7 @@
                     <tr>
                         <td><strong>{{ service.name }}</strong></td>
                         <td>{{ service.description|default:"-"|truncatechars:50 }}</td>
-                        <td>UGX {{ service.price|floatformat:0 }}</td>
+                        {% if not is_doctor %}<td>UGX {{ service.price|floatformat:0 }}</td>{% endif %}
                         <td>{{ service.duration_minutes }} min</td>
                         <td>
                             <div class="btn-group btn-group-sm">

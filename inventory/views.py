@@ -86,7 +86,7 @@ def inventory_add(request):
                 selling_price=float(request.POST.get('selling_price', 0)),
                 supplier=request.POST.get('supplier', ''),
                 supplier_contact=request.POST.get('supplier_contact', ''),
-                barcode=request.POST.get('barcode', ''),
+                barcode=(request.POST.get('barcode', '').strip() or None),
                 location=request.POST.get('location', ''),
                 notes=request.POST.get('notes', ''),
             )
@@ -156,7 +156,7 @@ def inventory_edit(request, pk):
             item.selling_price = float(request.POST.get('selling_price', 0))
             item.supplier = request.POST.get('supplier', '')
             item.supplier_contact = request.POST.get('supplier_contact', '')
-            item.barcode = request.POST.get('barcode', '')
+            item.barcode = (request.POST.get('barcode', '').strip() or None)
             item.location = request.POST.get('location', '')
             item.notes = request.POST.get('notes', '')
             item.save()

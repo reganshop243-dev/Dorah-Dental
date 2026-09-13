@@ -10,6 +10,24 @@ from appointments.models import Appointment, Service
 import json
 
 
+def is_doctor(user):
+    """Return True when the authenticated user is a doctor."""
+    return (
+        user.is_authenticated
+        and hasattr(user, 'profile')
+        and user.profile.role == 'doctor'
+    )
+
+
+def is_admin(user):
+    """Return True when the authenticated user is an administrator."""
+    return (
+        user.is_authenticated
+        and hasattr(user, 'profile')
+        and user.profile.role == 'admin'
+    )
+
+
 @login_required
 def invoice_list(request):
     """List all invoices with pagination and filtering"""
@@ -87,6 +105,7 @@ def invoice_list(request):
         # Status and payment method choices for dropdowns
         'status_choices': Invoice.STATUS_CHOICES,
         'payment_method_choices': Invoice.PAYMENT_METHOD_CHOICES,
+        'is_doctor': is_doctor(request.user),
     }
     
     return render(request, 'billing/invoice_list.html', context)
@@ -95,6 +114,9 @@ def invoice_list(request):
 @login_required
 def invoice_add(request):
     """Add a new invoice with items from cart"""
+    if is_doctor(request.user):
+        messages.error(request, '❌ Doctors are not allowed to create invoices.')
+        return redirect('patients:list')
     from inventory.models import InventoryItem
     from django.db import transaction
     
@@ -268,19 +290,23 @@ def invoice_add(request):
 
 @login_required
 def invoice_detail(request, pk):
-    """View invoice details"""
+    """View invoice details with role-based financial protection."""
     invoice = get_object_or_404(Invoice, pk=pk)
     from inventory.models import InventoryItem
     inventory_items = InventoryItem.objects.filter(is_active=True, quantity__gt=0)
     return render(request, 'billing/invoice_detail.html', {
         'invoice': invoice,
         'inventory_items': inventory_items,
+        'is_doctor': is_doctor(request.user),
     })
 
 
 @login_required
 def add_payment(request, pk):
     """Add a payment to an invoice"""
+    if is_doctor(request.user):
+        messages.error(request, '❌ Doctors are not allowed to access invoice payments.')
+        return redirect('billing:detail', pk=pk)
     invoice = get_object_or_404(Invoice, pk=pk)
     
     if request.method == 'POST':
@@ -343,12 +369,16 @@ def print_invoice(request, pk):
     return render(request, 'billing/invoice_print.html', {
         'invoice': invoice,
         'company': company,
+        'is_doctor': is_doctor(request.user),
     })
 
 
 @login_required
 def invoice_delete(request, pk):
     """Delete an invoice"""
+    if is_doctor(request.user):
+        messages.error(request, '❌ Doctors are not allowed to delete invoices.')
+        return redirect('billing:detail', pk=pk)
     invoice = get_object_or_404(Invoice, pk=pk)
     if request.method == 'POST':
         invoice.delete()
@@ -360,6 +390,9 @@ def invoice_delete(request, pk):
 @login_required
 def invoice_add(request):
     """Add a new invoice with items from cart"""
+    if is_doctor(request.user):
+        messages.error(request, '❌ Doctors are not allowed to create invoices.')
+        return redirect('patients:list')
     from inventory.models import InventoryItem
     from django.db import transaction
     import json
@@ -545,6 +578,9 @@ def invoice_add(request):
 @login_required
 def add_invoice_item(request, pk):
     """Add item to invoice (service or inventory)"""
+    if is_doctor(request.user):
+        messages.error(request, '❌ Doctors are not allowed to modify invoices.')
+        return redirect('billing:detail', pk=pk)
     invoice = get_object_or_404(Invoice, pk=pk)
     from inventory.models import InventoryItem, StockMovement
     from django.db import transaction
@@ -664,6 +700,9 @@ def add_invoice_item(request, pk):
 @login_required
 def remove_invoice_item(request, pk, item_pk):
     """Remove item from invoice"""
+    if is_doctor(request.user):
+        messages.error(request, '❌ Doctors are not allowed to modify invoices.')
+        return redirect('billing:detail', pk=pk)
     item = get_object_or_404(InvoiceItem, pk=item_pk, invoice_id=pk)
     invoice = item.invoice
     
@@ -823,6 +862,9 @@ def expense_delete(request, pk):
 @login_required
 def balance_sheet(request):
     """Generate balance sheet report"""
+    if is_doctor(request.user):
+        messages.error(request, '❌ Doctors do not have access to financial reports.')
+        return redirect('core:doctor_dashboard')
     from django.db.models import Sum
     from datetime import datetime, date
     

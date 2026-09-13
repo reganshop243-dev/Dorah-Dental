@@ -169,6 +169,8 @@
                     </div>
                 </div>
 
+                {% if is_doctor %}<div class="alert alert-info py-2 small"><i class="fas fa-shield-halved me-1"></i>Clinical print view. Financial amounts and payment information are hidden for doctors.</div>{% endif %}
+
                 <!-- Patient Info -->
                 <div class="row mb-4">
                     <div class="col-md-6">
@@ -195,8 +197,7 @@
                             <th>#</th>
                             <th>Description</th>
                             <th>Quantity</th>
-                            <th>Unit Price</th>
-                            <th>Total</th>
+                            {% if not is_doctor %}<th>Unit Price</th><th>Total</th>{% endif %}
                         </tr>
                     </thead>
                     <tbody>
@@ -215,16 +216,7 @@
                                 {% endif %}
                             </td>
                             <td>{{ item.quantity }}</td>
-                            <td>
-                                {% with company=company %}
-                                    {{ company.currency|default:"UGX" }} {{ item.unit_price|floatformat:0 }}
-                                {% endwith %}
-                            </td>
-                            <td>
-                                {% with company=company %}
-                                    {{ company.currency|default:"UGX" }} {{ item.total_price|floatformat:0 }}
-                                {% endwith %}
-                            </td>
+                            {% if not is_doctor %}<td>{% with company=company %}{{ company.currency|default:"UGX" }} {{ item.unit_price|floatformat:0 }}{% endwith %}</td><td>{% with company=company %}{{ company.currency|default:"UGX" }} {{ item.total_price|floatformat:0 }}{% endwith %}</td>{% endif %}
                         </tr>
                         {% empty %}
                         <tr>
@@ -232,6 +224,7 @@
                         </tr>
                         {% endfor %}
                     </tbody>
+{% if not is_doctor %}
                     <tfoot>
                         <tr>
                             <td colspan="4" class="text-end"><strong>Subtotal:</strong></td>
@@ -285,8 +278,9 @@
                                 </strong>
                             </td>
                         </tr>
-                    </tfoot>
+                    </tfoot>{% endif %}
                 </table>
+{% if not is_doctor %}
 
                 <!-- Payment History -->
                 {% if invoice.payments.all %}
@@ -321,7 +315,8 @@
                         </tbody>
                     </table>
                 </div>
-                {% endif %}
+                {% endif %}{% endif %}
+
 
                 <!-- Notes -->
                 {% if invoice.notes %}

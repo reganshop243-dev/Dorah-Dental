@@ -97,7 +97,7 @@
                         </p>
                         <p><strong>Doctor:</strong> Dr. {{ appointment.doctor.name }}</p>
                         <p><strong>Service:</strong> {{ appointment.service.name }}</p>
-                        <p><strong>Price:</strong> UGX {{ appointment.service.price|floatformat:0|intcomma }}</p>
+                        {% if not is_doctor %}<p><strong>Price:</strong> UGX {{ appointment.service.price|floatformat:0|intcomma }}</p>{% endif %}
                     </div>
                     <div class="col-md-6">
                         <p><strong>Date:</strong> {{ appointment.appointment_date|date:"F d, Y" }}</p>
@@ -110,6 +110,20 @@
                         </p>
                     </div>
                 </div>
+
+                {% if user.profile.role == 'admin' %}
+                <div class="alert alert-light border d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
+                    <div><strong><i class="fas fa-user-check me-1"></i> Patient Flow</strong><div class="small text-muted">Update the appointment status quickly.</div></div>
+                    <div class="d-flex flex-wrap gap-2">
+                        {% for code,label in status_choices %}
+                        <form method="post" action="{% url 'appointments:status_update' appointment.pk %}" class="m-0">
+                            {% csrf_token %}<input type="hidden" name="status" value="{{ code }}">
+                            <button type="submit" class="btn btn-sm {% if appointment.status == code %}btn-primary{% else %}btn-outline-primary{% endif %}">{{ label }}</button>
+                        </form>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endif %}
 
                 <!-- Appointment Timeline -->
                 <div class="mt-4">
@@ -163,7 +177,7 @@
                         <p>{{ appointment.prescription|default:"No prescription given" }}</p>
                     </div>
                     
-                    {% if appointment.treatment_cost %}
+                    {% if appointment.treatment_cost and not is_doctor %}
                     <div class="treatment-section">
                         <h6><i class="fas fa-money-bill-wave"></i> Treatment Cost</h6>
                         <p><strong>UGX {{ appointment.treatment_cost|floatformat:0|intcomma }}</strong></p>

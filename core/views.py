@@ -968,7 +968,10 @@ def role_management(request):
 @login_required
 @otp_required
 def revenue_dashboard(request):
-    """Financial dashboard showing revenue, payments, and reports with date filters"""
+    """Financial report showing revenue, payments, and reports with date filters"""
+    if hasattr(request.user, 'profile') and request.user.profile.role == 'doctor':
+        messages.error(request, '❌ Doctors do not have access to financial reports.')
+        return redirect('core:doctor_dashboard')
     from billing.models import Invoice, Payment
     from django.utils import timezone
     from datetime import date, timedelta, datetime

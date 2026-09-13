@@ -1,332 +1,53 @@
 {% extends 'base.html' %}
 {% load static %}
-{% load humanize %}
 
-{% block page_title %}Dental Chart - {{ patient.full_name }}{% endblock %}
+{% block page_title %}Dental Chart — {{ patient.full_name }}{% endblock %}
 
 {% block extra_css %}
 <style>
-    .tooth-grid {
-        display: grid;
-        grid-template-columns: repeat(8, 1fr);
-        gap: 8px;
-        max-width: 800px;
-        margin: 0 auto;
-    }
-    
-    .tooth-card {
-        background: white;
-        border: 2px solid #dee2e6;
-        border-radius: 8px;
-        padding: 10px 5px;
-        text-align: center;
-        cursor: pointer;
-        transition: all 0.3s;
-        min-height: 70px;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        position: relative;
-    }
-    
-    .tooth-card:hover {
-        transform: translateY(-3px);
-        box-shadow: 0 4px 15px rgba(0,0,0,0.1);
-    }
-    
-    .tooth-card .tooth-number {
-        font-size: 12px;
-        font-weight: 700;
-        color: #636e72;
-    }
-    
-    .tooth-card .tooth-icon {
-        font-size: 24px;
-        margin: 2px 0;
-    }
-    
-    .tooth-card.healthy { border-color: #00b894; background: #e8f5e9; }
-    .tooth-card.healthy .tooth-icon { color: #00b894; }
-    .tooth-card.decay { border-color: #e74c3c; background: #fce4ec; }
-    .tooth-card.decay .tooth-icon { color: #e74c3c; }
-    .tooth-card.filling { border-color: #fdcb6e; background: #fff3e0; }
-    .tooth-card.filling .tooth-icon { color: #fdcb6e; }
-    .tooth-card.crown { border-color: #6c5ce7; background: #f3e5f5; }
-    .tooth-card.crown .tooth-icon { color: #6c5ce7; }
-    .tooth-card.bridge { border-color: #0984e3; background: #e3f2fd; }
-    .tooth-card.bridge .tooth-icon { color: #0984e3; }
-    .tooth-card.extraction { border-color: #e74c3c; background: #f5f5f5; opacity: 0.5; }
-    .tooth-card.extraction .tooth-icon { color: #e74c3c; }
-    .tooth-card.implant { border-color: #00b894; background: #e0f2f1; }
-    .tooth-card.implant .tooth-icon { color: #00b894; }
-    .tooth-card.root_canal { border-color: #e17055; background: #fce4ec; }
-    .tooth-card.root_canal .tooth-icon { color: #e17055; }
-    .tooth-card.missing { border-color: #b2bec3; background: #f5f5f5; opacity: 0.4; }
-    .tooth-card.missing .tooth-icon { color: #b2bec3; }
-    
-    .tooth-card.empty {
-        opacity: 0.5;
-        border-style: dashed;
-    }
-    
-    .tooth-card.empty:hover {
-        opacity: 0.8;
-    }
-    
-    .jaw-label {
-        text-align: center;
-        font-weight: 700;
-        color: #2d3436;
-        padding: 10px 0;
-        font-size: 16px;
-    }
-    
-    .legend {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 10px;
-        justify-content: center;
-        padding: 15px;
-        background: #f8f9fa;
-        border-radius: 10px;
-        margin: 15px 0;
-    }
-    
-    .legend-item {
-        display: flex;
-        align-items: center;
-        gap: 5px;
-        font-size: 12px;
-    }
-    
-    .legend-dot {
-        width: 16px;
-        height: 16px;
-        border-radius: 50%;
-        border: 1px solid #dee2e6;
-    }
-    
-    .condition-badge {
-        position: absolute;
-        top: -8px;
-        right: -8px;
-        font-size: 10px;
-        padding: 2px 8px;
-        border-radius: 10px;
-        background: white;
-        box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-    }
-    
-    .modal-tooth-preview {
-        width: 60px;
-        height: 60px;
-        border-radius: 50%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 30px;
-        margin: 0 auto 10px;
-    }
+.dc-page{max-width:1400px;margin:0 auto}.dc-hero{background:linear-gradient(135deg,#13163b,#243a73);color:#fff;border-radius:18px;padding:22px 24px;margin-bottom:18px;box-shadow:0 10px 30px rgba(19,22,59,.12)}.dc-hero h1{font-size:1.35rem;margin:0 0 4px;font-weight:700}.dc-hero p{margin:0;color:rgba(255,255,255,.7);font-size:.82rem}.dc-actions{display:flex;gap:8px;flex-wrap:wrap}.dc-meta{display:flex;gap:8px;flex-wrap:wrap;margin-top:13px}.dc-pill{display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border-radius:999px;background:rgba(255,255,255,.1);font-size:.72rem;font-weight:600}.dc-legend{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:18px}.dc-legend span{font-size:.7rem;font-weight:600;padding:5px 9px;border-radius:999px;background:#fff;border:1px solid #e6ebf1}.dc-layout{display:grid;grid-template-columns:minmax(0,1fr) 310px;gap:18px}.dc-card{background:#fff;border:1px solid #e5ebf1;border-radius:16px;box-shadow:0 8px 28px rgba(19,22,59,.06);overflow:hidden}.dc-card-head{padding:14px 17px;border-bottom:1px solid #e8edf2;display:flex;justify-content:space-between;align-items:center;gap:10px}.dc-card-head h2{font-size:.92rem;margin:0;color:#13163b;font-weight:700}.dc-card-body{padding:17px}.dc-quadrants{display:grid;grid-template-columns:1fr 1fr;gap:14px}.dc-quadrant{border:1px solid #e5ebf1;border-radius:14px;overflow:hidden;background:#fbfcfe}.dc-qhead{padding:10px 12px;background:#f4f7fb;display:flex;justify-content:space-between;font-size:.75rem;font-weight:700;color:#334155}.dc-teeth{display:grid;grid-template-columns:repeat(8,minmax(0,1fr));gap:6px;padding:10px}.dc-tooth{border:1px solid #dfe6ed;border-radius:10px;background:#fff;min-height:82px;padding:7px 3px;text-align:center;cursor:pointer;transition:.16s;position:relative}.dc-tooth:hover{transform:translateY(-2px);box-shadow:0 7px 16px rgba(19,22,59,.1)}.dc-tooth .num{font-size:.66rem;font-weight:800;color:#64748b}.dc-tooth .icon{font-size:25px;line-height:1.15;margin:4px 0}.dc-tooth .state{font-size:.58rem;font-weight:700;line-height:1.1}.dc-tooth.recorded{border-width:2px}.dc-tooth.healthy{background:#f0fdf4;border-color:#22c55e}.dc-tooth.decay,.dc-tooth.fracture{background:#fff1f2;border-color:#ef4444}.dc-tooth.filling,.dc-tooth.wear{background:#fffbeb;border-color:#f59e0b}.dc-tooth.crown{background:#f5f3ff;border-color:#8b5cf6}.dc-tooth.bridge{background:#eff6ff;border-color:#3b82f6}.dc-tooth.extraction,.dc-tooth.missing{background:#f1f5f9;border-color:#94a3b8;opacity:.75}.dc-tooth.implant{background:#ecfeff;border-color:#06b6d4}.dc-tooth.root_canal{background:#fff7ed;border-color:#f97316}.dc-tooth.stain{background:#fefce8;border-color:#ca8a04}.dc-tooth.other{background:#f8fafc;border-color:#64748b}.dc-empty{color:#94a3b8}.dc-records{display:flex;flex-direction:column;gap:8px}.dc-record{border:1px solid #e5ebf1;border-radius:12px;padding:10px 12px;background:#fff;display:flex;justify-content:space-between;gap:10px;align-items:center}.dc-record-main{min-width:0}.dc-record-main strong{font-size:.8rem;color:#1e293b}.dc-record-main div{font-size:.7rem;color:#64748b}.dc-form{background:#f8fafc;border:1px solid #e5ebf1;border-radius:13px;padding:13px}.dc-form label{font-size:.72rem;font-weight:700;color:#475569}.dc-form textarea{min-height:82px}.dc-note{font-size:.7rem;color:#64748b}.dc-modal-tooth{width:54px;height:54px;border-radius:14px;display:grid;place-items:center;background:#eff6ff;font-size:29px;margin:0 auto 8px}.dc-help{font-size:.7rem;color:#64748b;line-height:1.5}.dc-summary{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin-bottom:12px}.dc-summary div{background:#f8fafc;border:1px solid #e5ebf1;border-radius:10px;padding:9px;text-align:center}.dc-summary strong{display:block;font-size:1rem;color:#13163b}.dc-summary span{font-size:.62rem;color:#64748b}@media(max-width:1050px){.dc-layout{grid-template-columns:1fr}.dc-quadrants{grid-template-columns:1fr 1fr}}@media(max-width:700px){.dc-page{margin:0 -2px}.dc-hero{padding:18px}.dc-quadrants{grid-template-columns:1fr}.dc-teeth{gap:4px}.dc-tooth{min-height:74px}.dc-tooth .icon{font-size:21px}.dc-tooth .state{font-size:.52rem}}
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="row">
-    <div class="col-12">
-        <!-- Header -->
-        <div class="d-flex justify-content-between align-items-center mb-4">
-            <div>
-                <h4><i class="fas fa-tooth text-primary me-2"></i> Dental Chart</h4>
-                <p class="text-muted mb-0">{{ patient.full_name }} - Patient ID: {{ patient.id }}</p>
-            </div>
-            <div>
-                <a href="{% url 'patients:detail' patient.pk %}" class="btn btn-secondary">
-                    <i class="fas fa-arrow-left"></i> Back to Patient
-                </a>
-            </div>
-        </div>
-        
-        <!-- Legend -->
-        <div class="legend">
-            <span class="legend-item"><span class="legend-dot" style="background: #e8f5e9; border-color: #00b894;"></span> Healthy</span>
-            <span class="legend-item"><span class="legend-dot" style="background: #fce4ec; border-color: #e74c3c;"></span> Decay</span>
-            <span class="legend-item"><span class="legend-dot" style="background: #fff3e0; border-color: #fdcb6e;"></span> Filling</span>
-            <span class="legend-item"><span class="legend-dot" style="background: #f3e5f5; border-color: #6c5ce7;"></span> Crown</span>
-            <span class="legend-item"><span class="legend-dot" style="background: #e3f2fd; border-color: #0984e3;"></span> Bridge</span>
-            <span class="legend-item"><span class="legend-dot" style="background: #f5f5f5; border-color: #e74c3c;"></span> Extraction</span>
-            <span class="legend-item"><span class="legend-dot" style="background: #e0f2f1; border-color: #00b894;"></span> Implant</span>
-            <span class="legend-item"><span class="legend-dot" style="background: #f5f5f5; border-color: #b2bec3;"></span> Missing</span>
-        </div>
-        
-        <!-- Tooth Grid -->
-        <div class="card">
-            <div class="card-header">
-                <i class="fas fa-tooth text-primary"></i> Tooth Chart - Universal Numbering System
-            </div>
-            <div class="card-body">
-                <!-- Upper Jaw -->
-                <div class="jaw-label">Upper Jaw (Maxilla)</div>
-                <div class="tooth-grid">
-                    {% for tooth in tooth_numbers_upper %}
-                        <div class="tooth-card empty"
-                             onclick="openToothModal('{{ patient.id }}', '{{ tooth }}', '', '', '')"
-                             style="cursor: pointer;">
-                            <div class="tooth-number">{{ tooth }}</div>
-                            <div class="tooth-icon">🦷</div>
-                        </div>
-                    {% endfor %}
-                </div>
-                
-                <!-- Lower Jaw -->
-                <div class="jaw-label mt-4">Lower Jaw (Mandible)</div>
-                <div class="tooth-grid">
-                    {% for tooth in tooth_numbers_lower %}
-                        <div class="tooth-card empty"
-                             onclick="openToothModal('{{ patient.id }}', '{{ tooth }}', '', '', '')"
-                             style="cursor: pointer;">
-                            <div class="tooth-number">{{ tooth }}</div>
-                            <div class="tooth-icon">🦷</div>
-                        </div>
-                    {% endfor %}
-                </div>
-            </div>
-        </div>
-        
-        <!-- Tooth Data Preview -->
-        <div class="card mt-3">
-            <div class="card-header">
-                <i class="fas fa-info-circle text-primary"></i> Recorded Teeth
-            </div>
-            <div class="card-body">
-                {% if tooth_data %}
-                    <div class="row">
-                        {% for data in tooth_data %}
-                            <div class="col-md-2 col-3 mb-2">
-                                <span class="badge {% if data.has_record %}bg-success{% else %}bg-secondary{% endif %}">
-                                    Tooth #{{ data.number }}
-                                    {% if data.has_record %}
-                                        - {{ data.condition_display }}
-                                    {% endif %}
-                                </span>
-                            </div>
-                        {% endfor %}
-                    </div>
-                {% else %}
-                    <p class="text-muted">No teeth recorded yet. Click on a tooth to add a record.</p>
-                {% endif %}
-            </div>
-        </div>
+<div class="dc-page">
+  <div class="dc-hero d-flex justify-content-between align-items-start gap-3 flex-wrap">
+    <div><h1><i class="fas fa-tooth me-2"></i>Dental Chart</h1><p>{{ patient.full_name }} · Patient ID #{{ patient.id }}</p><div class="dc-meta"><span class="dc-pill"><i class="fas fa-teeth"></i>{{ recorded_count }}/32 teeth recorded</span><span class="dc-pill"><i class="fas fa-user-md"></i>{% if can_edit %}Clinical editing enabled{% else %}View only{% endif %}</span></div></div>
+    <div class="dc-actions"><a href="{% url 'patients:detail' patient.pk %}" class="btn btn-light btn-sm"><i class="fas fa-arrow-left me-1"></i>Patient Details</a></div>
+  </div>
+
+  <div class="dc-legend">
+    {% for value,label in condition_choices %}<span>{{ label }}</span>{% endfor %}
+  </div>
+
+  <div class="dc-layout">
+    <div class="dc-card">
+      <div class="dc-card-head"><h2><i class="fas fa-teeth me-2"></i>Universal Numbering · Odontogram</h2><span class="dc-note">Select a tooth to record or update</span></div>
+      <div class="dc-card-body"><div class="dc-quadrants">
+        {% for quadrant in quadrants %}
+        <section class="dc-quadrant"><div class="dc-qhead"><span>{{ quadrant.name }}</span><span>{{ quadrant.arch }}</span></div><div class="dc-teeth">
+          {% for data in quadrant.teeth %}
+          <button type="button" class="dc-tooth {% if data %}recorded {{ data.condition }}{% else %}dc-empty{% endif %}" onclick="openToothModal('{{ patient.id }}','{{ data.tooth_number|default:data }}','{% if data.tooth_number %}{{ data.condition }}{% endif %}','{% if data.tooth_number %}{{ data.surface|default:'' }}{% endif %}','{% if data.tooth_number %}{{ data.notes|default:''|escapejs }}{% endif %}')">
+            <div class="num">#{{ data.tooth_number|default:data }}</div><div class="icon">🦷</div><div class="state">{% if data.tooth_number %}{{ data.get_condition_display }}{% else %}Not recorded{% endif %}</div>
+          </button>
+          {% endfor %}
+        </div></section>
+        {% endfor %}
+      </div></div>
     </div>
+
+    <aside class="d-flex flex-column gap-3">
+      <div class="dc-card"><div class="dc-card-head"><h2><i class="fas fa-clipboard-check me-2"></i>Chart Summary</h2></div><div class="dc-card-body"><div class="dc-summary"><div><strong>{{ recorded_count }}</strong><span>Recorded</span></div><div><strong>{{ remaining_count }}</strong><span>Remaining</span></div><div><strong>32</strong><span>Total teeth</span></div></div><div class="dc-help">Use the odontogram to document conditions, surfaces and clinical notes for each tooth.</div></div></div>
+      <div class="dc-card"><div class="dc-card-head"><h2><i class="fas fa-list-check me-2"></i>Recorded Teeth</h2></div><div class="dc-card-body"><div class="dc-records">{% for data in tooth_data %}{% if data.has_record %}<div class="dc-record"><div class="dc-record-main"><strong>Tooth #{{ data.number }} · {{ data.condition_display }}</strong><div>{% if data.surface %}{{ data.surface|title }} · {% endif %}{{ data.tooth_name }}</div></div>{% if can_edit %}<button type="button" class="btn btn-sm btn-outline-primary" onclick="openToothModal('{{ patient.id }}','{{ data.number }}','{{ data.condition }}','{{ data.surface|default:'' }}','{{ data.notes|default:''|escapejs }}')"><i class="fas fa-edit"></i></button>{% endif %}</div>{% endif %}{% empty %}<div class="text-center text-muted small py-3">No recorded teeth yet.</div>{% endfor %}</div></div></div>
+    </aside>
+  </div>
 </div>
 
-<!-- Tooth Modal -->
-<div class="modal fade" id="toothModal" tabindex="-1">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <form method="post" id="toothForm">
-                {% csrf_token %}
-                <div class="modal-header">
-                    <h5 class="modal-title" id="toothModalTitle">Tooth Record</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                </div>
-                <div class="modal-body">
-                    <input type="hidden" id="toothNumber" name="tooth_number">
-                    
-                    <div class="text-center mb-3">
-                        <div id="toothPreview" class="modal-tooth-preview" style="background: #e8f5e9; border: 2px solid #00b894;">
-                            🦷
-                        </div>
-                        <h5 id="toothNameDisplay">Tooth #16</h5>
-                    </div>
-                    
-                    <div class="mb-3">
-                        <label for="condition" class="form-label">Condition <span class="text-danger">*</span></label>
-                        <select class="form-select" id="condition" name="condition" required>
-                            <option value="">Select Condition</option>
-                            {% for value, label in condition_choices %}
-                            <option value="{{ value }}">{{ label }}</option>
-                            {% endfor %}
-                        </select>
-                    </div>
-                    
-                    <div class="mb-3">
-                        <label for="surface" class="form-label">Surface</label>
-                        <select class="form-select" id="surface" name="surface">
-                            <option value="">No Surface</option>
-                            {% for value, label in surface_choices %}
-                            <option value="{{ value }}">{{ label }}</option>
-                            {% endfor %}
-                        </select>
-                    </div>
-                    
-                    <div class="mb-3">
-                        <label for="notes" class="form-label">Notes</label>
-                        <textarea class="form-control" id="notes" name="notes" rows="3" placeholder="Add clinical notes for this tooth..."></textarea>
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                    <button type="submit" class="btn btn-primary">
-                        <i class="fas fa-save"></i> Save Record
-                    </button>
-                </div>
-            </form>
-        </div>
-    </div>
-</div>
-
+{% if can_edit %}
+<div class="modal fade" id="toothModal" tabindex="-1"><div class="modal-dialog modal-dialog-centered"><div class="modal-content border-0 shadow"><form method="post" id="toothForm">{% csrf_token %}<div class="modal-header"><div><h5 class="modal-title mb-1">Tooth Record</h5><div class="small text-muted" id="toothNameDisplay"></div></div><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body"><div class="dc-modal-tooth">🦷</div><input type="hidden" id="toothNumber" name="tooth_number"><div class="mb-3"><label for="condition">Condition</label><select class="form-select" id="condition" name="condition" required><option value="">Select condition</option>{% for value,label in condition_choices %}<option value="{{ value }}">{{ label }}</option>{% endfor %}</select></div><div class="mb-3"><label for="surface">Surface</label><select class="form-select" id="surface" name="surface"><option value="">No surface</option>{% for value,label in surface_choices %}<option value="{{ value }}">{{ label }}</option>{% endfor %}</select></div><div class="mb-2"><label for="notes">Clinical notes</label><textarea class="form-control" id="notes" name="notes" placeholder="Optional clinical observation..."></textarea></div></div><div class="modal-footer"><button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancel</button><button type="submit" class="btn btn-primary"><i class="fas fa-save me-1"></i>Save Record</button></div></form></div></div></div>
 <script>
-    function openToothModal(patientId, toothNumber, currentCondition, currentSurface, currentNotes) {
-        document.getElementById('toothNumber').value = toothNumber;
-        document.getElementById('condition').value = currentCondition || '';
-        document.getElementById('surface').value = currentSurface || '';
-        document.getElementById('notes').value = currentNotes || '';
-        
-        // Update tooth name
-        const toothNames = {
-            1: 'Right Maxillary 3rd Molar', 2: 'Right Maxillary 2nd Molar',
-            3: 'Right Maxillary 1st Molar', 4: 'Right Maxillary 2nd Premolar',
-            5: 'Right Maxillary 1st Premolar', 6: 'Right Maxillary Canine',
-            7: 'Right Maxillary Lateral Incisor', 8: 'Right Maxillary Central Incisor',
-            9: 'Left Maxillary Central Incisor', 10: 'Left Maxillary Lateral Incisor',
-            11: 'Left Maxillary Canine', 12: 'Left Maxillary 1st Premolar',
-            13: 'Left Maxillary 2nd Premolar', 14: 'Left Maxillary 1st Molar',
-            15: 'Left Maxillary 2nd Molar', 16: 'Left Maxillary 3rd Molar',
-            17: 'Left Mandibular 3rd Molar', 18: 'Left Mandibular 2nd Molar',
-            19: 'Left Mandibular 1st Molar', 20: 'Left Mandibular 2nd Premolar',
-            21: 'Left Mandibular 1st Premolar', 22: 'Left Mandibular Canine',
-            23: 'Left Mandibular Lateral Incisor', 24: 'Left Mandibular Central Incisor',
-            25: 'Right Mandibular Central Incisor', 26: 'Right Mandibular Lateral Incisor',
-            27: 'Right Mandibular Canine', 28: 'Right Mandibular 1st Premolar',
-            29: 'Right Mandibular 2nd Premolar', 30: 'Right Mandibular 1st Molar',
-            31: 'Right Mandibular 2nd Molar', 32: 'Right Mandibular 3rd Molar'
-        };
-        
-        document.getElementById('toothNameDisplay').textContent = `Tooth #${toothNumber} - ${toothNames[toothNumber] || 'Unknown'}`;
-        
-        // Update preview color based on condition
-        const preview = document.getElementById('toothPreview');
-        const colors = {
-            'healthy': { bg: '#e8f5e9', border: '#00b894' },
-            'decay': { bg: '#fce4ec', border: '#e74c3c' },
-            'filling': { bg: '#fff3e0', border: '#fdcb6e' },
-            'crown': { bg: '#f3e5f5', border: '#6c5ce7' },
-            'bridge': { bg: '#e3f2fd', border: '#0984e3' },
-            'extraction': { bg: '#f5f5f5', border: '#e74c3c' },
-            'implant': { bg: '#e0f2f1', border: '#00b894' },
-            'root_canal': { bg: '#fce4ec', border: '#e17055' },
-            'missing': { bg: '#f5f5f5', border: '#b2bec3' },
-        };
-        
-        const color = colors[currentCondition] || { bg: '#e8f5e9', border: '#00b894' };
-        preview.style.background = color.bg;
-        preview.style.border = `2px solid ${color.border}`;
-        
-        document.getElementById('toothForm').action = `/patients/${patientId}/dental-chart/`;
-        
-        const modal = new bootstrap.Modal(document.getElementById('toothModal'));
-        modal.show();
-    }
+const toothNames={1:'Right Maxillary 3rd Molar',2:'Right Maxillary 2nd Molar',3:'Right Maxillary 1st Molar',4:'Right Maxillary 2nd Premolar',5:'Right Maxillary 1st Premolar',6:'Right Maxillary Canine',7:'Right Maxillary Lateral Incisor',8:'Right Maxillary Central Incisor',9:'Left Maxillary Central Incisor',10:'Left Maxillary Lateral Incisor',11:'Left Maxillary Canine',12:'Left Maxillary 1st Premolar',13:'Left Maxillary 2nd Premolar',14:'Left Maxillary 1st Molar',15:'Left Maxillary 2nd Molar',16:'Left Maxillary 3rd Molar',17:'Left Mandibular 3rd Molar',18:'Left Mandibular 2nd Molar',19:'Left Mandibular 1st Molar',20:'Left Mandibular 2nd Premolar',21:'Left Mandibular 1st Premolar',22:'Left Mandibular Canine',23:'Left Mandibular Lateral Incisor',24:'Left Mandibular Central Incisor',25:'Right Mandibular Central Incisor',26:'Right Mandibular Lateral Incisor',27:'Right Mandibular Canine',28:'Right Mandibular 1st Premolar',29:'Right Mandibular 2nd Premolar',30:'Right Mandibular 1st Molar',31:'Right Mandibular 2nd Molar',32:'Right Mandibular 3rd Molar'};
+function openToothModal(patientId,num,condition,surface,notes){document.getElementById('toothNumber').value=num;document.getElementById('condition').value=condition||'';document.getElementById('surface').value=surface||'';document.getElementById('notes').value=notes||'';document.getElementById('toothNameDisplay').textContent='Tooth #'+num+' · '+(toothNames[num]||'Tooth');document.getElementById('toothForm').action='/patients/'+patientId+'/dental-chart/';new bootstrap.Modal(document.getElementById('toothModal')).show();}
 </script>
+{% endif %}
 {% endblock %}

@@ -390,6 +390,8 @@ def patient_detail(request, pk):
     invoices = Invoice.objects.filter(
         patient=patient
     ).order_by('-issue_date')
+
+    dental_chart_records = DentalChart.objects.filter(patient=patient).order_by('-updated_at')
     
     # Calculate total amount
     total_amount = invoices.aggregate(Sum('total_amount'))['total_amount__sum'] or 0
@@ -405,12 +407,22 @@ def patient_detail(request, pk):
     new_patient_pin = request.session.pop('new_patient_pin', None)
     new_patient_id = request.session.pop('new_patient_id', None)
     
+    quadrants = []
+    for qname, arch, numbers in quadrant_numbers:
+        quadrants.append({
+            'name': qname,
+            'arch': arch,
+            'teeth': [tooth_map.get(num) or num for num in numbers],
+        })
+
     context = {
         'patient': patient,
         'appointments': appointments,
         'treatments': treatments,
         'invoices': invoices,
         'total_amount': total_amount,
+        'dental_chart_records': dental_chart_records,
+        'dental_chart_count': dental_chart_records.count(),
         'is_doctor': user_profile.role == 'doctor',
         'portal_pin': portal_pin,  # ✅ Pass portal PIN
         'new_patient_pin': new_patient_pin,  # ✅ Pass new patient PIN
@@ -519,6 +531,24 @@ def patient_delete(request, pk):
 # ====================
 # PATIENT ADD IMAGE
 # ====================
+
+@login_required
+def patient_status(request, pk):
+    """Activate or deactivate a patient - Admin only."""
+    patient = get_object_or_404(Patient, pk=pk)
+
+    if request.user.profile.role != 'admin':
+        messages.error(request, '❌ Access denied. Only administrators can change patient status.')
+        return redirect('patients:detail', pk=pk)
+
+    if request.method == 'POST':
+        patient.is_active = not patient.is_active
+        patient.save(update_fields=['is_active'])
+        status = 'activated' if patient.is_active else 'deactivated'
+        messages.success(request, f'Patient {patient.full_name} has been {status} successfully.')
+
+    return redirect('patients:detail', pk=pk)
+
 
 @login_required
 def patient_add_image(request, pk):
@@ -709,88 +739,93 @@ def patient_search_api(request):
 
 @login_required
 def dental_chart(request, pk):
-    """View and edit patient's dental chart"""
+    """View and edit a patient's 32-tooth odontogram."""
     from appointments.models import DentalChart
-    from django.contrib.auth.models import User
-    
+
     patient = get_object_or_404(Patient, pk=pk)
     user_profile = request.user.profile
-    
-    # Check if doctor has access
+
+    # Doctors may only access their assigned patients. Admins have full access.
     if user_profile.role == 'doctor':
         doctor = user_profile.doctor
-        if doctor:
-            has_access = Appointment.objects.filter(
+        if not doctor or not Appointment.objects.filter(patient=patient, doctor=doctor).exists():
+            messages.error(request, '❌ You do not have access to this patient.')
+            return redirect('patients:list')
+
+    # Only doctors and admins can write dental-chart records.
+    can_edit = user_profile.role in ['doctor', 'admin']
+
+    if request.method == 'POST':
+        if not can_edit:
+            messages.error(request, '❌ Only doctors and administrators can update dental charts.')
+            return redirect('patients:dental_chart', pk=patient.pk)
+        try:
+            tooth_number = int(request.POST.get('tooth_number', '0'))
+            condition = request.POST.get('condition', '').strip()
+            surface = request.POST.get('surface', '').strip() or None
+            notes = request.POST.get('notes', '').strip()
+
+            if tooth_number < 1 or tooth_number > 32 or not condition:
+                messages.error(request, 'Tooth number and condition are required.')
+                return redirect('patients:dental_chart', pk=patient.pk)
+
+            record, created = DentalChart.objects.update_or_create(
                 patient=patient,
-                doctor=doctor
-            ).exists()
-            if not has_access:
-                messages.error(request, '❌ You do not have access to this patient.')
-                return redirect('patients:list')
-    
-    # Get existing chart records
-    chart_records = DentalChart.objects.filter(patient=patient)
-    
-    # Create a map of tooth records
+                tooth_number=tooth_number,
+                defaults={
+                    'tooth_name': get_tooth_name(tooth_number),
+                    'condition': condition,
+                    'surface': surface,
+                    'notes': notes,
+                    'created_by': request.user,
+                }
+            )
+            action = 'recorded' if created else 'updated'
+            messages.success(request, f'✅ Tooth #{tooth_number} {action} as {record.get_condition_display()}.')
+            return redirect('patients:dental_chart', pk=patient.pk)
+        except (ValueError, TypeError):
+            messages.error(request, '❌ Invalid tooth number.')
+        except Exception as e:
+            messages.error(request, f'❌ Error updating dental chart: {str(e)}')
+
+    chart_records = DentalChart.objects.filter(patient=patient).select_related('created_by')
     tooth_map = {record.tooth_number: record for record in chart_records}
-    
-    # Build tooth data list
-    all_tooth_numbers = [16, 15, 14, 13, 12, 11, 21, 22, 23, 24, 25, 26, 32, 31, 30, 29, 28, 27, 26, 25, 24, 23, 22, 21, 20, 19, 18, 17]
+
+    # Universal numbering arranged by quadrant for a clear clinical layout.
+    quadrant_numbers = [
+        ('Upper Right', 'Maxilla', list(range(8, 0, -1))),
+        ('Upper Left', 'Maxilla', list(range(9, 17))),
+        ('Lower Left', 'Mandible', list(range(17, 25))),
+        ('Lower Right', 'Mandible', list(range(32, 24, -1))),
+    ]
+
     tooth_data = []
-    for num in all_tooth_numbers:
+    for num in range(1, 33):
         record = tooth_map.get(num)
         tooth_data.append({
             'number': num,
             'has_record': bool(record),
             'condition_display': record.get_condition_display() if record else None,
+            'condition': record.condition if record else '',
+            'surface': record.surface if record else '',
+            'notes': record.notes if record else '',
+            'tooth_name': record.tooth_name if record else get_tooth_name(num),
+            'updated_at': record.updated_at if record else None,
         })
-    
-    if request.method == 'POST':
-        try:
-            tooth_number = request.POST.get('tooth_number')
-            condition = request.POST.get('condition')
-            surface = request.POST.get('surface')
-            notes = request.POST.get('notes', '')
-            
-            if not tooth_number or not condition:
-                messages.error(request, 'Tooth number and condition are required.')
-                return redirect('patients:dental_chart', pk=patient.pk)
-            
-            # Update or create record
-            record, created = DentalChart.objects.update_or_create(
-                patient=patient,
-                tooth_number=int(tooth_number),
-                defaults={
-                    'tooth_name': get_tooth_name(int(tooth_number)),
-                    'condition': condition,
-                    'surface': surface if surface else None,
-                    'notes': notes,
-                    'created_by': request.user
-                }
-            )
-            
-            if created:
-                messages.success(request, f'✅ Tooth #{tooth_number} recorded as {record.get_condition_display()}!')
-            else:
-                messages.success(request, f'✅ Tooth #{tooth_number} updated to {record.get_condition_display()}!')
-            
-            return redirect('patients:dental_chart', pk=patient.pk)
-            
-        except Exception as e:
-            messages.error(request, f'❌ Error updating dental chart: {str(e)}')
-    
+
     context = {
         'patient': patient,
         'tooth_data': tooth_data,
         'tooth_map': tooth_map,
+        'quadrants': quadrants,
         'is_doctor': user_profile.role == 'doctor',
+        'can_edit': can_edit,
+        'recorded_count': len(chart_records),
+        'remaining_count': 32 - len(chart_records),
         'condition_choices': DentalChart.TOOTH_CONDITION_CHOICES,
         'surface_choices': DentalChart.SURFACE_CHOICES,
-        'tooth_numbers_upper': [16, 15, 14, 13, 12, 11, 21, 22, 23, 24, 25, 26],
-        'tooth_numbers_lower': [32, 31, 30, 29, 28, 27, 26, 25, 24, 23, 22, 21, 20, 19, 18, 17],
     }
     return render(request, 'patients/dental_chart.html', context)
-
 
 def get_tooth_name(tooth_number):
     """Get the name of a tooth based on universal numbering"""
