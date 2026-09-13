@@ -247,5 +247,339 @@
  if('serviceWorker' in navigator){window.addEventListener('load',function(){navigator.serviceWorker.register('/sw.js',{scope:'/'}).then(function(reg){return reg.update();}).catch(function(){});});}
 })();
 </script>
+
+<script>
+/*
+ * Dorah Dental - Universal Form Draft Protection
+ *
+ * Keeps non-sensitive form data in the browser so an accidental
+ * refresh or server-side validation error does not force re-entry.
+ *
+ * Drafts are:
+ *   - saved while the user types/changes fields
+ *   - restored on reload
+ *   - cleared after a successful save (success message)
+ *   - cleared when leaving the form page, unless the next load is
+ *     simply the successful POST redirect
+ *   - never saved for file inputs or sensitive fields
+ */
+(function () {
+    'use strict';
+
+    var STORAGE_PREFIX = 'dorah_dental_form_draft_v1:';
+    var PAGE_KEY = window.location.pathname;
+    var SESSION_PAGE_KEY = 'dorah_dental_previous_form_page';
+    var MAX_AGE = 7 * 24 * 60 * 60 * 1000;
+
+    function isSensitive(field) {
+        var name = (field.name || '').toLowerCase();
+        var type = (field.type || '').toLowerCase();
+
+        if (!name || type === 'file') return true;
+
+        return (
+            type === 'password' ||
+            /(^|[_-])(password|passwd|passcode|otp|one_time_password|token|secret|pin|verification_code|security_code)([_-]|$)/i.test(name)
+        );
+    }
+
+    function isTrackableForm(form) {
+        if (!form || !form.elements) return false;
+
+        var method = (form.getAttribute('method') || 'get').toLowerCase();
+        if (method !== 'post') return false;
+
+        if (form.hasAttribute('data-draft-disabled')) return false;
+
+        var action = (form.getAttribute('action') || '').toLowerCase();
+
+        /* Never draft logout/delete/CSRF-only confirmation forms. */
+        if (/logout|delete|signout|sign-out/.test(action)) return false;
+
+        var fields = Array.prototype.slice.call(form.elements);
+        return fields.some(function (field) {
+            return field.name && !isSensitive(field) &&
+                   ['submit', 'button', 'reset', 'hidden'].indexOf((field.type || '').toLowerCase()) === -1;
+        });
+    }
+
+    function getForms() {
+        return Array.prototype.slice.call(document.querySelectorAll('form'))
+            .filter(isTrackableForm);
+    }
+
+    function getFormId(form, index) {
+        var explicit = form.getAttribute('id') ||
+                       form.getAttribute('name') ||
+                       form.getAttribute('data-form-name');
+
+        if (explicit) return explicit;
+
+        var action = form.getAttribute('action') || window.location.pathname;
+        return action + '::' + index;
+    }
+
+    function storageKey(formId) {
+        return STORAGE_PREFIX + PAGE_KEY + '::' + formId;
+    }
+
+    function collect(form) {
+        var data = {};
+        var fields = Array.prototype.slice.call(form.elements);
+
+        fields.forEach(function (field, index) {
+            var name = field.name;
+            var type = (field.type || '').toLowerCase();
+
+            if (!name || isSensitive(field) ||
+                ['submit', 'button', 'reset', 'file'].indexOf(type) !== -1) {
+                return;
+            }
+
+            var key = name + '::' + index;
+
+            if (type === 'checkbox' || type === 'radio') {
+                data[key] = {
+                    name: name,
+                    type: type,
+                    checked: !!field.checked,
+                    value: field.value
+                };
+            } else if (field.tagName.toLowerCase() === 'select' && field.multiple) {
+                data[key] = {
+                    name: name,
+                    type: 'select-multiple',
+                    values: Array.prototype.slice.call(field.selectedOptions)
+                        .map(function (option) { return option.value; })
+                };
+            } else {
+                data[key] = {
+                    name: name,
+                    type: type,
+                    value: field.value
+                };
+            }
+        });
+
+        return data;
+    }
+
+    function save(form, formId) {
+        try {
+            var payload = {
+                version: 1,
+                savedAt: Date.now(),
+                page: PAGE_KEY,
+                formId: formId,
+                data: collect(form)
+            };
+
+            localStorage.setItem(storageKey(formId), JSON.stringify(payload));
+            sessionStorage.setItem(SESSION_PAGE_KEY, PAGE_KEY);
+        } catch (e) {
+            /* Storage can be disabled/full; the form must still work normally. */
+        }
+    }
+
+    function restore(form, formId) {
+        try {
+            var raw = localStorage.getItem(storageKey(formId));
+            if (!raw) return false;
+
+            var payload = JSON.parse(raw);
+
+            if (!payload || payload.version !== 1 ||
+                !payload.savedAt ||
+                Date.now() - payload.savedAt > MAX_AGE) {
+                localStorage.removeItem(storageKey(formId));
+                return false;
+            }
+
+            var fields = Array.prototype.slice.call(form.elements);
+            var restored = false;
+
+            Object.keys(payload.data || {}).forEach(function (key) {
+                var item = payload.data[key];
+                var parts = key.split('::');
+                var index = parseInt(parts[parts.length - 1], 10);
+                var field = fields[index];
+
+                if (!field || field.name !== item.name || isSensitive(field)) return;
+
+                var type = (field.type || '').toLowerCase();
+
+                if (item.type === 'checkbox' || item.type === 'radio') {
+                    field.checked = !!item.checked;
+                    restored = true;
+                } else if (item.type === 'select-multiple') {
+                    var values = item.values || [];
+                    Array.prototype.forEach.call(field.options, function (option) {
+                        option.selected = values.indexOf(option.value) !== -1;
+                    });
+                    restored = true;
+                } else if (type !== 'file') {
+                    /*
+                     * Do not overwrite browser/autofill values that appeared
+                     * after the draft was saved.
+                     */
+                    if (field.value === '' || field.value === null) {
+                        field.value = item.value == null ? '' : item.value;
+                        restored = true;
+                    } else if (item.value !== field.value) {
+                        /*
+                         * If the field already contains a value, prefer the
+                         * saved draft only when it is not an authentication
+                         * field (those are excluded above).
+                         */
+                        field.value = item.value == null ? '' : item.value;
+                        restored = true;
+                    }
+                }
+            });
+
+            if (restored) {
+                form.dispatchEvent(new CustomEvent('draftrestored', {
+                    bubbles: true,
+                    detail: { formId: formId }
+                }));
+
+                /*
+                 * Trigger change/input so Select2 and other dependent UI
+                 * components can recalculate their values.
+                 */
+                fields.forEach(function (field) {
+                    if (field.name && !isSensitive(field)) {
+                        try {
+                            field.dispatchEvent(new Event('change', { bubbles: true }));
+                        } catch (e) {}
+                    }
+                });
+            }
+
+            return restored;
+        } catch (e) {
+            return false;
+        }
+    }
+
+    function clear(formId) {
+        try {
+            localStorage.removeItem(storageKey(formId));
+        } catch (e) {}
+    }
+
+    function clearPageDrafts() {
+        try {
+            var prefix = STORAGE_PREFIX + PAGE_KEY + '::';
+            var keys = [];
+
+            for (var i = 0; i < localStorage.length; i++) {
+                var key = localStorage.key(i);
+                if (key && key.indexOf(prefix) === 0) keys.push(key);
+            }
+
+            keys.forEach(function (key) {
+                localStorage.removeItem(key);
+            });
+        } catch (e) {}
+    }
+
+    function clearPreviousPageDrafts() {
+        try {
+            var previousPage = sessionStorage.getItem(SESSION_PAGE_KEY);
+
+            if (previousPage && previousPage !== PAGE_KEY) {
+                var prefix = STORAGE_PREFIX + previousPage + '::';
+                var keys = [];
+
+                for (var i = 0; i < localStorage.length; i++) {
+                    var key = localStorage.key(i);
+                    if (key && key.indexOf(prefix) === 0) keys.push(key);
+                }
+
+                keys.forEach(function (key) {
+                    localStorage.removeItem(key);
+                });
+            }
+
+            sessionStorage.setItem(SESSION_PAGE_KEY, PAGE_KEY);
+        } catch (e) {}
+    }
+
+    function hasSuccessMessage() {
+        /*
+         * The application uses Bootstrap toast headers with bg-success
+         * for successful saves.
+         */
+        return !!document.querySelector(
+            '.toast-header.bg-success, .alert-success, [data-draft-saved="true"]'
+        );
+    }
+
+    function init() {
+        clearPreviousPageDrafts();
+
+        var forms = getForms();
+
+        forms.forEach(function (form, index) {
+            var formId = getFormId(form, index);
+
+            /*
+             * If Django redirected back with a success message, the save
+             * completed successfully, so remove the old draft.
+             */
+            if (hasSuccessMessage()) {
+                clear(formId);
+            } else {
+                restore(form, formId);
+            }
+
+            var timer = null;
+
+            function persist() {
+                window.clearTimeout(timer);
+                timer = window.setTimeout(function () {
+                    save(form, formId);
+                }, 150);
+            }
+
+            form.addEventListener('input', persist, true);
+            form.addEventListener('change', persist, true);
+
+            form.addEventListener('submit', function () {
+                /*
+                 * Save immediately before POST. If Django returns the same
+                 * page with validation errors, the draft is available.
+                 */
+                save(form, formId);
+            }, true);
+
+            form.addEventListener('reset', function () {
+                window.setTimeout(function () {
+                    clear(formId);
+                }, 0);
+            });
+
+            /*
+             * Public helper for pages with custom successful AJAX saves.
+             */
+            form.dorahClearDraft = function () {
+                clear(formId);
+            };
+        });
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', init);
+    } else {
+        init();
+    }
+
+    window.DorahDentalDrafts = {
+        clearCurrentPage: clearPageDrafts
+    };
+})();
+</script>
+
 </body>
 </html>
