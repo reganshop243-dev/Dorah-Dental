@@ -116,9 +116,11 @@
                     <a href="{% url 'patients:add' %}" class="btn btn-success">
                         <i class="fas fa-user-plus"></i> Add Patient
                     </a>
+{% if can_view_financials %}
                     <a href="{% url 'billing:add' %}" class="btn btn-info text-white">
                         <i class="fas fa-file-invoice"></i> New Invoice
                     </a>
+                    {% endif %}
                 </div>
             </div>
         </div>

@@ -1,142 +1,20 @@
 {% extends 'base.html' %}
 {% load static %}
 {% load custom_filters %}
-
-{% block page_title %}Role Management{% endblock %}
-
+{% block page_title %}Role & Permission Management{% endblock %}
 {% block content %}
-<div class="d-flex justify-content-between align-items-center mb-4">
-    <h4><i class="fas fa-user-tag text-primary"></i> Role Management</h4>
-    <a href="{% url 'core:user_add' %}" class="btn btn-primary">
-        <i class="fas fa-user-plus"></i> Add User
-    </a>
-</div>
-
-<!-- Role Statistics -->
-<div class="row mb-4">
-    <div class="col-md-12">
-        <div class="card">
-            <div class="card-body">
-                <div class="row">
-                    <div class="col-md-3 text-center">
-                        <h3 class="text-primary">{{ role_stats.admin|default:0 }}</h3>
-                        <p class="text-muted"><i class="fas fa-crown text-danger"></i> Administrators</p>
-                    </div>
-                    <div class="col-md-3 text-center">
-                        <h3 class="text-primary">{{ role_stats.doctor|default:0 }}</h3>
-                        <p class="text-muted"><i class="fas fa-user-md text-primary"></i> Doctors</p>
-                    </div>
-                    <div class="col-md-3 text-center">
-                        <h3 class="text-primary">{{ role_stats.accountant|default:0 }}</h3>
-                        <p class="text-muted"><i class="fas fa-calculator text-success"></i> Accountants</p>
-                    </div>
-                    <div class="col-md-3 text-center">
-                        <h3 class="text-primary">{{ role_stats.receptionist|default:0 }}</h3>
-                        <p class="text-muted"><i class="fas fa-headset text-info"></i> Receptionists</p>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- Users by Role -->
-<div class="row">
-    {% for role_code, role_name in role_choices %}
-        {% with role_users=roles|get_item:role_code %}
-        <div class="col-md-6 mb-4">
-            <div class="card">
-                <div class="card-header">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <div>
-                            <i class="fas 
-                                {% if role_code == 'admin' %}fa-crown text-danger
-                                {% elif role_code == 'doctor' %}fa-user-md text-primary
-                                {% elif role_code == 'accountant' %}fa-calculator text-success
-                                {% elif role_code == 'receptionist' %}fa-headset text-info
-                                {% elif role_code == 'nurse' %}fa-user-nurse text-success
-                                {% elif role_code == 'assistant' %}fa-user-cog text-secondary
-                                {% endif %}"></i>
-                            <strong>{{ role_name }}</strong>
-                            <span class="badge bg-secondary">{{ role_users|length }}</span>
-                        </div>
-                        <a href="{% url 'core:user_add' %}?role={{ role_code }}" class="btn btn-sm btn-primary">
-                            <i class="fas fa-plus"></i> Add
-                        </a>
-                    </div>
-                </div>
-                <div class="card-body">
-                    {% if role_users %}
-                        <div class="list-group list-group-flush">
-                            {% for user in role_users %}
-                            <div class="list-group-item d-flex justify-content-between align-items-center">
-                                <div>
-                                    <strong>{{ user.get_full_name|default:user.username }}</strong>
-                                    <br>
-                                    <small class="text-muted">
-                                        <i class="fas fa-user"></i> @{{ user.username }}
-                                        {% if user.email %} | <i class="fas fa-envelope"></i> {{ user.email }}{% endif %}
-                                    </small>
-                                </div>
-                                <div>
-                                    <span class="badge {% if user.is_active %}bg-success{% else %}bg-danger{% endif %} me-2">
-                                        {% if user.is_active %}Active{% else %}Inactive{% endif %}
-                                    </span>
-                                    <div class="btn-group btn-group-sm">
-                                        <a href="{% url 'core:user_edit' user.pk %}" class="btn btn-outline-primary" title="Edit">
-                                            <i class="fas fa-edit"></i>
-                                        </a>
-                                        {% if user.is_active %}
-                                        <a href="{% url 'core:user_delete' user.pk %}" class="btn btn-outline-danger" title="Deactivate">
-                                            <i class="fas fa-ban"></i>
-                                        </a>
-                                        {% else %}
-                                        <a href="{% url 'core:user_activate' user.pk %}" class="btn btn-outline-success" title="Activate">
-                                            <i class="fas fa-check"></i>
-                                        </a>
-                                        {% endif %}
-                                    </div>
-                                </div>
-                            </div>
-                            {% endfor %}
-                        </div>
-                    {% else %}
-                        <p class="text-muted text-center py-3">No users in this role.</p>
-                    {% endif %}
-                </div>
-            </div>
-        </div>
-        {% endwith %}
-    {% endfor %}
-</div>
-
-<!-- Quick Actions -->
-<div class="row">
-    <div class="col-md-12">
-        <div class="card">
-            <div class="card-header">
-                <i class="fas fa-bolt text-warning"></i> Quick Actions
-            </div>
-            <div class="card-body">
-                <div class="row">
-                    <div class="col-md-3">
-                        <a href="{% url 'core:user_add' %}" class="btn btn-primary w-100">
-                            <i class="fas fa-user-plus"></i> Add New User
-                        </a>
-                    </div>
-                    <div class="col-md-3">
-                        <a href="{% url 'core:user_list' %}" class="btn btn-info w-100 text-white">
-                            <i class="fas fa-list"></i> View All Users
-                        </a>
-                    </div>
-                    <div class="col-md-3">
-                        <a href="/admin/" class="btn btn-danger w-100" target="_blank">
-                            <i class="fas fa-crown"></i> Django Admin
-                        </a>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
+<style>
+.role-page{max-width:1500px;margin:auto}.role-hero{background:linear-gradient(135deg,#102a43,#1f5f8b);color:#fff;border-radius:18px;padding:24px;box-shadow:0 12px 30px rgba(16,42,67,.14)}.role-layout{display:grid;grid-template-columns:280px 1fr;gap:20px}.role-panel,.permission-panel{background:#fff;border:1px solid #e7ebf0;border-radius:16px;box-shadow:0 5px 18px rgba(0,0,0,.05)}.role-panel{padding:12px}.role-link{display:flex;justify-content:space-between;align-items:center;padding:11px 13px;border-radius:10px;text-decoration:none;color:#344054;margin-bottom:5px}.role-link:hover,.role-link.active{background:#eef6ff;color:#1261a0}.role-link .count{font-size:11px;background:#eef1f5;padding:3px 7px;border-radius:20px}.permission-panel{padding:22px}.permission-head{display:flex;justify-content:space-between;align-items:center;gap:15px;flex-wrap:wrap;border-bottom:1px solid #edf0f3;padding-bottom:15px}.permission-category{border:1px solid #e8ecf1;border-radius:13px;margin-top:15px;overflow:hidden}.permission-category h5{background:#f8fafc;margin:0;padding:12px 15px;font-size:14px}.permission-row{display:flex;align-items:center;justify-content:space-between;gap:15px;padding:11px 15px;border-top:1px solid #edf0f3}.permission-main{display:flex;align-items:center;gap:10px}.permission-code{font-size:11px;color:#98a2b3}.primary-badge{font-size:9px;letter-spacing:.05em;padding:3px 6px;border-radius:10px;background:#e8f1ff;color:#1769aa}.restricted-badge{font-size:9px;padding:3px 6px;border-radius:10px;background:#fff0f0;color:#b42318}.added-badge{font-size:9px;padding:3px 6px;border-radius:10px;background:#ecfdf3;color:#027a48}@media(max-width:900px){.role-layout{grid-template-columns:1fr}}
+</style>
+<div class="role-page">
+<div class="role-hero mb-4"><div class="d-flex justify-content-between align-items-center flex-wrap gap-3"><div><div class="alert alert-warning py-2 small mb-3">Billing, financial data, and reports are permanently restricted to Administrator and Accountant roles.</div>
+<h2 class="mb-1"><i class="fas fa-user-shield me-2"></i>Role & Permission Management</h2><p class="mb-0 opacity-75">Control exactly what each role can view, create, edit, delete and manage. Existing permissions are preserved as the primary baseline.</p></div><a href="{% url 'core:user_list' %}" class="btn btn-light"><i class="fas fa-users me-1"></i> Users</a></div></div>
+<div class="role-layout">
+<aside class="role-panel"><div class="small text-muted px-2 py-2">ROLES</div>{% for rcode,rname in role_choices %}<a class="role-link {% if rcode == selected_role %}active{% endif %}" href="?role={{ rcode }}"><span>{{ rname }}</span><span class="count">{{ role_stats|get_item:rcode|default:0 }}</span></a>{% endfor %}</aside>
+<section class="permission-panel">
+<div class="permission-head"><div><h4 class="mb-1">{{ selected_role|title }} permissions</h4><div class="text-muted small">PRIMARY = preserved from the current system baseline. You can restrict or add it below.</div></div><div><button type="button" class="btn btn-sm btn-outline-primary" onclick="setAll(true)">Select all</button> <button type="button" class="btn btn-sm btn-outline-secondary" onclick="setAll(false)">Clear all</button></div></div>
+<form method="post" id="permissionForm" class="mt-3">{% csrf_token %}<input type="hidden" name="action" value="update_permissions"><input type="hidden" name="role_code" value="{{ selected_role }}">
+{% for category, perms in permission_categories %}<div class="permission-category"><h5>{{ category }}</h5>{% for p in perms %}<div class="permission-row"><div class="permission-main"><input class="form-check-input permission-box" type="checkbox" name="permissions" value="{{ p.code }}" {% if p.enabled %}checked{% endif %}{% if p.locked %}disabled{% endif %} id="perm_{{ forloop.parentloop.counter }}_{{ forloop.counter }}"><label for="perm_{{ forloop.parentloop.counter }}_{{ forloop.counter }}"><strong>{{ p.label }}</strong><div class="permission-code">{{ p.code }}{% if p.locked %}<span class="badge bg-secondary ms-2">FINANCIAL LOCK</span>{% endif %}</div></label></div><div>{% if p.is_primary %}{% if p.enabled %}<span class="primary-badge">PRIMARY</span>{% else %}<span class="restricted-badge">RESTRICTED</span>{% endif %}{% elif p.enabled %}<span class="added-badge">ADDED</span>{% endif %}</div></div>{% endfor %}</div>{% endfor %}<div class="d-flex justify-content-end gap-2 mt-4"><button type="submit" class="btn btn-primary px-4"><i class="fas fa-save me-1"></i> Save {{ selected_role|title }} Permissions</button></div></form>
+</section></div></div>
+<script>function setAll(value){document.querySelectorAll('.permission-box').forEach(x=>x.checked=value);}</script>
 {% endblock %}

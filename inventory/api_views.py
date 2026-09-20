@@ -4,8 +4,15 @@ from rest_framework.response import Response
 from django.db.models import F
 from .models import InventoryItem, InventoryCategory, StockMovement
 from .serializers import InventoryItemSerializer, InventoryCategorySerializer, StockMovementSerializer
+from core.permissions import is_financial_staff
 
 class InventoryItemViewSet(viewsets.ModelViewSet):
+    def perform_create(self, serializer):
+        serializer.save()
+
+    def perform_update(self, serializer):
+        serializer.save()
+
     queryset = InventoryItem.objects.filter(is_active=True)
     serializer_class = InventoryItemSerializer
     permission_classes = [permissions.IsAuthenticated]

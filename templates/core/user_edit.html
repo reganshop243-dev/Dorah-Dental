@@ -84,7 +84,7 @@
 </div>
 
                     <!-- Doctor Fields (Optional - Only shows for Doctor role) -->
-                    <div id="doctorFields" style="display: {% if profile.role == 'doctor' %}block{% else %}none{% endif %};">
+                    <div id="doctorFields" style="display: {% if profile.is_doctor_role %}block{% else %}none{% endif %};">
                         <hr>
                         <h6 class="text-muted mb-3"><i class="fas fa-user-md"></i> Doctor Profile (Optional)</h6>
                         

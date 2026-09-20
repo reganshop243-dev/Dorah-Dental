@@ -1,5 +1,6 @@
-﻿from rest_framework import serializers
+from rest_framework import serializers
 from .models import InventoryCategory, InventoryItem, StockMovement
+from core.permissions import is_financial_staff
 
 class InventoryCategorySerializer(serializers.ModelSerializer):
     item_count = serializers.SerializerMethodField()
@@ -29,7 +30,23 @@ class InventoryItemSerializer(serializers.ModelSerializer):
         return dict(InventoryItem.STATUS_CHOICES).get(obj.status, obj.status)
     
     def get_total_value(self, obj):
-        return obj.total_value
+        return obj.total_value if is_financial_staff(self.context.get('request').user) else None
+
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        request = self.context.get('request')
+        if not request or not is_financial_staff(request.user):
+            data.pop('unit_cost', None)
+            data.pop('selling_price', None)
+            data.pop('total_value', None)
+        return data
+
+    def validate(self, attrs):
+        request = self.context.get('request')
+        if request and not is_financial_staff(request.user):
+            attrs.pop('unit_cost', None)
+            attrs.pop('selling_price', None)
+        return attrs
 
 class StockMovementSerializer(serializers.ModelSerializer):
     item_name = serializers.CharField(source='item.name', read_only=True)

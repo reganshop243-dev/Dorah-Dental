@@ -791,7 +791,7 @@
                 >
             </div>
 
-            {% if not is_doctor %}
+            {% if can_view_financials %}
             <div class="filter-field">
                 <label for="balance-filter">Payment</label>
                 <select id="balance-filter" name="balance" class="filter-select">
@@ -870,7 +870,7 @@
                         <th class="col-patient">Patient</th>
                         <th class="col-contact">Contact</th>
                         <th class="col-registered">Registered</th>
-                        {% if not is_doctor %}<th class="col-payment">Payment</th>{% endif %}
+                        {% if can_view_financials %}<th class="col-payment">Payment</th>{% endif %}
                         <th class="col-actions">Actions</th>
                     </tr>
                 </thead>
@@ -948,7 +948,7 @@
                         </td>
 
 
-                        {% if not is_doctor %}
+                        {% if can_view_financials %}
                         <!-- PAYMENT -->
                         <td>
                             {% if patient.invoice_count == 0 %}
@@ -1028,6 +1028,7 @@
                                     <i class="fas fa-calendar-plus"></i>
                                 </a>
 
+{% if can_view_financials %}
                                 <!-- Invoice -->
                                 <a
                                     href="{% url 'billing:add' %}?patient={{ patient.pk }}"
@@ -1036,6 +1037,7 @@
                                 >
                                     <i class="fas fa-file-invoice-dollar"></i>
                                 </a>
+                                {% endif %}
 
                                 {% if not is_doctor %}
 
@@ -1088,7 +1090,7 @@
                 </div>
 
 
-                {% if not is_doctor %}
+                {% if can_view_financials %}
             <div class="mobile-payment">
 
                     {% if patient.invoice_count == 0 %}
@@ -1165,7 +1167,7 @@
             </div>
 
 
-            {% if not is_doctor %}
+            {% if can_view_financials %}
             <!-- PAYMENT AMOUNT -->
             {% if patient.invoice_count > 0 and patient.patient_balance != 0 %}
             <div class="mobile-registered" style="border-top:0; margin-top:4px; padding-top:0;">

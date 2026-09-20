@@ -1,3 +1,4 @@
+from core.permissions import is_financial_staff
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
@@ -18,7 +19,11 @@ from billing.models import Invoice
 
 def is_doctor(user):
     """Check if user has doctor role"""
-    return hasattr(user, 'profile') and user.profile.role == 'doctor'
+    return (
+        hasattr(user, 'profile')
+        and user.profile.has_role('doctor')
+        and not user.profile.has_role('admin')
+    )
 
 def get_doctor_queryset(user, model, filter_field='doctor'):
     """Get queryset filtered for doctor if user is a doctor"""
@@ -222,7 +227,7 @@ def appointment_add(request):
             consultation_notes = request.POST.get('consultation_notes', '')
             treatment_plan = request.POST.get('treatment_plan', '')
             prescription = request.POST.get('prescription', '')
-            treatment_cost = request.POST.get('treatment_cost') or None
+            treatment_cost = request.POST.get('treatment_cost') or None if is_financial_staff(request.user) else None
             referred_to = request.POST.get('referred_to', '')
             follow_up_date = request.POST.get('follow_up_date') or None
             follow_up_notes = request.POST.get('follow_up_notes', '')
@@ -442,8 +447,9 @@ def appointment_edit(request, pk):
             appointment.consultation_notes = request.POST.get('consultation_notes', '')
             appointment.treatment_plan = request.POST.get('treatment_plan', '')
             appointment.prescription = request.POST.get('prescription', '')
-            if user_profile.role != 'doctor':
-                appointment.treatment_cost = request.POST.get('treatment_cost') or None
+            if not user_profile.has_role('doctor'):
+                if is_financial_staff(request.user):
+                    appointment.treatment_cost = request.POST.get('treatment_cost') or None
             appointment.referred_to = request.POST.get('referred_to', '')
             appointment.follow_up_date = request.POST.get('follow_up_date') or None
             appointment.follow_up_notes = request.POST.get('follow_up_notes', '')
@@ -495,8 +501,8 @@ def appointment_edit(request, pk):
 def appointment_status_update(request, pk):
     """Update appointment workflow status - Admin quick action."""
     appointment = get_object_or_404(Appointment, pk=pk)
-    if request.user.profile.role != 'admin':
-        messages.error(request, '❌ Only administrators can use appointment status controls.')
+    if not request.user.profile.has_permission('appointments.status'):
+        messages.error(request, '❌ You do not have permission to change appointment status.')
         return redirect('appointments:detail', pk=pk)
     if request.method == 'POST':
         new_status = request.POST.get('status', '').strip()
@@ -567,6 +573,10 @@ def service_list(request):
 
 @login_required
 def service_add(request):
+    if not is_financial_staff(request.user):
+        from django.contrib import messages
+        messages.error(request, 'Service pricing is restricted to administrators and accountants.')
+        return redirect('appointments:services')
     """Add a new service - PREVENT doctors from adding"""
     # ✅ PREVENT doctors from adding services
     if is_doctor(request.user):
@@ -590,6 +600,10 @@ def service_add(request):
 
 @login_required
 def service_edit(request, pk):
+    if not is_financial_staff(request.user):
+        from django.contrib import messages
+        messages.error(request, 'Service pricing is restricted to administrators and accountants.')
+        return redirect('appointments:services')
     """Edit a service - PREVENT doctors from editing"""
     # ✅ PREVENT doctors from editing services
     if is_doctor(request.user):
@@ -757,7 +771,7 @@ def add_clinical_note(request, pk):
     appointment = get_object_or_404(Appointment, pk=pk)
     
     # Check access for doctors
-    if request.user.profile.role == 'doctor':
+    if request.user.profile.has_role('doctor'):
         doctor = request.user.profile.doctor
         if doctor and appointment.doctor != doctor:
             messages.error(request, '❌ Access denied.')
@@ -790,7 +804,7 @@ def delete_clinical_note(request, pk):
     appointment_pk = note.appointment.pk
     
     # Check permissions
-    if request.user != note.created_by and request.user.profile.role != 'admin':
+    if request.user != note.created_by and not request.user.profile.has_role('admin'):
         messages.error(request, '❌ Access denied.')
         return redirect('appointments:detail', pk=appointment_pk)
     

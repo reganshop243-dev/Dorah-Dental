@@ -42,6 +42,13 @@ def user_role(request):
         try:
             context['user_role'] = request.user.profile.role
             context['user_role_display'] = request.user.profile.get_role_display()
+            context['user_roles'] = request.user.profile.all_roles
+            context['is_admin_role'] = request.user.profile.has_role('admin')
+            context['is_doctor_role'] = request.user.profile.has_role('doctor')
+            context['is_receptionist_role'] = request.user.profile.has_role('receptionist')
+            context['is_accountant_role'] = request.user.profile.has_role('accountant')
+            context['is_nurse_role'] = request.user.profile.has_role('nurse')
+            context['is_assistant_role'] = request.user.profile.has_role('assistant')
         except:
             context['user_role'] = None
             context['user_role_display'] = None
@@ -90,3 +97,15 @@ def business_info(request):
 
 
 
+
+
+def access_flags(request):
+    """Expose security-sensitive access flags to templates."""
+    financial = False
+    if getattr(request, 'user', None) is not None and request.user.is_authenticated and hasattr(request.user, 'profile'):
+        financial = request.user.profile.has_any_role(['admin', 'accountant'])
+    return {
+        'can_view_financials': financial,
+        'can_view_reports': financial,
+        'can_view_inventory_prices': financial,
+    }

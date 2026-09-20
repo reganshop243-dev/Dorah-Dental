@@ -197,7 +197,7 @@
                             <th>#</th>
                             <th>Description</th>
                             <th>Quantity</th>
-                            {% if not is_doctor %}<th>Unit Price</th><th>Total</th>{% endif %}
+                            {% if can_view_financials %}<th>Unit Price</th><th>Total</th>{% endif %}
                         </tr>
                     </thead>
                     <tbody>
@@ -216,7 +216,7 @@
                                 {% endif %}
                             </td>
                             <td>{{ item.quantity }}</td>
-                            {% if not is_doctor %}<td>{% with company=company %}{{ company.currency|default:"UGX" }} {{ item.unit_price|floatformat:0 }}{% endwith %}</td><td>{% with company=company %}{{ company.currency|default:"UGX" }} {{ item.total_price|floatformat:0 }}{% endwith %}</td>{% endif %}
+                            {% if can_view_financials %}<td>{% with company=company %}{{ company.currency|default:"UGX" }} {{ item.unit_price|floatformat:0 }}{% endwith %}</td><td>{% with company=company %}{{ company.currency|default:"UGX" }} {{ item.total_price|floatformat:0 }}{% endwith %}</td>{% endif %}
                         </tr>
                         {% empty %}
                         <tr>
@@ -224,7 +224,7 @@
                         </tr>
                         {% endfor %}
                     </tbody>
-{% if not is_doctor %}
+{% if can_view_financials %}
                     <tfoot>
                         <tr>
                             <td colspan="4" class="text-end"><strong>Subtotal:</strong></td>
@@ -280,7 +280,7 @@
                         </tr>
                     </tfoot>{% endif %}
                 </table>
-{% if not is_doctor %}
+{% if can_view_financials %}
 
                 <!-- Payment History -->
                 {% if invoice.payments.all %}

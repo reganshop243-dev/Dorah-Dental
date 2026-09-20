@@ -31,7 +31,7 @@
                             <option value="">Select Supply</option>
                             {% for item in items %}
                                 <option value="{{ item.id }}">
-                                    {{ item.name }} - Stock: {{ item.quantity }} - UGX {{ item.selling_price|floatformat:0|intcomma }}
+                                    {{ item.name }} - Stock: {{ item.quantity }}
                                 </option>
                             {% endfor %}
                         </select>

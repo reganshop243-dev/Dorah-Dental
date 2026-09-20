@@ -44,7 +44,7 @@
             <nav class="nav flex-column">
                 <!-- Dashboard Link -->
                 <a class="nav-link {% if request.resolver_match.url_name == 'dashboard' or request.resolver_match.url_name == 'admin_dashboard' or request.resolver_match.url_name == 'doctor_dashboard' or request.resolver_match.url_name == 'receptionist_dashboard' or request.resolver_match.url_name == 'accountant_dashboard' %}active{% endif %}" 
-                   href="{% if user.profile.role == 'admin' %}{% url 'core:admin_dashboard' %}{% elif user.profile.role == 'doctor' %}{% url 'core:doctor_dashboard' %}{% elif user.profile.role == 'receptionist' %}{% url 'core:receptionist_dashboard' %}{% elif user.profile.role == 'accountant' %}{% url 'core:accountant_dashboard' %}{% else %}{% url 'core:dashboard' %}{% endif %}">
+                   href="{% if user.profile.is_admin_role %}{% url 'core:admin_dashboard' %}{% elif user.profile.is_doctor_role %}{% url 'core:doctor_dashboard' %}{% elif user.profile.is_receptionist_role %}{% url 'core:receptionist_dashboard' %}{% elif user.profile.is_accountant_role %}{% url 'core:accountant_dashboard' %}{% else %}{% url 'core:dashboard' %}{% endif %}">
                     <i class="fas fa-chart-pie"></i> <span>Dashboard</span>
                 </a>
                 
@@ -62,7 +62,7 @@
                     <i class="fas fa-user-plus"></i> <span>Add Patient</span>
                 </a>
                 
-                {% if user.profile.role == 'admin' or user.profile.role == 'accountant' %}
+                {% if can_view_financials %}
                     <a class="nav-link {% if 'billing' in request.path and 'expense' not in request.path and 'balance' not in request.path %}active{% endif %}" href="{% url 'billing:list' %}">
                         <i class="fas fa-file-invoice-dollar"></i> <span>Invoices</span>
                     </a>
@@ -92,7 +92,7 @@
                     <i class="fas fa-calendar-alt"></i> <span>Calendar</span>
                 </a>
                 
-                {% if user.profile.role == 'admin' or user.profile.role == 'accountant' %}
+                {% if can_view_financials %}
                     <a class="nav-link {% if 'inventory' in request.path and 'low-stock' not in request.path %}active{% endif %}" href="{% url 'inventory:list' %}">
                         <i class="fas fa-boxes"></i> <span>Inventory</span>
                     </a>
@@ -105,7 +105,7 @@
                 <div class="nav-divider"></div>
                 <div class="nav-label">Reports</div>
                 
-                {% if user.profile.role == 'admin' or user.profile.role == 'accountant' %}
+                {% if can_view_financials %}
                     <a class="nav-link {% if 'revenue' in request.path %}active{% endif %}" href="{% url 'core:revenue_dashboard' %}">
                         <i class="fas fa-chart-line"></i> <span>Revenue Reports</span>
                     </a>
@@ -114,19 +114,19 @@
                     </a>
                 {% endif %}
                 
-                {% if user.profile.role == 'admin' or user.profile.role == 'accountant' %}
+                {% if can_view_financials %}
                     <a class="nav-link {% if 'aging' in request.path %}active{% endif %}" href="{% url 'reports:aging' %}">
                         <i class="fas fa-clock text-warning"></i> <span>Aging Report</span>
                     </a>
                 {% endif %}
                 
-                {% if user.profile.role == 'admin' or user.profile.role == 'receptionist' or user.profile.role == 'accountant' %}
+                {% if user.profile.is_admin_role or user.profile.is_receptionist_role or user.profile.is_accountant_role %}
                     <a class="nav-link {% if 'patient-visits' in request.path %}active{% endif %}" href="{% url 'reports:patient_visits' %}">
                         <i class="fas fa-users"></i> <span>Patient Visits</span>
                     </a>
                 {% endif %}
                 
-                {% if user.profile.role == 'admin' or user.profile.role == 'accountant' %}
+                {% if can_view_financials %}
                     <a class="nav-link {% if 'doctor-performance' in request.path %}active{% endif %}" href="{% url 'reports:doctor_performance' %}">
                         <i class="fas fa-user-md"></i> <span>Doctor Performance</span>
                     </a>
@@ -140,7 +140,7 @@
                 </a>
                 
                 <!-- Admin -->
-                {% if user.profile.role == 'admin' %}
+                {% if user.profile.is_admin_role %}
                     <div class="nav-divider"></div>
                     <div class="nav-label">Administration</div>
                     <a class="nav-link {% if 'users' in request.path and 'roles' not in request.path %}active{% endif %}" href="{% url 'core:user_list' %}">
@@ -183,7 +183,7 @@
                         </button>
                         <ul class="dropdown-menu dropdown-menu-end">
                             <li>
-                                <a class="dropdown-item" href="{% if user.profile.role == 'admin' %}{% url 'core:admin_dashboard' %}{% elif user.profile.role == 'doctor' %}{% url 'core:doctor_dashboard' %}{% elif user.profile.role == 'receptionist' %}{% url 'core:receptionist_dashboard' %}{% elif user.profile.role == 'accountant' %}{% url 'core:accountant_dashboard' %}{% else %}{% url 'core:dashboard' %}{% endif %}">
+                                <a class="dropdown-item" href="{% if user.profile.is_admin_role %}{% url 'core:admin_dashboard' %}{% elif user.profile.is_doctor_role %}{% url 'core:doctor_dashboard' %}{% elif user.profile.is_receptionist_role %}{% url 'core:receptionist_dashboard' %}{% elif user.profile.is_accountant_role %}{% url 'core:accountant_dashboard' %}{% else %}{% url 'core:dashboard' %}{% endif %}">
                                     <i class="fas fa-home"></i> Dashboard
                                 </a>
                             </li>

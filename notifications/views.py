@@ -11,8 +11,8 @@ from .services import NotificationService
 def notification_settings(request):
     """Configure notification settings"""
     # Only admin can access
-    if request.user.profile.role != 'admin':
-        messages.error(request, 'Access denied. Admin only.')
+    if not request.user.profile.has_permission('settings.notifications'):
+        messages.error(request, 'Access denied. You do not have notification settings permission.')
         return redirect('core:dashboard')
     
     settings_obj = NotificationSetting.objects.first()
@@ -256,7 +256,7 @@ def test_yoola_sms(request):
 @login_required
 def send_upcoming_reminders(request):
     """Send reminders for upcoming appointments"""
-    if request.user.profile.role not in ['admin', 'receptionist']:
+    if not request.user.profile.has_any_role(['admin', 'receptionist']):
         messages.error(request, 'Access denied. Admin or Receptionist only.')
         return redirect('core:dashboard')
     

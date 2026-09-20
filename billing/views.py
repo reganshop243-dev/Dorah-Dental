@@ -8,6 +8,24 @@ from .models import Invoice, InvoiceItem, Payment, Expense
 from patients.models import Patient
 from appointments.models import Appointment, Service
 import json
+from functools import wraps
+from core.permissions import is_financial_staff
+
+
+def financial_only(permission_code=None):
+    def decorator(view_func):
+        @wraps(view_func)
+        def wrapper(request, *args, **kwargs):
+            if not is_financial_staff(request.user):
+                messages.error(request, "Financial and billing access is restricted to administrators and accountants.")
+                return redirect("core:dashboard")
+            if permission_code and not request.user.profile.has_permission(permission_code):
+                messages.error(request, "You do not have permission to perform this financial action.")
+                return redirect("core:dashboard")
+            return view_func(request, *args, **kwargs)
+        return wrapper
+    return decorator
+
 
 
 def is_doctor(user):
@@ -15,7 +33,8 @@ def is_doctor(user):
     return (
         user.is_authenticated
         and hasattr(user, 'profile')
-        and user.profile.role == 'doctor'
+        and user.profile.has_role('doctor')
+        and not user.profile.has_any_role(['admin', 'accountant'])
     )
 
 
@@ -24,11 +43,12 @@ def is_admin(user):
     return (
         user.is_authenticated
         and hasattr(user, 'profile')
-        and user.profile.role == 'admin'
+        and user.profile.has_role('admin')
     )
 
 
 @login_required
+@financial_only("billing.view")
 def invoice_list(request):
     """List all invoices with pagination and filtering"""
     from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
@@ -112,6 +132,7 @@ def invoice_list(request):
 
 
 @login_required
+@financial_only("billing.create")
 def invoice_add(request):
     """Add a new invoice with items from cart"""
     if is_doctor(request.user):
@@ -289,6 +310,7 @@ def invoice_add(request):
 
 
 @login_required
+@financial_only("billing.view")
 def invoice_detail(request, pk):
     """View invoice details with role-based financial protection."""
     invoice = get_object_or_404(Invoice, pk=pk)
@@ -302,6 +324,7 @@ def invoice_detail(request, pk):
 
 
 @login_required
+@financial_only("billing.payments.create")
 def add_payment(request, pk):
     """Add a payment to an invoice"""
     if is_doctor(request.user):
@@ -358,6 +381,7 @@ def add_payment(request, pk):
 
 
 @login_required
+@financial_only("billing.print")
 def print_invoice(request, pk):
     """Print invoice view (PDF friendly)"""
     invoice = get_object_or_404(Invoice, pk=pk)
@@ -374,6 +398,7 @@ def print_invoice(request, pk):
 
 
 @login_required
+@financial_only("billing.delete")
 def invoice_delete(request, pk):
     """Delete an invoice"""
     if is_doctor(request.user):
@@ -388,6 +413,7 @@ def invoice_delete(request, pk):
 
 
 @login_required
+@financial_only("billing.create")
 def invoice_add(request):
     """Add a new invoice with items from cart"""
     if is_doctor(request.user):
@@ -396,6 +422,24 @@ def invoice_add(request):
     from inventory.models import InventoryItem
     from django.db import transaction
     import json
+from functools import wraps
+from core.permissions import is_financial_staff
+
+
+def financial_only(permission_code=None):
+    def decorator(view_func):
+        @wraps(view_func)
+        def wrapper(request, *args, **kwargs):
+            if not is_financial_staff(request.user):
+                messages.error(request, "Financial and billing access is restricted to administrators and accountants.")
+                return redirect("core:dashboard")
+            if permission_code and not request.user.profile.has_permission(permission_code):
+                messages.error(request, "You do not have permission to perform this financial action.")
+                return redirect("core:dashboard")
+            return view_func(request, *args, **kwargs)
+        return wrapper
+    return decorator
+
     from datetime import datetime
     
     if request.method == 'POST':
@@ -576,6 +620,7 @@ def invoice_add(request):
     })
 
 @login_required
+@financial_only("billing.edit")
 def add_invoice_item(request, pk):
     """Add item to invoice (service or inventory)"""
     if is_doctor(request.user):
@@ -698,6 +743,7 @@ def add_invoice_item(request, pk):
 
 
 @login_required
+@financial_only("billing.edit")
 def remove_invoice_item(request, pk, item_pk):
     """Remove item from invoice"""
     if is_doctor(request.user):
@@ -726,6 +772,7 @@ def remove_invoice_item(request, pk, item_pk):
 
 
 @login_required
+@financial_only("billing.view")
 def store_cart(request):
     """Store cart items in session via AJAX"""
     if request.method == 'POST':
@@ -744,6 +791,7 @@ def store_cart(request):
 # ====================
 
 @login_required
+@financial_only("billing.expenses.view")
 def expense_list(request):
     """List all expenses"""
     expenses = Expense.objects.all().order_by('-expense_date')
@@ -777,6 +825,7 @@ def expense_list(request):
 
 
 @login_required
+@financial_only("billing.expenses.create")
 def expense_add(request):
     """Add a new expense"""
     if request.method == 'POST':
@@ -809,6 +858,7 @@ def expense_add(request):
 
 
 @login_required
+@financial_only("billing.expenses.edit")
 def expense_edit(request, pk):
     """Edit an expense"""
     expense = get_object_or_404(Expense, pk=pk)
@@ -842,6 +892,7 @@ def expense_edit(request, pk):
 
 
 @login_required
+@financial_only("billing.expenses.delete")
 def expense_delete(request, pk):
     """Delete an expense"""
     expense = get_object_or_404(Expense, pk=pk)
@@ -860,6 +911,7 @@ def expense_delete(request, pk):
 # ====================
 
 @login_required
+@financial_only("reports.balance_sheet")
 def balance_sheet(request):
     """Generate balance sheet report"""
     if is_doctor(request.user):

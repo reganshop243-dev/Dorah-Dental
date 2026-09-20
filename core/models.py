@@ -17,6 +17,8 @@ class UserProfile(models.Model):
     
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='profile')
     role = models.CharField(max_length=20, choices=ROLE_CHOICES, default='receptionist')
+    # Additional roles assigned by an administrator. The primary role above is retained for legacy compatibility.
+    additional_roles = models.JSONField(default=list, blank=True)
     phone = models.CharField(max_length=20, blank=True, null=True)
     address = models.TextField(blank=True, null=True)
     profile_picture = models.ImageField(upload_to='profile_pics/', blank=True, null=True)
@@ -46,7 +48,95 @@ class UserProfile(models.Model):
     @property
     def role_display(self):
         return dict(self.ROLE_CHOICES).get(self.role, self.role)
+
+    @property
+    def all_roles(self):
+        """Return primary + additional roles without duplicates."""
+        roles = [self.role]
+        for role in (self.additional_roles or []):
+            if role in dict(self.ROLE_CHOICES) and role not in roles:
+                roles.append(role)
+        return roles
+
+    @property
+    def role_displays(self):
+        labels = dict(self.ROLE_CHOICES)
+        return [labels.get(role, role) for role in self.all_roles]
+
+    def has_role(self, role_code):
+        """Return True when this user has the requested primary or additional role."""
+        return role_code in self.all_roles
+
+    def has_any_role(self, role_codes):
+        """Return True when the user has at least one of the supplied roles."""
+        return any(self.has_role(code) for code in role_codes)
+
+    def set_roles(self, primary_role, additional_roles=None):
+        """Set primary role and additional roles, removing duplicates/invalid values."""
+        valid_roles = dict(self.ROLE_CHOICES)
+        if primary_role not in valid_roles:
+            raise ValueError(f'Invalid role: {primary_role}')
+        cleaned = []
+        for role in additional_roles or []:
+            if role in valid_roles and role != primary_role and role not in cleaned:
+                cleaned.append(role)
+        self.role = primary_role
+        self.additional_roles = cleaned
+
+    @property
+    def is_admin_role(self):
+        return self.has_role('admin')
+
+    @property
+    def is_doctor_role(self):
+        return self.has_role('doctor')
+
+    @property
+    def is_receptionist_role(self):
+        return self.has_role('receptionist')
+
+    @property
+    def is_accountant_role(self):
+        return self.has_role('accountant')
+
+    @property
+    def is_nurse_role(self):
+        return self.has_role('nurse')
+
+    @property
+    def is_assistant_role(self):
+        return self.has_role('assistant')
     
+    def has_permission(self, permission_code):
+        """Return whether any assigned role grants this permission.
+
+        Administrators retain full access. RolePermission rows override the
+        seeded primary baseline, so disabling a permission is an effective
+        restriction rather than a cosmetic UI change.
+        """
+        if self.has_role('admin'):
+            return True
+        from .permissions import FINANCIAL_PERMISSIONS
+        if permission_code in FINANCIAL_PERMISSIONS and not self.has_role('accountant'):
+            return False
+        from .models import RolePermission
+        role_codes = self.all_roles
+        configured = RolePermission.objects.filter(
+            role_code__in=role_codes, permission_code=permission_code
+        )
+        if configured.filter(enabled=True).exists():
+            return True
+        # If no role has an explicit row, fall back to the preserved baseline.
+        if not configured.exists():
+            from .permissions import BASELINE
+            return any(permission_code in BASELINE.get(role, set()) for role in role_codes)
+        return False
+
+    def permission_source(self, permission_code):
+        from .models import RolePermission
+        rows = RolePermission.objects.filter(role_code__in=self.all_roles, permission_code=permission_code)
+        return [r.role_code for r in rows.filter(enabled=True)]
+
     def can_request_otp(self):
         """Check if user can request a new OTP (once per minute)"""
         if not self.last_otp_sent:
@@ -154,3 +244,20 @@ class CompanySettings(models.Model):
 
 
 
+
+
+class RolePermission(models.Model):
+    role_code = models.CharField(max_length=20)
+    permission_code = models.CharField(max_length=100)
+    enabled = models.BooleanField(default=True)
+    is_primary = models.BooleanField(default=False)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=['role_code', 'permission_code'], name='core_role_permission_unique'),
+        ]
+        ordering = ['role_code', 'permission_code']
+
+    def __str__(self):
+        return f"{self.role_code}: {self.permission_code}"

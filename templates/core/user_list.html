@@ -54,7 +54,7 @@
                         <td>{{ user.email|default:"-" }}</td>
                         <td>{{ user.profile.phone|default:"-" }}</td>
                         <td>
-                            <span class="badge {% if user.profile.role == 'admin' %}bg-danger{% elif user.profile.role == 'doctor' %}bg-primary{% elif user.profile.role == 'accountant' %}bg-success{% elif user.profile.role == 'receptionist' %}bg-info{% else %}bg-secondary{% endif %}">
+                            <span class="badge {% if user.profile.is_admin_role %}bg-danger{% elif user.profile.is_doctor_role %}bg-primary{% elif user.profile.is_accountant_role %}bg-success{% elif user.profile.is_receptionist_role %}bg-info{% else %}bg-secondary{% endif %}">
                                 {{ user.profile.get_role_display }}
                             </span>
                         </td>
@@ -84,7 +84,7 @@
                                     </a>
                                 {% endif %}
                                 <!-- Reset OTP Button - Only for Admin -->
-                                {% if request.user.profile.role == 'admin' %}
+                                {% if request.user.profile.is_admin_role %}
                                     <a href="{% url 'core:reset_user_otp' user.pk %}" class="btn btn-outline-warning" title="Reset OTP" 
                                        onclick="return confirm('Reset OTP cooldown for {{ user.username }}? This will allow them to request a new OTP immediately.')">
                                         <i class="fas fa-sync-alt"></i>

@@ -6,9 +6,30 @@ from billing.models import Invoice
 from appointments.models import Appointment, Doctor
 from patients.models import Patient
 from django.utils import timezone
+from core.permissions import is_financial_staff
+
+def financial_only(permission_code=None):
+    def decorator(view_func):
+        from functools import wraps
+        @wraps(view_func)
+        def wrapper(request, *args, **kwargs):
+            if not is_financial_staff(request.user):
+                from django.contrib import messages
+                from django.shortcuts import redirect
+                messages.error(request, "Reports are restricted to administrators and accountants.")
+                return redirect("core:dashboard")
+            if permission_code and not request.user.profile.has_permission(permission_code):
+                from django.contrib import messages
+                from django.shortcuts import redirect
+                messages.error(request, "You do not have permission to view this report.")
+                return redirect("core:dashboard")
+            return view_func(request, *args, **kwargs)
+        return wrapper
+    return decorator
 
 
 @login_required
+@financial_only("reports.aging")
 def aging_report(request):
     """Accounts Receivable Aging Report"""
     from django.db.models import Sum, Q
@@ -99,6 +120,7 @@ def aging_report(request):
 
 
 @login_required
+@financial_only("reports.patient")
 def patient_visits_report(request):
     """Patient Visit Report"""
     from django.db.models import Sum, Count, Q
@@ -197,6 +219,7 @@ def patient_visits_report(request):
 
 
 @login_required
+@financial_only("reports.doctor_performance")
 def doctor_performance_report(request):
     """Doctor Performance Report"""
     from django.db.models import Sum, Count, Q, Avg

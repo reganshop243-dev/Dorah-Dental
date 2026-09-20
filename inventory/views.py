@@ -6,6 +6,7 @@ from django.http import JsonResponse
 from django.utils import timezone
 from datetime import date, timedelta
 from .models import InventoryItem, InventoryCategory, StockMovement
+from core.permissions import is_financial_staff
 
 
 @login_required
@@ -40,9 +41,9 @@ def inventory_list(request):
     total_items = items.count()
     low_stock_items = items.filter(status='low_stock').count()
     out_of_stock_items = items.filter(status='out_of_stock').count()
-    total_value = items.aggregate(
-        total=Sum('quantity') * Sum('unit_cost')
-    )['total'] or 0
+    total_value = 0
+    if is_financial_staff(request.user):
+        total_value = items.aggregate(total=Sum('quantity') * Sum('unit_cost'))['total'] or 0
     
     context = {
         'items': items,
@@ -82,8 +83,8 @@ def inventory_add(request):
                 quantity=quantity,
                 unit=request.POST.get('unit', 'piece'),
                 min_quantity=int(request.POST.get('min_quantity', 5)),
-                unit_cost=float(request.POST.get('unit_cost', 0)),
-                selling_price=float(request.POST.get('selling_price', 0)),
+                unit_cost=float(request.POST.get('unit_cost', 0)) if is_financial_staff(request.user) else 0,
+                selling_price=float(request.POST.get('selling_price', 0)) if is_financial_staff(request.user) else 0,
                 supplier=request.POST.get('supplier', ''),
                 supplier_contact=request.POST.get('supplier_contact', ''),
                 barcode=(request.POST.get('barcode', '').strip() or None),
@@ -152,8 +153,9 @@ def inventory_edit(request, pk):
             item.min_quantity = int(request.POST.get('min_quantity', 5))
             max_qty = request.POST.get('max_quantity')
             item.max_quantity = int(max_qty) if max_qty else None
-            item.unit_cost = float(request.POST.get('unit_cost', 0))
-            item.selling_price = float(request.POST.get('selling_price', 0))
+            if is_financial_staff(request.user):
+                item.unit_cost = float(request.POST.get('unit_cost', item.unit_cost or 0))
+                item.selling_price = float(request.POST.get('selling_price', item.selling_price or 0))
             item.supplier = request.POST.get('supplier', '')
             item.supplier_contact = request.POST.get('supplier_contact', '')
             item.barcode = (request.POST.get('barcode', '').strip() or None)
@@ -278,6 +280,10 @@ def inventory_category_add(request):
 @login_required
 def inventory_dispense(request):
     """Quick dispense view for selling supplies to patients"""
+    if not is_financial_staff(request.user):
+        messages.error(request, "Inventory dispensing and pricing are restricted to administrators and accountants.")
+        return redirect("core:dashboard")
+
     from billing.models import Invoice, InvoiceItem
     from patients.models import Patient
     
@@ -377,7 +383,7 @@ def inventory_search_api(request):
             'name': item.name,
             'quantity': item.quantity,
             'unit': item.get_unit_display(),
-            'selling_price': float(item.selling_price),
+            **({'selling_price': float(item.selling_price)} if is_financial_staff(request.user) else {}),
             'category': item.category.name if item.category else 'Uncategorized',
         })
     

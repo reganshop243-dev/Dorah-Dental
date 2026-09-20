@@ -1,16 +1,40 @@
-﻿from rest_framework import viewsets, permissions, status
+from rest_framework import viewsets, permissions, status
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
-from django.db.models import Sum, Q
-from django.utils import timezone
-from datetime import timedelta
-from .models import Invoice, Payment, Expense
-from .serializers import InvoiceSerializer, PaymentSerializer, ExpenseSerializer
+from rest_framework.permissions import BasePermission
+from core.permissions import is_financial_staff
+
+class IsFinancialStaff(BasePermission):
+    message = "Financial API access is restricted to administrators and accountants."
+    action_permissions = {
+        'list': 'billing.view', 'retrieve': 'billing.view',
+        'create': 'billing.create', 'update': 'billing.edit', 'partial_update': 'billing.edit',
+        'destroy': 'billing.delete',
+    }
+    def has_permission(self, request, view):
+        if not (request.user and request.user.is_authenticated and is_financial_staff(request.user)):
+            return False
+        code = self.action_permissions.get(getattr(view, 'action', None))
+        return not code or request.user.profile.has_permission(code)
+
+class PaymentPermission(IsFinancialStaff):
+    action_permissions = {
+        'list': 'billing.payments.view', 'retrieve': 'billing.payments.view',
+        'create': 'billing.payments.create', 'update': 'billing.payments.edit', 'partial_update': 'billing.payments.edit',
+        'destroy': 'billing.payments.delete',
+    }
+
+class ExpensePermission(IsFinancialStaff):
+    action_permissions = {
+        'list': 'billing.expenses.view', 'retrieve': 'billing.expenses.view',
+        'create': 'billing.expenses.create', 'update': 'billing.expenses.edit', 'partial_update': 'billing.expenses.edit',
+        'destroy': 'billing.expenses.delete',
+    }
 
 class InvoiceViewSet(viewsets.ModelViewSet):
+    permission_classes = [IsFinancialStaff]
     queryset = Invoice.objects.all().order_by('-issue_date')
     serializer_class = InvoiceSerializer
-    permission_classes = [permissions.IsAuthenticated]
     
     def get_queryset(self):
         queryset = super().get_queryset()
@@ -25,9 +49,9 @@ class InvoiceViewSet(viewsets.ModelViewSet):
         return queryset
 
 class PaymentViewSet(viewsets.ModelViewSet):
+    permission_classes = [PaymentPermission]
     queryset = Payment.objects.all().order_by('-payment_date')
     serializer_class = PaymentSerializer
-    permission_classes = [permissions.IsAuthenticated]
     
     def get_queryset(self):
         queryset = super().get_queryset()
@@ -37,13 +61,15 @@ class PaymentViewSet(viewsets.ModelViewSet):
         return queryset
 
 class ExpenseViewSet(viewsets.ModelViewSet):
+    permission_classes = [ExpensePermission]
     queryset = Expense.objects.all().order_by('-expense_date')
     serializer_class = ExpenseSerializer
-    permission_classes = [permissions.IsAuthenticated]
 
 @api_view(['GET'])
-@permission_classes([permissions.IsAuthenticated])
+@permission_classes([IsFinancialStaff])
 def revenue_stats(request):
+    if not request.user.profile.has_permission('reports.revenue'):
+        return Response({'detail': 'Report permission required.'}, status=status.HTTP_403_FORBIDDEN)
     period = request.query_params.get('period', 'month')
     now = timezone.now()
     
@@ -75,8 +101,10 @@ def revenue_stats(request):
     })
 
 @api_view(['GET'])
-@permission_classes([permissions.IsAuthenticated])
+@permission_classes([IsFinancialStaff])
 def unpaid_invoices(request):
+    if not request.user.profile.has_permission('billing.view'):
+        return Response({'detail': 'Billing permission required.'}, status=status.HTTP_403_FORBIDDEN)
     invoices = Invoice.objects.filter(
         Q(status='draft') | Q(status='sent') | Q(status='partially_paid') | Q(status='overdue')
     ).order_by('-issue_date')

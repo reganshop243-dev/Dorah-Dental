@@ -38,9 +38,9 @@
                         </p>
                     </div>
                     <div class="col-md-6">
-                        <p><strong>Unit Cost:</strong> UGX {{ item.unit_cost|floatformat:0|intcomma }}</p>
-                        <p><strong>Selling Price:</strong> UGX {{ item.selling_price|floatformat:0|intcomma }}</p>
-                        <p><strong>Total Value:</strong> UGX {{ item.total_value|floatformat:0|intcomma }}</p>
+                        {% if can_view_inventory_prices %}<p><strong>Unit Cost:</strong> UGX {{ item.unit_cost|floatformat:0|intcomma }}</p>
+                        <p><strong>Selling Price:</strong> UGX {{ item.selling_price|floatformat:0|intcomma }}</p>{% endif %}
+                        {% if can_view_inventory_prices %}<p><strong>Total Value:</strong> UGX {{ item.total_value|floatformat:0|intcomma }}</p>{% endif %}
                         <p><strong>Last Restocked:</strong> {{ item.last_restocked|date:"M d, Y H:i"|default:"Never" }}</p>
                         <p><strong>Location:</strong> {{ item.location|default:"-" }}</p>
                     </div>

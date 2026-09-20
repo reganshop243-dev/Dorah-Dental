@@ -97,7 +97,7 @@
                         </p>
                         <p><strong>Doctor:</strong> Dr. {{ appointment.doctor.name }}</p>
                         <p><strong>Service:</strong> {{ appointment.service.name }}</p>
-                        {% if not is_doctor %}<p><strong>Price:</strong> UGX {{ appointment.service.price|floatformat:0|intcomma }}</p>{% endif %}
+                        {% if can_view_financials %}<p><strong>Price:</strong> UGX {{ appointment.service.price|floatformat:0|intcomma }}</p>{% endif %}
                     </div>
                     <div class="col-md-6">
                         <p><strong>Date:</strong> {{ appointment.appointment_date|date:"F d, Y" }}</p>
@@ -111,7 +111,7 @@
                     </div>
                 </div>
 
-                {% if user.profile.role == 'admin' %}
+                {% if user.profile.is_admin_role %}
                 <div class="alert alert-light border d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
                     <div><strong><i class="fas fa-user-check me-1"></i> Patient Flow</strong><div class="small text-muted">Update the appointment status quickly.</div></div>
                     <div class="d-flex flex-wrap gap-2">
@@ -177,7 +177,7 @@
                         <p>{{ appointment.prescription|default:"No prescription given" }}</p>
                     </div>
                     
-                    {% if appointment.treatment_cost and not is_doctor %}
+                    {% if appointment.treatment_cost and can_view_financials %}
                     <div class="treatment-section">
                         <h6><i class="fas fa-money-bill-wave"></i> Treatment Cost</h6>
                         <p><strong>UGX {{ appointment.treatment_cost|floatformat:0|intcomma }}</strong></p>
@@ -256,7 +256,7 @@
                                     <span class="badge bg-secondary">{{ note.created_at|date:"M d, Y H:i" }}</span>
                                     <span class="badge bg-light text-dark">By: {{ note.created_by.get_full_name|default:note.created_by.username }}</span>
                                 </div>
-                                {% if user == note.created_by or user.profile.role == 'admin' %}
+                                {% if user == note.created_by or user.profile.is_admin_role %}
                                 <button class="btn btn-sm btn-outline-danger" onclick="if(confirm('Delete this note?')) window.location.href='{% url 'appointments:delete_clinical_note' note.pk %}'">
                                     <i class="fas fa-trash"></i>
                                 </button>

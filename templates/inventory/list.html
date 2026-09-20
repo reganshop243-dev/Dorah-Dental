@@ -62,7 +62,7 @@
         <div class="stat-card">
             <div class="d-flex justify-content-between">
                 <div>
-                    <div class="stat-number text-success">UGX {{ total_value|floatformat:0|intcomma }}</div>
+                    {% if can_view_inventory_prices %}<div class="stat-number text-success">UGX {{ total_value|floatformat:0|intcomma }}</div>{% else %}<div class="stat-number text-success">—</div>{% endif %}
                     <div class="stat-label">Total Value</div>
                 </div>
                 <div class="stat-icon text-success">
@@ -121,8 +121,8 @@
                             <th>Category</th>
                             <th>Quantity</th>
                             <th>Unit</th>
-                            <th>Unit Cost</th>
-                            <th>Total Value</th>
+                            {% if can_view_inventory_prices %}<th>Unit Cost</th>{% endif %}
+                            {% if can_view_inventory_prices %}<th>Total Value</th>{% endif %}
                             <th>Status</th>
                             <th>Actions</th>
                         </tr>
@@ -145,8 +145,8 @@
                                 </span>
                             </td>
                             <td>{{ item.get_unit_display }}</td>
-                            <td>UGX {{ item.unit_cost|floatformat:0|intcomma }}</td>
-                            <td>UGX {{ item.total_value|floatformat:0|intcomma }}</td>
+                            {% if can_view_inventory_prices %}<td>UGX {{ item.unit_cost|floatformat:0|intcomma }}</td>{% endif %}
+                            {% if can_view_inventory_prices %}<td>UGX {{ item.total_value|floatformat:0|intcomma }}</td>{% endif %}
                             <td>
                                 <span class="badge {% if item.status == 'available' %}bg-success{% elif item.status == 'low_stock' %}bg-warning{% elif item.status == 'out_of_stock' %}bg-danger{% else %}bg-secondary{% endif %}">
                                     {{ item.get_status_display }}

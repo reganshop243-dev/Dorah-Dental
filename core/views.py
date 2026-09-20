@@ -601,7 +601,7 @@ def accountant_dashboard(request):
 @login_required
 def user_list(request):
     """List all users with their roles"""
-    if request.user.profile.role != 'admin':
+    if not request.user.profile.has_permission('users.view'):
         messages.error(request, 'Access denied. Admin only.')
         return redirect('core:dashboard')
     
@@ -628,7 +628,7 @@ def user_list(request):
 @login_required
 def user_add(request):
     """Add a new user with role assignment"""
-    if request.user.profile.role != 'admin':
+    if not request.user.profile.has_permission('users.create'):
         messages.error(request, 'Access denied. Admin only.')
         return redirect('core:dashboard')
     
@@ -758,7 +758,7 @@ def user_add(request):
 @login_required
 def user_edit(request, pk):
     """Edit user details and role"""
-    if request.user.profile.role != 'admin':
+    if not request.user.profile.has_permission('users.edit'):
         messages.error(request, 'Access denied. Admin only.')
         return redirect('core:dashboard')
     
@@ -870,7 +870,7 @@ def user_edit(request, pk):
 @login_required
 def user_delete(request, pk):
     """Delete a user (soft delete)"""
-    if request.user.profile.role != 'admin':
+    if not request.user.profile.has_permission('users.delete'):
         messages.error(request, 'Access denied. Admin only.')
         return redirect('core:dashboard')
     
@@ -904,7 +904,7 @@ def user_delete(request, pk):
 @login_required
 def user_activate(request, pk):
     """Activate a user (re-activate after soft delete)"""
-    if request.user.profile.role != 'admin':
+    if not request.user.profile.has_permission('users.activate'):
         messages.error(request, 'Access denied. Admin only.')
         return redirect('core:dashboard')
     
@@ -931,34 +931,94 @@ def user_activate(request, pk):
 
 @login_required
 def role_management(request):
-    """View all users grouped by role"""
-    if request.user.profile.role != 'admin':
-        messages.error(request, 'Access denied. Admin only.')
+    """Configure role assignments and granular role permissions."""
+    if not request.user.profile.has_permission('roles.manage'):
+        messages.error(request, 'Access denied. You do not have permission to manage roles.')
         return redirect('core:dashboard')
-    
-    from django.db.models import Count
-    
-    # Get all users with their roles
-    users = User.objects.all().select_related('profile').order_by('profile__role', 'username')
-    
-    # Group users by role
-    roles = {}
+
+    from .permissions import PERMISSION_CATALOG, BASELINE
+    from .models import RolePermission
+    from appointments.models import Doctor
+
+    role_labels = dict(UserProfile.ROLE_CHOICES)
+    valid_roles = set(role_labels)
+
+    if request.method == 'POST':
+        action = request.POST.get('action', '')
+
+        if action == 'update_permissions':
+            role_code = request.POST.get('role_code', '').strip()
+            if role_code not in valid_roles:
+                messages.error(request, 'Invalid role selected.')
+                return redirect('core:role_management')
+            selected = set(request.POST.getlist('permissions'))
+            valid_permissions = {code for code, _, _ in PERMISSION_CATALOG}
+            selected &= valid_permissions
+            for code, _, _ in PERMISSION_CATALOG:
+                RolePermission.objects.update_or_create(
+                    role_code=role_code,
+                    permission_code=code,
+                    defaults={
+                        'enabled': code in selected,
+                        'is_primary': code in BASELINE.get(role_code, set()),
+                    },
+                )
+            messages.success(request, f'Permissions for {role_labels[role_code]} updated successfully.')
+            return redirect(f'/roles/?role={role_code}')
+
+        if action == 'update_roles':
+            target_user = get_object_or_404(User, pk=request.POST.get('user_id'))
+            primary_role = request.POST.get('primary_role', '').strip()
+            additional_roles = [r for r in request.POST.getlist('additional_roles') if r in valid_roles]
+            if primary_role not in valid_roles:
+                messages.error(request, 'Please select a valid primary role.')
+                return redirect('core:role_management')
+            if target_user == request.user and primary_role != 'admin' and 'admin' not in additional_roles:
+                messages.error(request, 'You cannot remove the administrator role from your own account.')
+                return redirect('core:role_management')
+            target_had_admin = target_user.profile.has_role('admin')
+            will_have_admin = primary_role == 'admin' or 'admin' in additional_roles
+            if target_had_admin and not will_have_admin:
+                active_admins = [u for u in User.objects.filter(is_active=True).select_related('profile') if u.profile.has_role('admin')]
+                if len(active_admins) <= 1:
+                    messages.error(request, 'The system must always have at least one active administrator.')
+                    return redirect('core:role_management')
+            profile = target_user.profile
+            profile.set_roles(primary_role, additional_roles)
+            if profile.has_role('doctor') and not profile.doctor:
+                clean_name = clean_doctor_name(target_user.first_name, target_user.last_name, target_user.username)
+                profile.doctor = Doctor.objects.create(name=clean_name, phone=profile.phone or '', email=target_user.email or '', specialization='General Dentistry', is_active=True)
+            profile.save()
+            messages.success(request, f'Roles for "{target_user.username}" updated: {", ".join(profile.role_displays)}.')
+            return redirect('core:role_management')
+
+    users = User.objects.all().select_related('profile').order_by('username')
+    roles = {role_code: [] for role_code, _ in UserProfile.ROLE_CHOICES}
     for user in users:
-        role = user.profile.role
-        if role not in roles:
-            roles[role] = []
-        roles[role].append(user)
-    
-    # Get role counts
-    role_counts = UserProfile.objects.values('role').annotate(count=Count('id'))
-    role_stats = {item['role']: item['count'] for item in role_counts}
-    
-    context = {
-        'roles': roles,
-        'role_stats': role_stats,
-        'role_choices': UserProfile.ROLE_CHOICES,
-    }
-    return render(request, 'core/role_management.html', context)
+        for role_code in user.profile.all_roles:
+            roles.setdefault(role_code, []).append(user)
+    role_stats = {role_code: len(users_for_role) for role_code, users_for_role in roles.items()}
+
+    selected_role = request.GET.get('role', 'doctor')
+    if selected_role not in valid_roles:
+        selected_role = 'doctor'
+    permission_rows = []
+    for code, category, label in PERMISSION_CATALOG:
+        row = RolePermission.objects.filter(role_code=selected_role, permission_code=code).first()
+        permission_rows.append({
+            'code': code, 'category': category, 'label': label,
+            'enabled': row.enabled if row else code in BASELINE.get(selected_role, set()),
+            'is_primary': row.is_primary if row else code in BASELINE.get(selected_role, set()),
+        })
+
+    categories = []
+    for category in dict.fromkeys(c for _, c, _ in PERMISSION_CATALOG):
+        categories.append((category, [p for p in permission_rows if p['category'] == category]))
+
+    return render(request, 'core/role_management.html', {
+        'roles': roles, 'role_stats': role_stats, 'role_choices': UserProfile.ROLE_CHOICES,
+        'selected_role': selected_role, 'permission_categories': categories,
+    })
 
 
 # ====================
@@ -969,7 +1029,14 @@ def role_management(request):
 @otp_required
 def revenue_dashboard(request):
     """Financial report showing revenue, payments, and reports with date filters"""
-    if hasattr(request.user, 'profile') and request.user.profile.role == 'doctor':
+    if not request.user.profile.has_permission('reports.revenue'):
+        messages.error(request, '❌ You do not have permission to view revenue reports.')
+        return redirect('core:dashboard')
+    if (
+        hasattr(request.user, 'profile')
+        and request.user.profile.has_role('doctor')
+        and not request.user.profile.has_any_role(['admin', 'accountant'])
+    ):
         messages.error(request, '❌ Doctors do not have access to financial reports.')
         return redirect('core:doctor_dashboard')
     from billing.models import Invoice, Payment
@@ -1171,7 +1238,7 @@ def revenue_dashboard(request):
 @login_required
 def reset_user_otp(request, pk):
     """Admin function to reset a user's OTP cooldown"""
-    if request.user.profile.role != 'admin':
+    if not request.user.profile.has_role('admin'):
         messages.error(request, 'Access denied. Admin only.')
         return redirect('core:dashboard')
     
@@ -1194,7 +1261,7 @@ def company_settings(request):
     from .models import CompanySettings
     
     # Only admin can access
-    if request.user.profile.role != 'admin':
+    if not request.user.profile.has_role('admin'):
         messages.error(request, 'Access denied. Admin only.')
         return redirect('core:dashboard')
     

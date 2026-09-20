@@ -60,6 +60,7 @@
                         </div>
                     </div>
                     
+                    {% if can_view_inventory_prices %}
                     <div class="row">
                         <div class="col-md-6 mb-3">
                             <label for="unit_cost" class="form-label">Unit Cost (UGX)</label>
@@ -70,6 +71,7 @@
                             <input type="number" step="0.01" class="form-control" id="selling_price" name="selling_price" value="0">
                         </div>
                     </div>
+                    {% endif %}
                     
                     <div class="row">
                         <div class="col-md-6 mb-3">

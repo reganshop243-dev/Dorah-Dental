@@ -134,7 +134,7 @@
         <div class="d-flex justify-content-between align-items-center mb-4">
             <h4><i class="fas fa-file-invoice-dollar text-primary me-2"></i> Invoices</h4>
             <div>
-                {% if not is_doctor %}<a href="{% url 'billing:add' %}" class="btn btn-primary"><i class="fas fa-plus"></i> New Invoice</a>{% endif %}
+                {% if can_view_financials %}<a href="{% url 'billing:add' %}" class="btn btn-primary"><i class="fas fa-plus"></i> New Invoice</a>{% endif %}
                 <button onclick="window.print()" class="btn btn-secondary ms-2">
                     <i class="fas fa-print"></i> Print
                 </button>
@@ -224,7 +224,7 @@
                                     <th>Invoice #</th>
                                     <th>Patient</th>
                                     <th>Date</th>
-                                    {% if not is_doctor %}<th>Total</th><th>Paid</th><th>Balance</th>{% endif %}
+                                    {% if can_view_financials %}<th>Total</th><th>Paid</th><th>Balance</th>{% endif %}
                                     <th>Status</th>
                                     <th>Payment Method</th>
                                     <th>Actions</th>
@@ -244,13 +244,13 @@
                                         <small class="text-muted">{{ invoice.patient_phone }}</small>
                                     </td>
                                     <td>{{ invoice.issue_date|date:"M d, Y" }}</td>
-                                    {% if not is_doctor %}<td class="amount-total">UGX {{ invoice.total_amount|floatformat:0|intcomma }}</td><td class="amount-paid">UGX {{ invoice.amount_paid|floatformat:0|intcomma }}</td><td class="amount-balance">UGX {{ invoice.balance_due|floatformat:0|intcomma }}</td>{% endif %}
+                                    {% if can_view_financials %}<td class="amount-total">UGX {{ invoice.total_amount|floatformat:0|intcomma }}</td><td class="amount-paid">UGX {{ invoice.amount_paid|floatformat:0|intcomma }}</td><td class="amount-balance">UGX {{ invoice.balance_due|floatformat:0|intcomma }}</td>{% endif %}
                                     <td>
                                         <span class="badge-status {{ invoice.status }}">
                                             {{ invoice.get_status_display }}
                                         </span>
                                     </td>
-                                    {% if not is_doctor %}<td>
+                                    {% if can_view_financials %}<td>
                                         {% if invoice.payment_method %}
                                             <span class="badge bg-info">
                                                 {{ invoice.get_payment_method_display }}

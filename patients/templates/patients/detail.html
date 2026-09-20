@@ -137,13 +137,13 @@
             <i class="fas fa-calendar-plus"></i> Book Appointment
         </a>
         <!-- ✅ ONLY show Edit button if NOT a doctor -->
-        {% if not is_doctor %}
+        {% if can_edit_patient %}
         <a href="{% url 'patients:edit' patient.pk %}" class="btn btn-primary btn-sm">
             <i class="fas fa-edit"></i> Edit
         </a>
-        <a href="{% url 'billing:add' %}?patient={{ patient.pk }}" class="btn btn-info btn-sm text-white">
+        {% if can_invoice_patient %}<a href="{% url 'billing:add' %}?patient={{ patient.pk }}" class="btn btn-info btn-sm text-white">
             <i class="fas fa-file-invoice"></i> Invoice
-        </a>
+        </a>{% endif %}
         {% endif %}
         <a href="{% url 'patients:list' %}" class="btn btn-secondary btn-sm">
             <i class="fas fa-arrow-left"></i> Back
@@ -381,7 +381,7 @@
                     <div class="stat-label">Invoices</div>
                 </div>
             </div>
-            {% if not is_doctor %}
+            {% if can_view_financials %}
             <div class="col-3">
                 <div class="stat-box danger">
                     <div class="stat-icon"><i class="fas fa-money-bill-wave"></i></div>
@@ -483,7 +483,7 @@
                                 <th>Date</th>
                                 <th>Service</th>
                                 <th>Doctor</th>
-                                {% if not is_doctor %}<th>Amount</th>{% endif %}
+                                {% if can_view_financials %}<th>Amount</th>{% endif %}
                             </tr>
                         </thead>
                         <tbody>
@@ -492,7 +492,7 @@
                                 <td>{{ treatment.treatment_date|date:"M d, Y" }}</td>
                                 <td>{{ treatment.service.name }}</td>
                                 <td>Dr. {{ treatment.doctor.name }}</td>
-                                {% if not is_doctor %}<td>UGX {{ treatment.amount|floatformat:0|intcomma }}</td>{% endif %}
+                                {% if can_view_financials %}<td>UGX {{ treatment.amount|floatformat:0|intcomma }}</td>{% endif %}
                             </tr>
                             {% endfor %}
                             {% if treatments|length > 10 %}
@@ -513,6 +513,7 @@
             {% endif %}
         </div>
         
+        {% if can_view_financials %}
         <!-- Invoices -->
         <div class="info-card mt-3">
             <h6 class="text-muted mb-3"><i class="fas fa-file-invoice me-2"></i>Invoices</h6>
@@ -524,7 +525,7 @@
                             <tr>
                                 <th>Invoice #</th>
                                 <th>Date</th>
-                                {% if not is_doctor %}<th>Total</th>{% endif %}
+                                {% if can_view_financials %}<th>Total</th>{% endif %}
                                 <th>Status</th>
                             </tr>
                         </thead>
@@ -537,7 +538,7 @@
                                     </a>
                                 </td>
                                 <td>{{ invoice.issue_date|date:"M d, Y" }}</td>
-                                {% if not is_doctor %}<td>UGX {{ invoice.total_amount|floatformat:0|intcomma }}</td>{% endif %}
+                                {% if can_view_financials %}<td>UGX {{ invoice.total_amount|floatformat:0|intcomma }}</td>{% endif %}
                                 <td>
                                     <span class="badge-status {{ invoice.status }}">
                                         {{ invoice.get_status_display }}
@@ -569,6 +570,8 @@
                 </p>
             {% endif %}
         </div>
+        
+        {% endif %}
         
         <!-- Dental Images Gallery -->
         <div class="info-card mt-3">

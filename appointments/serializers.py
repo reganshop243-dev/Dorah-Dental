@@ -1,5 +1,6 @@
-﻿from rest_framework import serializers
+from rest_framework import serializers
 from .models import Appointment, Doctor, Service, Treatment, BookingRequest, DentalChart, ClinicalNote
+from core.permissions import is_financial_staff
 
 class DoctorSerializer(serializers.ModelSerializer):
     display_name = serializers.SerializerMethodField()
@@ -15,6 +16,19 @@ class ServiceSerializer(serializers.ModelSerializer):
     class Meta:
         model = Service
         fields = ['id', 'name', 'description', 'price', 'duration_minutes', 'is_active']
+
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        request = self.context.get('request')
+        if not request or not is_financial_staff(request.user):
+            data.pop('price', None)
+        return data
+
+    def validate(self, attrs):
+        request = self.context.get('request')
+        if request and not is_financial_staff(request.user):
+            attrs.pop('price', None)
+        return attrs
 
 class AppointmentSerializer(serializers.ModelSerializer):
     patient_name = serializers.CharField(source='patient.full_name', read_only=True)

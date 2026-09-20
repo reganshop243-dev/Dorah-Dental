@@ -64,13 +64,20 @@
                         </div>
                     </div>
                     
+                    {% if can_view_inventory_prices %}
                     <div class="row">
-                        <div class="col-md-4 mb-3">
-                            <label for="unit_price" class="form-label">Unit Price (UGX)</label>
-                            <input type="number" class="form-control" id="unit_price" name="unit_price" 
-                                   value="{{ item.unit_price }}" step="0.01" min="0">
+                        <div class="col-md-6 mb-3">
+                            <label for="unit_cost" class="form-label">Unit Cost (UGX)</label>
+                            <input type="number" class="form-control" id="unit_cost" name="unit_cost" value="{{ item.unit_cost }}" step="0.01" min="0">
                         </div>
-                        <div class="col-md-4 mb-3">
+                        <div class="col-md-6 mb-3">
+                            <label for="selling_price" class="form-label">Selling Price (UGX)</label>
+                            <input type="number" class="form-control" id="selling_price" name="selling_price" value="{{ item.selling_price }}" step="0.01" min="0">
+                        </div>
+                    </div>
+                    {% endif %}
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
                             <label for="supplier" class="form-label">Supplier</label>
                             <input type="text" class="form-control" id="supplier" name="supplier" 
                                    value="{{ item.supplier }}">

@@ -20,7 +20,11 @@ from appointments.models import DentalChart
 
 def is_doctor(user):
     """Check if user has doctor role"""
-    return hasattr(user, 'profile') and user.profile.role == 'doctor'
+    return (
+        hasattr(user, 'profile')
+        and user.profile.has_role('doctor')
+        and not user.profile.has_role('admin')
+    )
 
 def get_doctor_patients(doctor):
     """Get patients assigned to a specific doctor"""
@@ -47,7 +51,7 @@ def patient_list(request):
     # ---------------------------------------------------------
     # BASE PATIENT QUERY
     # ---------------------------------------------------------
-    if user_profile.role == 'doctor':
+    if user_profile.has_role('doctor'):
         doctor = user_profile.doctor
         patients = get_doctor_patients(doctor)
         is_doctor_user = True
@@ -177,7 +181,7 @@ def patient_add(request):
     user_profile = request.user.profile
     
     # PREVENT doctors from adding patients
-    if user_profile.role == 'doctor':
+    if user_profile.has_role('doctor'):
         messages.error(request, 'âŒ Doctors are not allowed to add patients.')
         return redirect('patients:list')
     
@@ -360,7 +364,7 @@ def patient_detail(request, pk):
     user_profile = request.user.profile
     
     # âœ… Check if doctor has access to this patient
-    if user_profile.role == 'doctor':
+    if user_profile.has_role('doctor'):
         doctor = user_profile.doctor
         if doctor:
             # Check if this patient is assigned to this doctor
@@ -416,7 +420,9 @@ def patient_detail(request, pk):
         'total_amount': total_amount,
         'dental_chart_records': dental_chart_records,
         'dental_chart_count': dental_chart_records.count(),
-        'is_doctor': user_profile.role == 'doctor',
+        'is_doctor': user_profile.has_role('doctor'),
+        'can_edit_patient': user_profile.has_permission('patients.edit'),
+        'can_invoice_patient': user_profile.has_permission('billing.view'),
         'portal_pin': portal_pin,  # âœ… Pass portal PIN
         'new_patient_pin': new_patient_pin,  # âœ… Pass new patient PIN
         'new_patient_id': new_patient_id,  # âœ… Pass new patient ID
@@ -434,7 +440,7 @@ def patient_edit(request, pk):
     user_profile = request.user.profile
     
     # âœ… PREVENT doctors from editing patients
-    if user_profile.role == 'doctor':
+    if user_profile.has_role('doctor'):
         messages.error(request, 'âŒ Doctors are not allowed to edit patients.')
         return redirect('patients:list')
     
@@ -500,7 +506,7 @@ def patient_delete(request, pk):
     user_profile = request.user.profile
     
     # âœ… PREVENT doctors from deleting patients
-    if user_profile.role == 'doctor':
+    if user_profile.has_role('doctor'):
         messages.error(request, 'âŒ Doctors are not allowed to delete patients.')
         return redirect('patients:list')
     
@@ -530,7 +536,7 @@ def patient_status(request, pk):
     """Activate or deactivate a patient - Admin only."""
     patient = get_object_or_404(Patient, pk=pk)
 
-    if request.user.profile.role != 'admin':
+    if not request.user.profile.has_permission('patients.status'):
         messages.error(request, 'âŒ Access denied. Only administrators can change patient status.')
         return redirect('patients:detail', pk=pk)
 
@@ -550,7 +556,7 @@ def patient_add_image(request, pk):
     user_profile = request.user.profile
     
     # âœ… Check if doctor has access to this patient
-    if user_profile.role == 'doctor':
+    if user_profile.has_role('doctor'):
         doctor = user_profile.doctor
         if doctor:
             has_access = Appointment.objects.filter(
@@ -600,7 +606,7 @@ def patient_add_image(request, pk):
 def generate_portal_pin(request, pk):
     """Generate portal PIN for existing patient"""
     # âœ… Only admin and receptionist can generate PINs
-    if request.user.profile.role not in ['admin', 'receptionist']:
+    if not request.user.profile.has_any_role(['admin', 'receptionist']):
         messages.error(request, 'âŒ Access denied. Only admin or receptionist can generate portal PINs.')
         return redirect('patients:detail', pk=pk)
     
@@ -643,7 +649,7 @@ def patient_search_api(request):
         user_profile = request.user.profile
         
         # âœ… If doctor, only show assigned patients
-        if user_profile.role == 'doctor':
+        if user_profile.has_role('doctor'):
             doctor = user_profile.doctor
             if doctor:
                 patients = Patient.objects.filter(
@@ -788,7 +794,7 @@ def dental_chart(request, pk):
 
     # Doctors may only access their assigned patients.
     # Admins have full access.
-    if user_profile.role == 'doctor':
+    if user_profile.has_role('doctor'):
         doctor = user_profile.doctor
         if not doctor or not Appointment.objects.filter(
             patient=patient,
@@ -801,7 +807,7 @@ def dental_chart(request, pk):
             return redirect('patients:list')
 
     # Only doctors and admins can edit dental-chart records.
-    can_edit = user_profile.role in ['doctor', 'admin']
+    can_edit = user_profile.has_permission('dental.edit')
 
     if request.method == 'POST':
         if not can_edit:
@@ -969,7 +975,9 @@ def dental_chart(request, pk):
         'tooth_data': tooth_data,
         'tooth_map': tooth_map,
         'quadrants': quadrants,
-        'is_doctor': user_profile.role == 'doctor',
+        'is_doctor': user_profile.has_role('doctor'),
+        'can_edit_patient': user_profile.has_permission('patients.edit'),
+        'can_invoice_patient': user_profile.has_permission('billing.view'),
         'can_edit': can_edit,
         'recorded_count': len(chart_records),
         'remaining_count': 32 - len(chart_records),
