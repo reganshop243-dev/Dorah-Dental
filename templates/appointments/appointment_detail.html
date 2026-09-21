@@ -78,13 +78,15 @@
         <div class="card">
             <div class="card-header d-flex justify-content-between align-items-center">
                 <span><i class="fas fa-calendar-check text-primary"></i> Appointment Details</span>
-                <div>
-                    <a href="{% url 'appointments:edit' appointment.pk %}" class="btn btn-sm btn-primary">
-                        <i class="fas fa-edit"></i> Edit
-                    </a>
-                    <a href="{% url 'appointments:delete' appointment.pk %}" class="btn btn-sm btn-danger">
-                        <i class="fas fa-trash"></i> Delete
-                    </a>
+                <div class="d-flex flex-wrap gap-2">
+                    {% if can_start_appointment %}
+                    <form method="post" action="{% url 'appointments:start' appointment.pk %}" class="d-inline">{% csrf_token %}<button class="btn btn-sm btn-warning"><i class="fas fa-play me-1"></i>Start Appointment</button></form>
+                    {% endif %}
+                    {% if can_finish_appointment %}
+                    <a href="{% url 'appointments:finish' appointment.pk %}" class="btn btn-sm btn-success"><i class="fas fa-check me-1"></i>Finish Appointment</a>
+                    {% endif %}
+                    {% if can_edit_appointment %}<a href="{% url 'appointments:edit' appointment.pk %}" class="btn btn-sm btn-primary"><i class="fas fa-edit"></i> Edit</a>{% endif %}
+                    {% if can_delete_appointment %}<a href="{% url 'appointments:delete' appointment.pk %}" class="btn btn-sm btn-danger"><i class="fas fa-trash"></i> Delete</a>{% endif %}
                 </div>
             </div>
             <div class="card-body">
@@ -156,6 +158,14 @@
                 <i class="fas fa-notes-medical text-primary"></i> Consultation & Treatment
             </div>
             <div class="card-body">
+                {% if appointment.findings or appointment.treatment_done %}
+                    <div class="treatment-section border-start border-success border-3">
+                        <h6><i class="fas fa-clipboard-check text-success"></i> Completed Clinical Record</h6>
+                        {% if appointment.findings %}<p><strong>Findings:</strong> {{ appointment.findings }}</p>{% endif %}
+                        {% if appointment.treatment_done %}<p class="mb-0"><strong>Treatment done:</strong> {{ appointment.treatment_done }}</p>{% endif %}
+                    </div>
+                {% endif %}
+
                 {% if appointment.consultation_notes or appointment.diagnosis %}
                     <div class="treatment-section">
                         <h6><i class="fas fa-stethoscope"></i> Diagnosis</h6>
@@ -305,8 +315,7 @@
             </div>
             <div class="card-body">
                 <p><strong>{{ appointment.patient.full_name }}</strong></p>
-                <p><i class="fas fa-phone"></i> {{ appointment.patient.phone }}</p>
-                <p><i class="fas fa-envelope"></i> {{ appointment.patient.email|default:"N/A" }}</p>
+                {% if show_patient_contact %}<p><i class="fas fa-phone"></i> {{ appointment.patient.phone }}</p><p><i class="fas fa-envelope"></i> {{ appointment.patient.email|default:"N/A" }}</p>{% else %}<p class="text-muted"><i class="fas fa-lock me-1"></i> Patient contact is restricted</p>{% endif %}
                 <p><i class="fas fa-calendar"></i> Age: {{ appointment.patient.age }} years</p>
                 <a href="{% url 'patients:detail' appointment.patient.pk %}" class="btn btn-sm btn-outline-primary w-100">
                     <i class="fas fa-user"></i> Full Patient Profile

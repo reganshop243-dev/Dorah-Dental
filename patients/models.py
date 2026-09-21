@@ -114,3 +114,27 @@ class DentalImage(models.Model):
         ordering = ['-uploaded_at']
         verbose_name = "Dental Image"
         verbose_name_plural = "Dental Images"
+
+class PatientContactAccessRequest(models.Model):
+    STATUS_CHOICES = [
+        ('pending', 'Pending'),
+        ('approved', 'Approved'),
+        ('denied', 'Denied'),
+    ]
+
+    patient = models.ForeignKey(Patient, on_delete=models.CASCADE, related_name='contact_access_requests')
+    requester = models.ForeignKey(User, on_delete=models.CASCADE, related_name='patient_contact_requests')
+    reviewed_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='reviewed_patient_contact_requests')
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
+    requested_at = models.DateTimeField(auto_now_add=True)
+    reviewed_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ['-requested_at']
+        indexes = [
+            models.Index(fields=['patient', 'requester', 'status']),
+            models.Index(fields=['status', '-requested_at']),
+        ]
+
+    def __str__(self):
+        return f"{self.requester.get_full_name() or self.requester.username} → {self.patient.full_name} ({self.status})"

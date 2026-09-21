@@ -2,13 +2,13 @@ from core.permissions import is_financial_staff
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
-from django.db import IntegrityError
+from django.db import IntegrityError, transaction
 from django.db.models import Sum, Count, Q
 from django.utils import timezone
 from django.conf import settings
 from django.http import JsonResponse
 from datetime import datetime, timedelta
-from .models import Appointment, Doctor, Service, Treatment
+from .models import Appointment, Doctor, Service, Treatment, DentalChart
 from patients.models import Patient
 from billing.models import Invoice
 
@@ -287,6 +287,14 @@ def appointment_add(request):
                 follow_up_notes=follow_up_notes,
             )
             messages.success(request, f'✅ Appointment created for {patient.full_name}')
+
+            # Notify the assigned doctor's user account and PWA.
+            try:
+                from notifications.services import notify_appointment_assigned
+                notify_appointment_assigned(appointment)
+            except Exception as exc:
+                import logging
+                logging.getLogger(__name__).exception('Appointment assignment notification failed: %s', exc)
             
             # Send confirmation SMS if send_reminder is checked
             if send_reminder:
@@ -401,21 +409,114 @@ Thank you,
 
 @login_required
 def appointment_detail(request, pk):
-    """View appointment details"""
-    appointment = get_object_or_404(Appointment, pk=pk)
+    """View appointment details and doctor workflow actions."""
+    appointment = get_object_or_404(Appointment.objects.select_related('patient', 'doctor', 'service'), pk=pk)
     user_profile = request.user.profile
-    
-    # ✅ Check if doctor has access to this appointment
     if is_doctor(request.user):
         doctor = user_profile.doctor
         if doctor and appointment.doctor != doctor:
             messages.error(request, '❌ You do not have access to this appointment.')
             return redirect('appointments:list')
-    
+    if is_doctor(request.user):
+        try:
+            from patients.models import PatientContactAccessRequest
+            show_patient_contact = PatientContactAccessRequest.objects.filter(patient=appointment.patient, requester=request.user, status='approved').exists()
+        except Exception:
+            show_patient_contact = False
+    else:
+        show_patient_contact = user_profile.has_permission('patients.contacts.view') or user_profile.has_role('admin')
     return render(request, 'appointments/appointment_detail.html', {
         'appointment': appointment,
         'status_choices': Appointment.STATUS_CHOICES,
         'is_doctor': is_doctor(request.user),
+        'can_start_appointment': is_doctor(request.user) and appointment.status in ('scheduled', 'checked_in'),
+        'can_finish_appointment': is_doctor(request.user) and appointment.status == 'in_progress',
+        'can_edit_appointment': user_profile.has_permission('appointments.edit'),
+        'can_change_status': user_profile.has_permission('appointments.status'),
+        'can_delete_appointment': user_profile.has_permission('appointments.delete'),
+        'can_view_financials': is_financial_staff(request.user),
+        'show_patient_contact': show_patient_contact,
+    })
+
+
+@login_required
+def appointment_start(request, pk):
+    appointment = get_object_or_404(Appointment, pk=pk)
+    profile = request.user.profile
+    if not is_doctor(request.user) or profile.doctor != appointment.doctor or not profile.has_permission('appointments.status'):
+        messages.error(request, 'You do not have permission to start this appointment.')
+        return redirect('appointments:detail', pk=pk)
+    if request.method == 'POST' and appointment.status in ('scheduled', 'checked_in'):
+        appointment.status = 'in_progress'
+        appointment.save(update_fields=['status', 'updated_at'])
+        messages.success(request, 'Appointment started. Status is now In Progress.')
+    return redirect('appointments:detail', pk=pk)
+
+
+@login_required
+def appointment_finish(request, pk):
+    appointment = get_object_or_404(Appointment.objects.select_related('patient', 'doctor', 'service'), pk=pk)
+    profile = request.user.profile
+    if not is_doctor(request.user) or profile.doctor != appointment.doctor or not profile.has_permission('appointments.status'):
+        messages.error(request, 'You do not have permission to finish this appointment.')
+        return redirect('appointments:detail', pk=pk)
+    if appointment.status != 'in_progress':
+        messages.error(request, 'Only an appointment in progress can be finished.')
+        return redirect('appointments:detail', pk=pk)
+    if request.method == 'POST':
+        findings = request.POST.get('findings', '').strip()
+        treatment_done = request.POST.get('treatment_done', '').strip()
+        diagnosis = request.POST.get('diagnosis', '').strip()
+        treatment_plan = request.POST.get('treatment_plan', '').strip()
+        prescription = request.POST.get('prescription', '').strip()
+        follow_up_date = request.POST.get('follow_up_date') or None
+        follow_up_notes = request.POST.get('follow_up_notes', '').strip()
+        with transaction.atomic():
+            appointment.findings = findings
+            appointment.treatment_done = treatment_done
+            appointment.diagnosis = diagnosis
+            appointment.treatment_plan = treatment_plan
+            appointment.prescription = prescription
+            appointment.follow_up_date = follow_up_date
+            appointment.follow_up_notes = follow_up_notes
+            appointment.status = 'completed'
+            appointment.save(update_fields=['findings','treatment_done','diagnosis','treatment_plan','prescription','follow_up_date','follow_up_notes','status','updated_at'])
+            # Replace the dental-chart rows submitted for this completion.
+            tooth_numbers = request.POST.getlist('tooth_number[]')
+            conditions = request.POST.getlist('condition[]')
+            surfaces = request.POST.getlist('surface[]')
+            notes = request.POST.getlist('tooth_notes[]')
+            for i, tooth in enumerate(tooth_numbers):
+                if not tooth:
+                    continue
+                try:
+                    tooth_number = int(tooth)
+                except ValueError:
+                    continue
+                if not 1 <= tooth_number <= 32:
+                    continue
+                chart = DentalChart.objects.filter(patient=appointment.patient, tooth_number=tooth_number).order_by('-updated_at').first()
+                if chart is None:
+                    chart = DentalChart(patient=appointment.patient, tooth_number=tooth_number)
+                chart.condition = conditions[i] if i < len(conditions) and conditions[i] else 'healthy'
+                chart.surface = surfaces[i] if i < len(surfaces) and surfaces[i] else None
+                chart.notes = notes[i] if i < len(notes) else ''
+                chart.tooth_name = f'Tooth #{tooth_number}'
+                chart.created_by = request.user
+                chart.save()
+        try:
+            from notifications.services import notify_appointment_completed
+            notify_appointment_completed(appointment)
+        except Exception as exc:
+            import logging
+            logging.getLogger(__name__).exception('Appointment completion notification failed: %s', exc)
+        messages.success(request, 'Appointment finished and clinical findings saved.')
+        return redirect('appointments:detail', pk=pk)
+    return render(request, 'appointments/appointment_finish.html', {
+        'appointment': appointment,
+        'dental_conditions': DentalChart.TOOTH_CONDITION_CHOICES,
+        'dental_surfaces': DentalChart.SURFACE_CHOICES,
+        'existing_chart': DentalChart.objects.filter(patient=appointment.patient).order_by('tooth_number'),
     })
 
 
@@ -434,6 +535,7 @@ def appointment_edit(request, pk):
     
     if request.method == 'POST':
         try:
+            original_doctor_id = appointment.doctor_id
             appointment.patient_id = request.POST.get('patient')
             appointment.doctor_id = request.POST.get('doctor')
             appointment.service_id = request.POST.get('service')
@@ -464,6 +566,12 @@ def appointment_edit(request, pk):
                 appointment.reminder_sent = False
             
             appointment.save()
+            if appointment.doctor_id != original_doctor_id:
+                try:
+                    from notifications.services import notify_appointment_assigned
+                    notify_appointment_assigned(appointment)
+                except Exception:
+                    pass
             
             messages.success(request, '✅ Appointment updated successfully!')
             return redirect('appointments:detail', pk=appointment.pk)
@@ -510,8 +618,15 @@ def appointment_status_update(request, pk):
         if new_status not in allowed:
             messages.error(request, '❌ Invalid appointment status.')
         else:
+            previous_status = appointment.status
             appointment.status = new_status
             appointment.save(update_fields=['status', 'updated_at'])
+            if new_status == 'completed' and previous_status != 'completed':
+                try:
+                    from notifications.services import notify_appointment_completed
+                    notify_appointment_completed(appointment)
+                except Exception:
+                    pass
             messages.success(request, f'Appointment status changed to {appointment.get_status_display()}.')
     return redirect('appointments:detail', pk=pk)
 

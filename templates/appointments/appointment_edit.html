@@ -19,7 +19,7 @@
                         <select class="form-select" id="patient" name="patient" required>
                             {% for patient in patients %}
                                 <option value="{{ patient.pk }}" {% if appointment.patient.pk == patient.pk %}selected{% endif %}>
-                                    {{ patient.full_name }} - {{ patient.phone }}
+                                    {{ patient.full_name }}{% if can_view_patient_contacts %} - {{ patient.phone }}{% endif %}
                                 </option>
                             {% endfor %}
                         </select>

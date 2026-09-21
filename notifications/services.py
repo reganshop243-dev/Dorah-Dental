@@ -235,3 +235,88 @@ def send_appointment_reminders():
         count += 1
     
     return count
+
+# ---------------------------------------------------------------------------
+# In-app + Web Push notifications
+# ---------------------------------------------------------------------------
+def create_user_notification(*, recipient, notification_type, title, message, url='', appointment=None, patient=None, send_push=True):
+    from .models import UserNotification
+    notification = UserNotification.objects.create(
+        recipient=recipient, notification_type=notification_type, title=title,
+        message=message, url=url or '', appointment=appointment, patient=patient,
+    )
+    if send_push:
+        send_web_push(notification)
+    return notification
+
+
+def send_web_push(notification):
+    """Send a Web Push notification to all subscriptions for a user."""
+    from .models import PushSubscription
+    public_key = getattr(settings, 'VAPID_PUBLIC_KEY', '')
+    private_key = getattr(settings, 'VAPID_PRIVATE_KEY', '')
+    subject = getattr(settings, 'VAPID_SUBJECT', '')
+    if not public_key or not private_key or not subject:
+        logger.warning('Web Push skipped: VAPID_PUBLIC_KEY/VAPID_PRIVATE_KEY/VAPID_SUBJECT are not configured.')
+        return False
+    try:
+        from pywebpush import webpush, WebPushException
+    except ImportError:
+        logger.error('Web Push unavailable: pywebpush is not installed.')
+        return False
+
+    payload = {
+        'title': notification.title,
+        'body': notification.message,
+        'url': notification.url or '/',
+        'notification_id': notification.pk,
+    }
+    import json
+    delivered = False
+    for subscription in PushSubscription.objects.filter(user=notification.recipient):
+        try:
+            webpush(
+                subscription_info={
+                    'endpoint': subscription.endpoint,
+                    'keys': {'p256dh': subscription.p256dh, 'auth': subscription.auth},
+                },
+                data=json.dumps(payload),
+                vapid_private_key=private_key,
+                vapid_claims={'sub': subject},
+            )
+            delivered = True
+        except WebPushException as exc:
+            logger.warning('Web Push failed for subscription %s: %s', subscription.pk, exc)
+            if getattr(exc, 'response', None) is not None and getattr(exc.response, 'status_code', None) in (404, 410):
+                subscription.delete()
+        except Exception as exc:
+            logger.exception('Unexpected Web Push error: %s', exc)
+    return delivered
+
+
+def notify_appointment_assigned(appointment):
+    from django.contrib.auth.models import User
+    users = User.objects.filter(profile__doctor=appointment.doctor, is_active=True).distinct()
+    for user in users:
+        create_user_notification(
+            recipient=user,
+            notification_type='appointment_assigned',
+            title='New appointment assigned',
+            message=f'{appointment.patient.full_name} — {appointment.appointment_date:%d %b %Y} at {appointment.appointment_time:%H:%M}.',
+            url=f'/appointments/appointments/{appointment.pk}/',
+            appointment=appointment, patient=appointment.patient,
+        )
+
+
+def notify_appointment_completed(appointment):
+    from django.contrib.auth.models import User
+    users = User.objects.filter(profile__role='admin', is_active=True).distinct()
+    for user in users:
+        create_user_notification(
+            recipient=user,
+            notification_type='appointment_completed',
+            title='Appointment completed',
+            message=f"Dr. {appointment.doctor.name} completed {appointment.patient.full_name}'s appointment.",
+            url=f'/appointments/appointments/{appointment.pk}/',
+            appointment=appointment, patient=appointment.patient,
+        )

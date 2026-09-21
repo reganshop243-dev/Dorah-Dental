@@ -68,6 +68,8 @@ class Appointment(models.Model):
     diagnosis = models.TextField(blank=True, null=True)
     consultation_notes = models.TextField(blank=True, null=True)
     treatment_plan = models.TextField(blank=True, null=True)
+    findings = models.TextField(blank=True, null=True, help_text="Clinical findings recorded when the appointment is completed")
+    treatment_done = models.TextField(blank=True, null=True, help_text="Treatment/procedure actually completed")
     prescription = models.TextField(blank=True, null=True)
     treatment_cost = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
     referred_to = models.CharField(max_length=200, blank=True, null=True)

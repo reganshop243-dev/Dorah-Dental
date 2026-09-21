@@ -1,4 +1,4 @@
-from django.shortcuts import render, redirect
+from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.mail import send_mail
@@ -359,3 +359,100 @@ def send_single_reminder(request, pk):
 
 
 
+
+
+@login_required
+def notification_center(request):
+    if not request.user.profile.has_permission('notifications.view'):
+        messages.error(request, 'You do not have permission to view notifications.')
+        return redirect('core:dashboard')
+    from .models import UserNotification
+    notifications = UserNotification.objects.filter(recipient=request.user).select_related('appointment', 'patient')[:100]
+    unread_count = UserNotification.objects.filter(recipient=request.user, is_read=False).count()
+    pending_contact_requests = []
+    if request.user.profile.has_permission('patients.contacts.approve'):
+        from patients.models import PatientContactAccessRequest
+        pending_contact_requests = PatientContactAccessRequest.objects.filter(status='pending').select_related('patient', 'requester').order_by('-requested_at')
+    return render(request, 'notifications/center.html', {
+        'notifications': notifications,
+        'unread_count': unread_count,
+        'pending_contact_requests': pending_contact_requests,
+    })
+
+
+@login_required
+def notification_mark_read(request, pk):
+    from .models import UserNotification
+    notification = get_object_or_404(UserNotification, pk=pk, recipient=request.user)
+    notification.is_read = True
+    notification.save(update_fields=['is_read'])
+    if notification.url:
+        return redirect(notification.url)
+    return redirect('notifications:center')
+
+
+@login_required
+def notification_mark_all_read(request):
+    from .models import UserNotification
+    if request.method == 'POST':
+        UserNotification.objects.filter(recipient=request.user, is_read=False).update(is_read=True)
+    return redirect('notifications:center')
+
+
+@login_required
+def push_subscribe(request):
+    from django.http import JsonResponse
+    from .models import PushSubscription
+    if not request.user.profile.has_permission('notifications.push'):
+        return JsonResponse({'error': 'Push notifications are not permitted for this user.'}, status=403)
+    if request.method != 'POST':
+        return JsonResponse({'error': 'POST required'}, status=405)
+    data = request.POST if request.POST else request.body
+    if isinstance(data, (bytes, bytearray)):
+        import json
+        data = json.loads(data or '{}')
+    endpoint = data.get('endpoint')
+    keys = data.get('keys') or {}
+    if not endpoint or not keys.get('p256dh') or not keys.get('auth'):
+        return JsonResponse({'error': 'Invalid push subscription'}, status=400)
+    PushSubscription.objects.update_or_create(
+        endpoint=endpoint,
+        defaults={'user': request.user, 'p256dh': keys['p256dh'], 'auth': keys['auth'], 'user_agent': request.META.get('HTTP_USER_AGENT', '')[:1000]},
+    )
+    return JsonResponse({'success': True})
+
+
+@login_required
+def push_public_key(request):
+    from django.http import JsonResponse
+    return JsonResponse({'publicKey': getattr(settings, 'VAPID_PUBLIC_KEY', '')})
+
+
+@login_required
+def contact_access_decision(request, pk, decision):
+    from django.utils import timezone
+    from patients.models import PatientContactAccessRequest
+    from .services import create_user_notification
+    if request.method != 'POST':
+        return redirect('notifications:center')
+    if not request.user.profile.has_permission('patients.contacts.approve'):
+        messages.error(request, 'You do not have permission to approve contact access requests.')
+        return redirect('notifications:center')
+    access_request = get_object_or_404(PatientContactAccessRequest, pk=pk, status='pending')
+    if decision not in ('approved', 'denied'):
+        messages.error(request, 'Invalid decision.')
+        return redirect('notifications:center')
+    access_request.status = decision
+    access_request.reviewed_by = request.user
+    access_request.reviewed_at = timezone.now()
+    access_request.save(update_fields=['status', 'reviewed_by', 'reviewed_at'])
+    create_user_notification(
+        recipient=access_request.requester,
+        notification_type='contact_access_approved' if decision == 'approved' else 'contact_access_denied',
+        title='Patient contact access approved' if decision == 'approved' else 'Patient contact access denied',
+        message=f"Your request to view {access_request.patient.full_name}'s contact information was {decision}.",
+        url=f'/patients/{access_request.patient.pk}/',
+        patient=access_request.patient,
+    )
+    messages.success(request, f'Contact access {decision}.')
+    return redirect('notifications:center')

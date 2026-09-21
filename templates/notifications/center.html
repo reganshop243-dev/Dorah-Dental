@@ -1,0 +1,35 @@
+﻿{% extends 'base.html' %}
+{% block title %}Notifications{% block extra_js %}<script>document.getElementById('enablePushBtn')?.addEventListener('click',async function(){await enableClinicPush(); this.textContent='Notifications enabled'; this.disabled=true;});</script>{% endblock %}
+{% endblock %}
+{% block content %}
+<div class="container-fluid py-3">
+  <div class="d-flex justify-content-between align-items-center mb-4 gap-3 flex-wrap">
+    <div><h3 class="mb-1"><i class="fas fa-bell text-primary me-2"></i>Notification Center</h3><div class="text-muted">Appointments, access requests and system alerts.</div></div>
+    <div class="d-flex gap-2"><button type="button" id="enablePushBtn" class="btn btn-outline-primary"><i class="fas fa-mobile-screen-button me-1"></i>Enable phone notifications</button>{% if unread_count %}<form method="post" action="{% url 'notifications:mark_all_read' %}">{% csrf_token %}<button class="btn btn-outline-primary">Mark all read</button></form>{% endif %}</div>
+  </div>
+  {% if pending_contact_requests %}
+  <div class="card shadow-sm mb-4 border-warning">
+    <div class="card-header bg-warning-subtle"><strong><i class="fas fa-lock me-2"></i>Pending patient contact requests</strong></div>
+    <div class="list-group list-group-flush">
+      {% for item in pending_contact_requests %}
+      <div class="list-group-item d-flex flex-wrap justify-content-between align-items-center gap-3">
+        <div><strong>{{ item.patient.full_name }}</strong><div class="small text-muted">{{ item.requester.get_full_name|default:item.requester.username }} requested contact access {{ item.requested_at|timesince }} ago.</div></div>
+        <div class="d-flex gap-2"><form method="post" action="{% url 'notifications:contact_access_decision' item.pk 'approved' %}">{% csrf_token %}<button class="btn btn-sm btn-success">Approve</button></form><form method="post" action="{% url 'notifications:contact_access_decision' item.pk 'denied' %}">{% csrf_token %}<button class="btn btn-sm btn-outline-danger">Deny</button></form></div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
+  <div class="card shadow-sm">
+    <div class="list-group list-group-flush">
+      {% for item in notifications %}
+      <a href="{% url 'notifications:mark_read' item.pk %}" class="list-group-item list-group-item-action {% if not item.is_read %}bg-light{% endif %}">
+        <div class="d-flex justify-content-between gap-3"><div><strong>{% if not item.is_read %}<span class="badge bg-primary me-2">NEW</span>{% endif %}{{ item.title }}</strong><div class="mt-1">{{ item.message }}</div></div><small class="text-muted text-nowrap">{{ item.created_at|timesince }} ago</small></div>
+      </a>
+      {% empty %}<div class="text-center text-muted py-5">No notifications yet.</div>{% endfor %}
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+

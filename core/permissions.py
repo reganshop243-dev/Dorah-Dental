@@ -9,6 +9,9 @@ PERMISSION_CATALOG = [
     ('patients.status', 'Patients', 'Change patient active/status'),
     ('patients.sensitive', 'Patients', 'View sensitive patient information'),
     ('patients.images', 'Patients', 'Add/manage patient images'),
+    ('patients.contacts.view', 'Patients', 'View patient contact information'),
+    ('patients.contacts.request', 'Patients', 'Request restricted patient contact information'),
+    ('patients.contacts.approve', 'Patients', 'Approve or deny patient contact requests'),
     ('appointments.view', 'Appointments', 'View appointments'),
     ('appointments.create', 'Appointments', 'Create appointments'),
     ('appointments.edit', 'Appointments', 'Edit appointments'),
@@ -59,6 +62,8 @@ PERMISSION_CATALOG = [
     ('settings.view', 'Administration', 'View system settings'),
     ('settings.edit', 'Administration', 'Modify system settings'),
     ('settings.notifications', 'Administration', 'Manage notification settings'),
+    ('notifications.view', 'Administration', 'View notification center'),
+    ('notifications.push', 'Administration', 'Receive push notifications'),
     ('services.prices.view', 'Appointments', 'View service prices'),
     ('services.prices.manage', 'Appointments', 'Create or change service prices'),
 ]
@@ -91,10 +96,11 @@ def is_financial_staff(user):
 BASELINE = {
     'admin': {code for code, _, _ in PERMISSION_CATALOG},
     'doctor': {
-        'patients.view','patients.sensitive','patients.images',
+        'patients.view','patients.sensitive','patients.images','patients.contacts.request',
         'appointments.view','appointments.create','appointments.edit','appointments.status',
         'dental.view','dental.create','dental.edit',
         'clinical.notes.view','clinical.notes.create','clinical.notes.delete',
+        'notifications.view','notifications.push',
     },
     'nurse': {
         'patients.view','patients.sensitive','patients.images',

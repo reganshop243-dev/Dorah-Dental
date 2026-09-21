@@ -6,7 +6,7 @@ from django.db.models import Q, Sum, Value, DecimalField, Count
 from django.http import JsonResponse
 from django.utils import timezone
 from datetime import date, datetime
-from .models import Patient, DentalImage
+from .models import Patient, DentalImage, PatientContactAccessRequest
 from appointments.models import Appointment, Treatment
 from billing.models import Invoice
 from patient_portal.models import PatientPortalAccess  # âœ… ADD THIS IMPORT
@@ -358,6 +358,41 @@ def patient_add(request):
 # ====================
 
 @login_required
+def request_contact_access(request, pk):
+    patient = get_object_or_404(Patient, pk=pk)
+    profile = request.user.profile
+    if not profile.has_permission('patients.contacts.request'):
+        messages.error(request, 'You do not have permission to request patient contact information.')
+        return redirect('patients:detail', pk=pk)
+    if not is_doctor(request.user):
+        messages.error(request, 'Contact access requests are for doctors who need restricted contact information.')
+        return redirect('patients:detail', pk=pk)
+    doctor = profile.doctor
+    if not doctor or not Appointment.objects.filter(patient=patient, doctor=doctor).exists():
+        messages.error(request, 'You do not have access to this patient.')
+        return redirect('patients:list')
+    existing = PatientContactAccessRequest.objects.filter(patient=patient, requester=request.user).order_by('-requested_at').first()
+    if existing and existing.status == 'approved':
+        return redirect('patients:detail', pk=pk)
+    if existing and existing.status == 'pending':
+        messages.info(request, 'Your contact access request is already pending administrator approval.')
+        return redirect('patients:detail', pk=pk)
+    access_request = PatientContactAccessRequest.objects.create(patient=patient, requester=request.user)
+    from notifications.services import create_user_notification
+    from django.contrib.auth.models import User
+    for admin in User.objects.filter(profile__role='admin', is_active=True).distinct():
+        create_user_notification(
+            recipient=admin,
+            notification_type='contact_access_request',
+            title='Patient contact access requested',
+            message=f'{request.user.get_full_name() or request.user.username} requested access to {patient.full_name} contact information.',
+            url='/notifications/', patient=patient, send_push=True,
+        )
+    messages.success(request, 'Access request sent to an administrator.')
+    return redirect('patients:detail', pk=pk)
+
+
+@login_required
 def patient_detail(request, pk):
     """View patient details - Doctors can only see assigned patients"""
     patient = get_object_or_404(Patient, pk=pk)
@@ -396,6 +431,15 @@ def patient_detail(request, pk):
     ).order_by('-issue_date')
 
     dental_chart_records = DentalChart.objects.filter(patient=patient).order_by('-updated_at')
+
+    contact_access_approved = False
+    pending_contact_request = None
+    if is_doctor(request.user):
+        contact_access_approved = PatientContactAccessRequest.objects.filter(patient=patient, requester=request.user, status='approved').exists()
+        pending_contact_request = PatientContactAccessRequest.objects.filter(patient=patient, requester=request.user, status='pending').order_by('-requested_at').first()
+        show_contact = contact_access_approved or user_profile.has_role('admin')
+    else:
+        show_contact = user_profile.has_permission('patients.contacts.view') or user_profile.has_role('admin')
     
     # Calculate total amount
     total_amount = invoices.aggregate(Sum('total_amount'))['total_amount__sum'] or 0
@@ -426,6 +470,10 @@ def patient_detail(request, pk):
         'portal_pin': portal_pin,  # âœ… Pass portal PIN
         'new_patient_pin': new_patient_pin,  # âœ… Pass new patient PIN
         'new_patient_id': new_patient_id,  # âœ… Pass new patient ID
+        'show_contact': show_contact,
+        'pending_contact_request': pending_contact_request,
+        'contact_access_approved': contact_access_approved,
+        'can_request_contact': user_profile.has_permission('patients.contacts.request') and is_doctor(request.user),
     }
     return render(request, 'patients/detail.html', context)
 

@@ -108,4 +108,11 @@ def access_flags(request):
         'can_view_financials': financial,
         'can_view_reports': financial,
         'can_view_inventory_prices': financial,
+        'can_view_patient_contacts': (request.user.profile.has_permission('patients.contacts.view') and not request.user.profile.has_role('doctor')) if getattr(request, 'user', None) is not None and request.user.is_authenticated and hasattr(request.user, 'profile') else False,
+        'can_view_notifications': request.user.profile.has_permission('notifications.view') if getattr(request, 'user', None) is not None and request.user.is_authenticated and hasattr(request.user, 'profile') else False,
+        'notification_unread_count': (
+            __import__('notifications.models', fromlist=['UserNotification']).UserNotification.objects.filter(
+                recipient=request.user, is_read=False
+            ).count() if getattr(request, 'user', None) is not None and request.user.is_authenticated else 0
+        ),
     }

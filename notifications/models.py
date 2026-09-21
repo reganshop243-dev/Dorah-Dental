@@ -1,7 +1,8 @@
 from django.db import models
 from django.utils import timezone
 from django.contrib.auth.models import User
-from appointments.models import Appointment, Patient
+from appointments.models import Appointment
+from patients.models import Patient
 
 
 class NotificationSetting(models.Model):
@@ -81,3 +82,39 @@ class NotificationLog(models.Model):
     
     def __str__(self):
         return f"{self.get_channel_display()} to {self.sent_to} - {self.status}"
+
+class UserNotification(models.Model):
+    TYPE_CHOICES = [
+        ('appointment_assigned', 'Appointment Assigned'),
+        ('appointment_completed', 'Appointment Completed'),
+        ('contact_access_request', 'Contact Access Request'),
+        ('contact_access_approved', 'Contact Access Approved'),
+        ('contact_access_denied', 'Contact Access Denied'),
+        ('system', 'System'),
+    ]
+    recipient = models.ForeignKey(User, on_delete=models.CASCADE, related_name='clinic_notifications')
+    notification_type = models.CharField(max_length=40, choices=TYPE_CHOICES, default='system')
+    title = models.CharField(max_length=200)
+    message = models.TextField()
+    url = models.CharField(max_length=500, blank=True, default='')
+    appointment = models.ForeignKey(Appointment, on_delete=models.CASCADE, null=True, blank=True, related_name='user_notifications')
+    patient = models.ForeignKey(Patient, on_delete=models.CASCADE, null=True, blank=True, related_name='user_notifications')
+    is_read = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+        indexes = [models.Index(fields=['recipient', 'is_read', '-created_at'])]
+
+
+class PushSubscription(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='push_subscriptions')
+    endpoint = models.URLField(max_length=1000, unique=True)
+    p256dh = models.TextField()
+    auth = models.TextField()
+    user_agent = models.TextField(blank=True, default='')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-updated_at']

@@ -1,0 +1,48 @@
+{% extends 'base.html' %}
+{% load humanize %}
+{% block title %}Finish Appointment{% endblock %}
+{% block extra_css %}
+<style>
+.finish-card{max-width:1100px;margin:auto}.section-card{border:1px solid #e8edf3;border-radius:14px;background:#fff;margin-bottom:18px}.section-head{padding:16px 20px;border-bottom:1px solid #edf1f5;font-weight:600}.section-body{padding:20px}.tooth-row{display:grid;grid-template-columns:100px 1fr 1fr 2fr 42px;gap:10px;align-items:center;margin-bottom:10px}.chart-scroll{overflow-x:auto}.muted-note{font-size:.85rem;color:#6c757d}@media(max-width:700px){.tooth-row{grid-template-columns:80px 150px 130px 220px 42px;min-width:680px}}
+</style>
+{% endblock %}
+{% block content %}
+<div class="finish-card py-3">
+  <div class="d-flex justify-content-between align-items-start mb-4 gap-3">
+    <div><div class="text-muted small">Appointment completion</div><h3 class="mb-1">Finish {{ appointment.patient.full_name }}'s appointment</h3><div class="text-muted">Dr. {{ appointment.doctor.name }} · {{ appointment.appointment_date|date:'d M Y' }} · {{ appointment.appointment_time|time:'H:i' }}</div></div>
+    <span class="badge bg-warning text-dark px-3 py-2">In Progress</span>
+  </div>
+  <form method="post" id="finishForm">
+    {% csrf_token %}
+    <div class="section-card"><div class="section-head"><i class="fas fa-stethoscope me-2 text-primary"></i>Clinical findings</div><div class="section-body">
+      <label class="form-label">Findings / examination</label><textarea class="form-control mb-3" name="findings" rows="5" required>{{ appointment.findings|default:'' }}</textarea>
+      <label class="form-label">Diagnosis</label><textarea class="form-control" name="diagnosis" rows="3">{{ appointment.diagnosis|default:'' }}</textarea>
+    </div></div>
+    <div class="section-card"><div class="section-head"><i class="fas fa-tooth me-2 text-primary"></i>Treatment performed</div><div class="section-body">
+      <label class="form-label">Treatment / procedure done</label><textarea class="form-control mb-3" name="treatment_done" rows="5" required>{{ appointment.treatment_done|default:'' }}</textarea>
+      <label class="form-label">Treatment plan / recommendations</label><textarea class="form-control" name="treatment_plan" rows="3">{{ appointment.treatment_plan|default:'' }}</textarea>
+    </div></div>
+    <div class="section-card"><div class="section-head"><i class="fas fa-teeth me-2 text-primary"></i>Dental chart</div><div class="section-body">
+      <div class="muted-note mb-3">Add only teeth examined or treated during this appointment. Existing chart records are prefilled.</div>
+      <div id="toothRows">
+        {% for record in existing_chart %}
+        <div class="tooth-row"><input class="form-control" type="number" min="1" max="32" name="tooth_number[]" value="{{ record.tooth_number }}"><select class="form-select" name="condition[]">{% for code,label in dental_conditions %}<option value="{{ code }}" {% if record.condition == code %}selected{% endif %}>{{ label }}</option>{% endfor %}</select><select class="form-select" name="surface[]"><option value="">Surface</option>{% for code,label in dental_surfaces %}<option value="{{ code }}" {% if record.surface == code %}selected{% endif %}>{{ label }}</option>{% endfor %}</select><input class="form-control" name="tooth_notes[]" value="{{ record.notes|default:'' }}" placeholder="Tooth notes"><button type="button" class="btn btn-outline-danger remove-row"><i class="fas fa-times"></i></button></div>
+        {% empty %}
+        <div class="tooth-row"><input class="form-control" type="number" min="1" max="32" name="tooth_number[]" placeholder="#"><select class="form-select" name="condition[]">{% for code,label in dental_conditions %}<option value="{{ code }}">{{ label }}</option>{% endfor %}</select><select class="form-select" name="surface[]"><option value="">Surface</option>{% for code,label in dental_surfaces %}<option value="{{ code }}">{{ label }}</option>{% endfor %}</select><input class="form-control" name="tooth_notes[]" placeholder="Tooth notes"><button type="button" class="btn btn-outline-danger remove-row"><i class="fas fa-times"></i></button></div>
+        {% endfor %}
+      </div>
+      <button type="button" id="addTooth" class="btn btn-sm btn-outline-primary mt-2"><i class="fas fa-plus me-1"></i>Add tooth</button>
+    </div></div>
+    <div class="section-card"><div class="section-head"><i class="fas fa-file-medical me-2 text-primary"></i>Follow-up & prescription</div><div class="section-body">
+      <label class="form-label">Prescription</label><textarea class="form-control mb-3" name="prescription" rows="3">{{ appointment.prescription|default:'' }}</textarea>
+      <div class="row"><div class="col-md-4"><label class="form-label">Follow-up date</label><input type="date" class="form-control" name="follow_up_date" value="{{ appointment.follow_up_date|date:'Y-m-d' }}"></div><div class="col-md-8"><label class="form-label">Follow-up notes</label><textarea class="form-control" name="follow_up_notes" rows="2">{{ appointment.follow_up_notes|default:'' }}</textarea></div></div>
+    </div></div>
+    <div class="d-flex justify-content-end gap-2"><a href="{% url 'appointments:detail' appointment.pk %}" class="btn btn-light">Cancel</a><button class="btn btn-success btn-lg" type="submit"><i class="fas fa-check-circle me-2"></i>Finish appointment</button></div>
+  </form>
+</div>
+{% endblock %}
+{% block extra_js %}
+<script>
+(function(){const wrap=document.getElementById('toothRows'), add=document.getElementById('addTooth'); if(!wrap||!add)return; add.addEventListener('click',()=>{const first=wrap.querySelector('.tooth-row');const row=first.cloneNode(true);row.querySelectorAll('input').forEach(i=>i.value='');row.querySelectorAll('select').forEach((s,i)=>s.selectedIndex=i===0?0:0);wrap.appendChild(row);});wrap.addEventListener('click',e=>{const btn=e.target.closest('.remove-row');if(!btn)return;const rows=wrap.querySelectorAll('.tooth-row');if(rows.length>1)btn.closest('.tooth-row').remove();});})();
+</script>
+{% endblock %}

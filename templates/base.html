@@ -47,6 +47,13 @@
                    href="{% if user.profile.is_admin_role %}{% url 'core:admin_dashboard' %}{% elif user.profile.is_doctor_role %}{% url 'core:doctor_dashboard' %}{% elif user.profile.is_receptionist_role %}{% url 'core:receptionist_dashboard' %}{% elif user.profile.is_accountant_role %}{% url 'core:accountant_dashboard' %}{% else %}{% url 'core:dashboard' %}{% endif %}">
                     <i class="fas fa-chart-pie"></i> <span>Dashboard</span>
                 </a>
+
+                {% if can_view_notifications %}
+                <a class="nav-link {% if 'notifications' in request.path %}active{% endif %}" href="{% url 'notifications:center' %}">
+                    <i class="fas fa-bell"></i> <span>Notifications</span>
+                    {% if notification_unread_count %}<span class="badge rounded-pill bg-danger ms-auto">{{ notification_unread_count }}</span>{% endif %}
+                </a>
+                {% endif %}
                 
                 <a class="nav-link {% if 'appointments' in request.path and 'add' not in request.path %}active{% endif %}" href="{% url 'appointments:list' %}">
                     <i class="fas fa-calendar-check"></i> <span>Appointments</span>
@@ -245,6 +252,10 @@
  document.addEventListener('keydown',function(e){if(e.key==='Escape') close();});
  window.addEventListener('resize',function(){if(window.innerWidth>991) close();});
  if('serviceWorker' in navigator){window.addEventListener('load',function(){navigator.serviceWorker.register('/sw.js',{scope:'/'}).then(function(reg){return reg.update();}).catch(function(){});});}
+
+function urlBase64ToUint8Array(base64String){var padding='='.repeat((4-base64String.length%4)%4),base64=(base64String+padding).replace(/\-/g,'+').replace(/_/g,'/'),raw=window.atob(base64),output=new Uint8Array(raw.length);for(var i=0;i<raw.length;++i)output[i]=raw.charCodeAt(i);return output;}
+async function enableClinicPush(){try{if(!('serviceWorker' in navigator)||!('PushManager' in window)||!window.isSecureContext)return;var keyResponse=await fetch('{% url 'notifications:push_public_key' %}',{credentials:'same-origin'});var keyData=await keyResponse.json();if(!keyData.publicKey)return;var reg=await navigator.serviceWorker.ready;var permission=Notification.permission;if(permission==='default')permission=await Notification.requestPermission();if(permission!=='granted')return;var sub=await reg.pushManager.getSubscription();if(!sub)sub=await reg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:urlBase64ToUint8Array(keyData.publicKey)});await fetch('{% url 'notifications:push_subscribe' %}',{method:'POST',headers:{'Content-Type':'application/json','X-CSRFToken':'{{ csrf_token }}'},credentials:'same-origin',body:JSON.stringify(sub.toJSON())});}catch(e){console.warn('Push notification setup failed',e);}}
+window.addEventListener('load',function(){if(window.Notification && Notification.permission==='granted') setTimeout(enableClinicPush,500);});
 })();
 </script>
 

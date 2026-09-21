@@ -2,7 +2,20 @@
 {% load static %}
 {% load humanize %}
 
-{% block page_title %}{{ patient.full_name }} - Patient Details{% endblock %}
+{% block page_title %}{{ patient.full_name }} - Patient Details
+{% if can_request_contact and not show_contact %}
+<div class="modal fade" id="contactAccessModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header"><h5 class="modal-title"><i class="fas fa-lock text-warning me-2"></i>Restricted contact information</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+      <div class="modal-body"><p class="mb-0">This patient's phone and email are restricted. Request administrator approval to view them.</p></div>
+      <div class="modal-footer"><button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancel</button><form method="post" action="{% url 'patients:request_contact_access' patient.pk %}">{% csrf_token %}<button class="btn btn-primary"><i class="fas fa-paper-plane me-1"></i>Send request</button></form></div>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+{% endblock %}
 
 {% block extra_css %}
 <style>
@@ -175,8 +188,18 @@
             <div class="mb-3">
                 <div class="info-label">Phone</div>
                 <div class="info-value">
-                    <i class="fas fa-phone text-muted me-1"></i>
-                    {{ patient.phone }}
+                    {% if show_contact %}
+                        <i class="fas fa-phone text-muted me-1"></i> {{ patient.phone }}
+                    {% else %}
+                        <i class="fas fa-lock text-warning me-1"></i> <span class="text-muted">Contact hidden</span>
+                        {% if can_request_contact %}
+                            {% if pending_contact_request %}
+                                <span class="badge bg-warning text-dark ms-2">Approval pending</span>
+                            {% else %}
+                                <button type="button" class="btn btn-sm btn-outline-primary ms-2" data-bs-toggle="modal" data-bs-target="#contactAccessModal"><i class="fas fa-key me-1"></i>Request access</button>
+                            {% endif %}
+                        {% endif %}
+                    {% endif %}
                 </div>
             </div>
             
@@ -229,11 +252,10 @@
             <div class="mb-3">
                 <div class="info-label">Email</div>
                 <div class="info-value">
-                    {% if patient.email %}
-                        <i class="fas fa-envelope text-muted me-1"></i>
-                        {{ patient.email }}
+                    {% if show_contact %}
+                        {% if patient.email %}<i class="fas fa-envelope text-muted me-1"></i> {{ patient.email }}{% else %}<span class="text-muted">Not provided</span>{% endif %}
                     {% else %}
-                        <span class="text-muted">Not provided</span>
+                        <i class="fas fa-lock text-warning me-1"></i> <span class="text-muted">Contact hidden</span>
                     {% endif %}
                 </div>
             </div>
@@ -241,12 +263,9 @@
             <div class="mb-3">
                 <div class="info-label">Address</div>
                 <div class="info-value">
-                    {% if patient.address %}
-                        <i class="fas fa-map-marker-alt text-muted me-1"></i>
-                        {{ patient.address }}
-                    {% else %}
-                        <span class="text-muted">Not provided</span>
-                    {% endif %}
+                    {% if show_contact %}
+                        {% if patient.address %}<i class="fas fa-map-marker-alt text-muted me-1"></i> {{ patient.address }}{% else %}<span class="text-muted">Not provided</span>{% endif %}
+                    {% else %}<i class="fas fa-lock text-warning me-1"></i> <span class="text-muted">Contact details restricted</span>{% endif %}
                 </div>
             </div>
             
