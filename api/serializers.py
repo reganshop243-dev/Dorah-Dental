@@ -3,9 +3,23 @@ from patients.models import Patient, DentalImage
 from appointments.models import Appointment, Service, Doctor
 from billing.models import Invoice
 from core.models import UserProfile
+from patients.models import PatientContactAccessRequest
 
 
 # ==================== PATIENT SERIALIZERS ====================
+
+def _can_view_patient_contact(request, patient):
+    if not request or not getattr(request, 'user', None) or not request.user.is_authenticated:
+        return False
+    try:
+        profile = request.user.profile
+        if profile.has_role('doctor'):
+            return PatientContactAccessRequest.objects.filter(patient=patient, requester=request.user, status='approved').exists()
+        if profile.has_permission('patients.contacts.view'):
+            return True
+    except Exception:
+        pass
+    return False
 
 class PatientSerializer(serializers.ModelSerializer):
     """Patient information for mobile apps"""
@@ -22,6 +36,14 @@ class PatientSerializer(serializers.ModelSerializer):
     
     def get_age(self, obj):
         return obj.age
+
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        if not _can_view_patient_contact(self.context.get('request'), instance):
+            data['phone'] = None
+            data['email'] = None
+            data['address'] = None
+        return data
 
 
 class PatientDetailSerializer(PatientSerializer):
@@ -62,6 +84,12 @@ class AppointmentSerializer(serializers.ModelSerializer):
     doctor_name = serializers.CharField(source='doctor.display_name', read_only=True)
     service_name = serializers.CharField(source='service.name', read_only=True)
     service_price = serializers.DecimalField(source='service.price', read_only=True, max_digits=10, decimal_places=2)
+
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        if not _can_view_patient_contact(self.context.get('request'), instance.patient):
+            data['patient_phone'] = None
+        return data
     
     class Meta:
         model = Appointment

@@ -2,7 +2,7 @@
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.db import models
-from django.db.models import Q, Sum, Value, DecimalField, Count
+from django.db.models import Q, Sum, Value, DecimalField, Count, OuterRef, Subquery
 from django.http import JsonResponse
 from django.utils import timezone
 from datetime import date, datetime
@@ -107,7 +107,12 @@ def patient_list(request):
         ),
 
         patient_balance=Coalesce(
-            Sum('invoices__balance_due'),
+            Subquery(
+                Invoice.objects.filter(
+                    patient=OuterRef('pk')
+                ).order_by('-issue_date', '-id').values('balance_due')[:1],
+                output_field=DecimalField(max_digits=12, decimal_places=2)
+            ),
             Value(
                 0,
                 output_field=DecimalField(
@@ -734,9 +739,10 @@ def patient_search_api(request):
         results = []
         for patient in patients:
             # Calculate total balance
-            total_balance = Invoice.objects.filter(
+            latest_invoice = Invoice.objects.filter(
                 patient=patient
-            ).aggregate(total=Sum('balance_due'))['total'] or 0
+            ).order_by('-issue_date', '-id').first()
+            total_balance = latest_invoice.balance_due if latest_invoice else 0
             
             # Apply balance filter
             if balance_filter == 'has_balance' and total_balance <= 0:
