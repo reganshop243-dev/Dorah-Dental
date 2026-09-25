@@ -46,29 +46,53 @@ def is_admin(user):
         and user.profile.has_role('admin')
     )
 
-
 @login_required
-@financial_only("billing.view")
 def invoice_list(request):
-    """List all invoices with pagination and filtering"""
+    """List all invoices with pagination and filtering."""
+
     from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
-    from django.db.models import Q
-    
-    # Get all invoices
-    invoices = Invoice.objects.all().order_by('-issue_date')
-    
+    from django.db.models import Q, Exists, OuterRef
+
     # ============================================================
-    # FILTERING
+    # GET FILTER PARAMETERS
     # ============================================================
-    
-    # Get filter parameters from request
+
     search_query = request.GET.get('search', '').strip()
-    status_filter = request.GET.get('status', '')
-    payment_method_filter = request.GET.get('payment_method', '')
-    date_from = request.GET.get('date_from', '')
-    date_to = request.GET.get('date_to', '')
-    
-    # Apply filters
+    status_filter = request.GET.get('status', '').strip()
+    payment_method_filter = request.GET.get('payment_method', '').strip()
+    date_from = request.GET.get('date_from', '').strip()
+    date_to = request.GET.get('date_to', '').strip()
+
+    # ============================================================
+    # BASE QUERY
+    # ============================================================
+
+    invoices = Invoice.objects.all()
+
+    # ============================================================
+    # FIND A LATER COMPLETED INVOICE FOR THE SAME PATIENT
+    # ============================================================
+
+    later_completed_invoice = Invoice.objects.filter(
+        patient=OuterRef('patient')
+    ).filter(
+        Q(issue_date__gt=OuterRef('issue_date')) |
+        Q(
+            issue_date=OuterRef('issue_date'),
+            id__gt=OuterRef('id')
+        )
+    ).filter(
+        balance_due__lte=0
+    )
+
+    invoices = invoices.annotate(
+        has_later_completed=Exists(later_completed_invoice)
+    )
+
+    # ============================================================
+    # SEARCH FILTER
+    # ============================================================
+
     if search_query:
         invoices = invoices.filter(
             Q(invoice_number__icontains=search_query) |
@@ -77,58 +101,128 @@ def invoice_list(request):
             Q(patient__first_name__icontains=search_query) |
             Q(patient__last_name__icontains=search_query)
         )
-    
+
+    # ============================================================
+    # STATUS FILTER
+    # ============================================================
+
     if status_filter:
-        invoices = invoices.filter(status=status_filter)
-    
+        invoices = invoices.filter(
+            status=status_filter
+        )
+
+    # ============================================================
+    # PAYMENT METHOD FILTER
+    # ============================================================
+
     if payment_method_filter:
-        invoices = invoices.filter(payment_method=payment_method_filter)
-    
+        invoices = invoices.filter(
+            payment_method=payment_method_filter
+        )
+
+    # ============================================================
+    # DATE FILTERS
+    # ============================================================
+
     if date_from:
-        invoices = invoices.filter(issue_date__gte=date_from)
-    
+        invoices = invoices.filter(
+            issue_date__gte=date_from
+        )
+
     if date_to:
-        invoices = invoices.filter(issue_date__lte=date_to)
-    
+        invoices = invoices.filter(
+            issue_date__lte=date_to
+        )
+
+    # ============================================================
+    # HIDE HISTORICAL PARTIAL INVOICES
+    # ============================================================
+    #
+    # IMPORTANT:
+    #
+    # If there are NO filters:
+    #   Hide a partially-paid invoice when the same patient
+    #   has a later completed invoice.
+    #
+    # If the user is searching/filtering:
+    #   DO NOT hide it.
+    #
+    # This means historical invoices remain searchable.
+    # ============================================================
+
+    has_active_filter = (
+        bool(search_query) or
+        bool(status_filter) or
+        bool(payment_method_filter) or
+        bool(date_from) or
+        bool(date_to)
+    )
+
+    if not has_active_filter:
+        invoices = invoices.exclude(
+            Q(status='partially_paid') &
+            Q(has_later_completed=True)
+        )
+
+    # ============================================================
+    # ORDER
+    # ============================================================
+
+    invoices = invoices.order_by(
+        '-issue_date',
+        '-id'
+    )
+
     # ============================================================
     # PAGINATION
     # ============================================================
-    
-    paginator = Paginator(invoices, 20)  # 20 invoices per page
+
+    paginator = Paginator(
+        invoices,
+        20
+    )
+
     page = request.GET.get('page', 1)
-    
+
     try:
         invoices_page = paginator.page(page)
+
     except PageNotAnInteger:
         invoices_page = paginator.page(1)
+
     except EmptyPage:
-        invoices_page = paginator.page(paginator.num_pages)
-    
+        invoices_page = paginator.page(
+            paginator.num_pages
+        )
+
     # ============================================================
     # CONTEXT
     # ============================================================
-    
+
     context = {
         'invoices': invoices_page,
         'paginator': paginator,
         'page_obj': invoices_page,
         'is_paginated': invoices_page.has_other_pages(),
         'total_count': invoices.count(),
-        
+
         # Filter values for form persistence
         'search_query': search_query,
         'status_filter': status_filter,
         'payment_method_filter': payment_method_filter,
         'date_from': date_from,
         'date_to': date_to,
-        
-        # Status and payment method choices for dropdowns
+
+        # REQUIRED BY THE TEMPLATE
         'status_choices': Invoice.STATUS_CHOICES,
         'payment_method_choices': Invoice.PAYMENT_METHOD_CHOICES,
-        'is_doctor': is_doctor(request.user),
     }
-    
-    return render(request, 'billing/invoice_list.html', context)
+
+    return render(
+        request,
+        'billing/invoice_list.html',
+        context
+    )
 
 
 @login_required
