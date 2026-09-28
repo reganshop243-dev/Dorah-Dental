@@ -13,8 +13,10 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
-        # The Railway database may already be missing the old index.
-        # IF EXISTS makes this operation safe in either state.
+
+        # ---------------------------------------------------------
+        # 1. Rename notification recipient index if it still exists.
+        # ---------------------------------------------------------
         migrations.SeparateDatabaseAndState(
             database_operations=[
                 migrations.RunSQL(
@@ -39,8 +41,9 @@ class Migration(migrations.Migration):
             ],
         ),
 
-        # The Railway database may already have this column removed.
-        # IF EXISTS prevents the migration from failing in that case.
+        # ---------------------------------------------------------
+        # 2. Remove read_at if it still exists.
+        # ---------------------------------------------------------
         migrations.SeparateDatabaseAndState(
             database_operations=[
                 migrations.RunSQL(
@@ -59,24 +62,75 @@ class Migration(migrations.Migration):
             ],
         ),
 
-        migrations.AddField(
-            model_name='usernotification',
-            name='patient',
-            field=models.ForeignKey(
-                blank=True,
-                null=True,
-                on_delete=django.db.models.deletion.CASCADE,
-                related_name='user_notifications',
-                to='patients.patient',
-            ),
+        # ---------------------------------------------------------
+        # 3. Add patient_id if it does not already exist.
+        #
+        # Railway already has this column, so don't try to add it
+        # again. Also ensure the foreign-key constraint exists.
+        # ---------------------------------------------------------
+        migrations.SeparateDatabaseAndState(
+            database_operations=[
+                migrations.RunSQL(
+                    sql='''
+                        ALTER TABLE "notifications_usernotification"
+                        ADD COLUMN IF NOT EXISTS
+                        "patient_id" bigint NULL;
+
+                        DO $$
+                        BEGIN
+                            IF NOT EXISTS (
+                                SELECT 1
+                                FROM pg_constraint
+                                WHERE conname =
+                                    'notifications_userno_patient_id_62a3f24c_fk_patients_'
+                            ) THEN
+                                ALTER TABLE "notifications_usernotification"
+                                ADD CONSTRAINT
+                                    "notifications_userno_patient_id_62a3f24c_fk_patients_"
+                                FOREIGN KEY ("patient_id")
+                                REFERENCES "patients_patient" ("id")
+                                DEFERRABLE INITIALLY DEFERRED;
+                            END IF;
+                        END
+                        $$;
+                    ''',
+                    reverse_sql='''
+                        ALTER TABLE "notifications_usernotification"
+                        DROP CONSTRAINT IF EXISTS
+                        "notifications_userno_patient_id_62a3f24c_fk_patients_";
+
+                        ALTER TABLE "notifications_usernotification"
+                        DROP COLUMN IF EXISTS "patient_id";
+                    ''',
+                ),
+            ],
+            state_operations=[
+                migrations.AddField(
+                    model_name='usernotification',
+                    name='patient',
+                    field=models.ForeignKey(
+                        blank=True,
+                        null=True,
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name='user_notifications',
+                        to='patients.patient',
+                    ),
+                ),
+            ],
         ),
 
+        # ---------------------------------------------------------
+        # 4. PushSubscription.auth
+        # ---------------------------------------------------------
         migrations.AlterField(
             model_name='pushsubscription',
             name='auth',
             field=models.TextField(),
         ),
 
+        # ---------------------------------------------------------
+        # 5. PushSubscription.endpoint
+        # ---------------------------------------------------------
         migrations.AlterField(
             model_name='pushsubscription',
             name='endpoint',
@@ -86,12 +140,18 @@ class Migration(migrations.Migration):
             ),
         ),
 
+        # ---------------------------------------------------------
+        # 6. PushSubscription.p256dh
+        # ---------------------------------------------------------
         migrations.AlterField(
             model_name='pushsubscription',
             name='p256dh',
             field=models.TextField(),
         ),
 
+        # ---------------------------------------------------------
+        # 7. PushSubscription.user_agent
+        # ---------------------------------------------------------
         migrations.AlterField(
             model_name='pushsubscription',
             name='user_agent',
@@ -101,6 +161,9 @@ class Migration(migrations.Migration):
             ),
         ),
 
+        # ---------------------------------------------------------
+        # 8. UserNotification.appointment
+        # ---------------------------------------------------------
         migrations.AlterField(
             model_name='usernotification',
             name='appointment',
@@ -113,6 +176,9 @@ class Migration(migrations.Migration):
             ),
         ),
 
+        # ---------------------------------------------------------
+        # 9. UserNotification.notification_type
+        # ---------------------------------------------------------
         migrations.AlterField(
             model_name='usernotification',
             name='notification_type',
@@ -148,6 +214,9 @@ class Migration(migrations.Migration):
             ),
         ),
 
+        # ---------------------------------------------------------
+        # 10. UserNotification.url
+        # ---------------------------------------------------------
         migrations.AlterField(
             model_name='usernotification',
             name='url',
@@ -156,5 +225,20 @@ class Migration(migrations.Migration):
                 default='',
                 max_length=500,
             ),
+        ),
+
+        # ---------------------------------------------------------
+        # 11. Create patient index if it doesn't already exist.
+        # ---------------------------------------------------------
+        migrations.RunSQL(
+            sql='''
+                CREATE INDEX IF NOT EXISTS
+                "notifications_usernotification_patient_id_62a3f24c"
+                ON "notifications_usernotification" ("patient_id");
+            ''',
+            reverse_sql='''
+                DROP INDEX IF EXISTS
+                "notifications_usernotification_patient_id_62a3f24c";
+            ''',
         ),
     ]
