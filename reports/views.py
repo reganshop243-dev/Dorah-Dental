@@ -54,7 +54,8 @@ def aging_report(request):
     
     # Get all outstanding invoices (not fully paid)
     invoices = Invoice.objects.filter(
-        Q(status='partially_paid') | Q(status='overdue') | Q(status='sent') | Q(status='draft')
+        Q(balance_due__gt=0) &
+        (Q(status='partially_paid') | Q(status='overdue') | Q(status='sent') | Q(status='draft'))
     )
     
     # Apply date filter

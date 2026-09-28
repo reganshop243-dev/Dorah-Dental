@@ -156,6 +156,7 @@
                                 <div>
                                     <div class="item-name" id="selectedPatientName"></div>
                                     <div class="item-details" id="selectedPatientDetails"></div>
+                                    <div id="selectedPatientBalance" class="mt-2 fw-semibold"></div>
                                 </div>
                                 <span class="change-btn" onclick="clearSelectedPatient()">
                                     <i class="fas fa-edit"></i> Change
@@ -333,6 +334,16 @@
         
         // Set default due date to 30 days from now
         dueDate.value = dueDateValue.toISOString().split('T')[0];
+
+        {% if selected_patient %}
+        selectPatient(
+            {{ selected_patient.id }},
+            "{{ selected_patient.full_name|escapejs }}",
+            "{{ selected_patient.phone|default:''|escapejs }}",
+            "{{ selected_patient.email|default:''|escapejs }}",
+            {{ selected_patient_balance|default:0 }}
+        );
+        {% endif %}
     });
     
     // ==================== UPDATE HIDDEN FIELD ====================
@@ -386,13 +397,19 @@
         }, 300);
     });
     
-    function selectPatient(id, name, phone, email) {
+    function selectPatient(id, name, phone, email, balance = null) {
         selectedPatientId = id;
         document.getElementById('patient').value = id;
         document.getElementById('selectedPatientName').textContent = name;
         document.getElementById('selectedPatientDetails').innerHTML = `
             <i class="fas fa-phone"></i> ${phone || 'N/A'} ${email ? `| <i class="fas fa-envelope"></i> ${email}` : ''}
         `;
+        const balanceEl = document.getElementById('selectedPatientBalance');
+        if (balance !== null && Number(balance) > 0) {
+            balanceEl.innerHTML = `<span class="text-danger"><i class="fas fa-circle-exclamation me-1"></i>Existing outstanding balance: <strong>UGX ${Number(balance).toLocaleString()}</strong></span>`;
+        } else {
+            balanceEl.innerHTML = `<span class="text-success"><i class="fas fa-circle-check me-1"></i>No outstanding balance</span>`;
+        }
         selectedPatient.style.display = 'block';
         patientResults.style.display = 'none';
         patientSearch.value = name;

@@ -1,4 +1,4 @@
-﻿import logging
+import logging
 from django.http import JsonResponse
 from django.db.models import Sum
 from datetime import date
@@ -37,4 +37,4 @@ def simple_stats(request):
         logger.error(f"❌ Error: {e}")
         import traceback
         logger.error(traceback.format_exc())
-        return JsonResponse({'error': str(e)}, status=500)
+        return JsonResponse({'error': 'Something went wrong. Please try again.', 'error_code': 'DD-API-500'}, status=500)

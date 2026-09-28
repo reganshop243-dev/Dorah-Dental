@@ -1,4 +1,4 @@
-﻿from django.http import JsonResponse
+from django.http import JsonResponse
 from django.db.models import Sum
 from datetime import date
 
@@ -23,4 +23,4 @@ def public_stats(request):
         }
         return JsonResponse(data)
     except Exception as e:
-        return JsonResponse({'error': str(e)}, status=500)
+        return JsonResponse({'error': 'Something went wrong. Please try again.', 'error_code': 'DD-API-500'}, status=500)

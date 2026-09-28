@@ -4,6 +4,7 @@ from django.utils import timezone
 from patients.models import Patient
 from appointments.models import Appointment, Service, Doctor
 from datetime import date
+from decimal import Decimal
 
 
 class Invoice(models.Model):
@@ -71,12 +72,43 @@ class Invoice(models.Model):
     def __str__(self):
         return f"Invoice #{self.invoice_number} - {self.patient_name}"
     
+    def sync_payment_state(self, payment_date=None):
+        """Synchronize invoice balance/status from completed payments.
+
+        An invoice is outstanding only while balance_due is positive. Any
+        number of installments may be used; once completed payments reach the
+        invoice total, the invoice becomes paid and its balance is exactly 0.
+        """
+        completed_paid = self.payments.filter(status='completed').aggregate(
+            total=models.Sum('amount')
+        )['total'] or Decimal('0.00')
+        self.amount_paid = max(Decimal(completed_paid), Decimal('0.00'))
+        total = Decimal(self.total_amount or 0)
+        self.balance_due = max(total - self.amount_paid, Decimal('0.00'))
+
+        if total > 0 and self.balance_due <= 0:
+            self.balance_due = Decimal('0.00')
+            self.status = 'paid'
+            if payment_date:
+                self.payment_date = payment_date
+            elif not self.payment_date:
+                self.payment_date = date.today()
+        elif self.amount_paid > 0 and self.balance_due > 0:
+            self.status = 'partially_paid'
+            self.payment_date = None
+
     def save(self, *args, **kwargs):
         # Auto-calculate totals if not provided
         if self.subtotal and self.tax_rate is not None:
             self.tax_amount = (self.subtotal * self.tax_rate) / 100
             self.total_amount = self.subtotal + self.tax_amount - self.discount
-        self.balance_due = self.total_amount - self.amount_paid
+        self.balance_due = max(Decimal(self.total_amount or 0) - Decimal(self.amount_paid or 0), Decimal('0.00'))
+        # Never leave a paid invoice marked as partially paid/overdue.
+        if self.total_amount and self.balance_due <= 0 and self.status not in ('cancelled', 'draft'):
+            self.balance_due = Decimal('0.00')
+            self.status = 'paid'
+        elif self.amount_paid and self.balance_due > 0 and self.status not in ('cancelled', 'draft'):
+            self.status = 'partially_paid'
         super().save(*args, **kwargs)
 
 
@@ -130,15 +162,19 @@ class Payment(models.Model):
         return f"Payment {self.id} - {self.invoice.invoice_number} - {self.amount}"
     
     def save(self, *args, **kwargs):
-        # If payment_date is not set, use today
         if not self.payment_date:
             self.payment_date = date.today()
         super().save(*args, **kwargs)
-        # Update invoice amount paid
-        self.invoice.amount_paid = self.invoice.payments.filter(status='completed').aggregate(
-            models.Sum('amount')
-        )['amount__sum'] or 0
+        # Recalculate from all completed installments, then synchronize status.
+        self.invoice.sync_payment_state(payment_date=self.payment_date if self.status == 'completed' else None)
         self.invoice.save()
+
+    def delete(self, *args, **kwargs):
+        invoice = self.invoice
+        result = super().delete(*args, **kwargs)
+        invoice.sync_payment_state()
+        invoice.save()
+        return result
 
 
 class Expense(models.Model):

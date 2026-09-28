@@ -268,7 +268,8 @@ class AgingReportView(APIView):
         from datetime import date, timedelta
         end_date = date.today()
         invoices = Invoice.objects.filter(
-            Q(status='partially_paid') | Q(status='overdue') | Q(status='sent') | Q(status='draft')
+            Q(balance_due__gt=0) &
+            (Q(status='partially_paid') | Q(status='overdue') | Q(status='sent') | Q(status='draft'))
         )
         aging_data = {
             'zero_thirty': 0,
@@ -697,7 +698,7 @@ class DebugAppView(APIView):
             except Exception as e:
                 endpoint_results[path] = {
                     'status_code': 500,
-                    'error': str(e),
+                    'error': 'Something went wrong. Please try again.', 'error_code': 'DD-API-500',
                 }
         
         result['api_test_results'] = endpoint_results

@@ -106,7 +106,8 @@ def unpaid_invoices(request):
     if not request.user.profile.has_permission('billing.view'):
         return Response({'detail': 'Billing permission required.'}, status=status.HTTP_403_FORBIDDEN)
     invoices = Invoice.objects.filter(
-        Q(status='draft') | Q(status='sent') | Q(status='partially_paid') | Q(status='overdue')
+        Q(balance_due__gt=0) &
+        (Q(status='draft') | Q(status='sent') | Q(status='partially_paid') | Q(status='overdue'))
     ).order_by('-issue_date')
     serializer = InvoiceSerializer(invoices, many=True)
     return Response(serializer.data)

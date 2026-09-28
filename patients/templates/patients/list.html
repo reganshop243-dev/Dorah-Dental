@@ -1029,6 +1029,15 @@
                                 </a>
 
 {% if can_view_financials %}
+                                {% if patient.patient_balance > 0 and patient.latest_due_invoice_id %}
+                                <a
+                                    href="{% url 'billing:add_payment' patient.latest_due_invoice_id %}"
+                                    class="action-btn"
+                                    title="Add payment"
+                                >
+                                    <i class="fas fa-money-bill-wave"></i>
+                                </a>
+                                {% endif %}
                                 <!-- Invoice -->
                                 <a
                                     href="{% url 'billing:add' %}?patient={{ patient.pk }}"
@@ -1216,6 +1225,16 @@
                 >
                     <i class="fas fa-calendar-plus"></i>
                     Appointment
+                </a>
+                {% endif %}
+
+                {% if can_view_financials and patient.patient_balance > 0 and patient.latest_due_invoice_id %}
+                <a
+                    href="{% url 'billing:add_payment' patient.latest_due_invoice_id %}"
+                    class="mobile-action"
+                >
+                    <i class="fas fa-money-bill-wave"></i>
+                    Add Payment
                 </a>
                 {% endif %}
 

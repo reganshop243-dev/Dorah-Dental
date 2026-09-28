@@ -371,13 +371,13 @@ Thank you,
                     print(f"Notification error: {e}")
                     import traceback
                     traceback.print_exc()
-                    messages.warning(request, f'⚠️ Appointment created but reminder failed: {str(e)}')
+                    messages.warning(request, 'The request could not be completed. Please try again.')
             
             return redirect('appointments:list')
         except IntegrityError:
             messages.error(request, '❌ That doctor already has an active appointment at this time. Please choose another time.')
         except Exception as e:
-            messages.error(request, f'❌ Error creating appointment: {str(e)}')
+            messages.error(request, 'Sorry, we could not complete that request. Please try again. If the problem continues, contact the administrator.')
             import traceback
             traceback.print_exc()
     
@@ -576,7 +576,7 @@ def appointment_edit(request, pk):
             messages.success(request, '✅ Appointment updated successfully!')
             return redirect('appointments:detail', pk=appointment.pk)
         except Exception as e:
-            messages.error(request, f'❌ Error updating appointment: {str(e)}')
+            messages.error(request, 'Sorry, we could not complete that request. Please try again. If the problem continues, contact the administrator.')
     
     # Get patients based on role for the form
     if is_doctor(request.user):
@@ -709,7 +709,7 @@ def service_add(request):
             messages.success(request, f'✅ Service "{service.name}" added successfully!')
             return redirect('appointments:services')
         except Exception as e:
-            messages.error(request, f'❌ Error adding service: {str(e)}')
+            messages.error(request, 'Sorry, we could not complete that request. Please try again. If the problem continues, contact the administrator.')
     return render(request, 'appointments/service_add.html')
 
 
@@ -736,7 +736,7 @@ def service_edit(request, pk):
             messages.success(request, f'✅ Service "{service.name}" updated successfully!')
             return redirect('appointments:services')
         except Exception as e:
-            messages.error(request, f'❌ Error updating service: {str(e)}')
+            messages.error(request, 'Sorry, we could not complete that request. Please try again. If the problem continues, contact the administrator.')
     return render(request, 'appointments/service_edit.html', {'service': service})
 
 
@@ -797,7 +797,7 @@ def doctor_add(request):
             messages.success(request, f'✅ Dr. {doctor.name} added successfully!')
             return redirect('appointments:doctors')
         except Exception as e:
-            messages.error(request, f'❌ Error adding doctor: {str(e)}')
+            messages.error(request, 'Sorry, we could not complete that request. Please try again. If the problem continues, contact the administrator.')
     return render(request, 'appointments/doctor_add.html')
 
 
@@ -827,7 +827,7 @@ def doctor_edit(request, pk):
             messages.success(request, f'✅ Dr. {doctor.name} updated successfully!')
             return redirect('appointments:doctors')
         except Exception as e:
-            messages.error(request, f'❌ Error updating doctor: {str(e)}')
+            messages.error(request, 'Sorry, we could not complete that request. Please try again. If the problem continues, contact the administrator.')
     return render(request, 'appointments/doctor_edit.html', {'doctor': doctor})
 
 

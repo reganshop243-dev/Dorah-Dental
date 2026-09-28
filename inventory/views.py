@@ -111,7 +111,7 @@ def inventory_add(request):
             return redirect('inventory:detail', pk=item.pk)
             
         except Exception as e:
-            messages.error(request, f'Error adding item: {str(e)}')
+            messages.error(request, 'Sorry, we could not complete that request. Please try again. If the problem continues, contact the administrator.')
             import traceback
             print(traceback.format_exc())
             return render(request, 'inventory/add.html', {
@@ -166,7 +166,7 @@ def inventory_edit(request, pk):
             messages.success(request, f'Item "{item.name}" updated successfully!')
             return redirect('inventory:detail', pk=item.pk)
         except Exception as e:
-            messages.error(request, f'Error updating item: {str(e)}')
+            messages.error(request, 'Sorry, we could not complete that request. Please try again. If the problem continues, contact the administrator.')
     
     context = {
         'item': item,
@@ -237,7 +237,7 @@ def inventory_adjust_stock(request, pk):
             
             messages.success(request, f'Stock adjusted successfully! New quantity: {item.quantity}')
         except Exception as e:
-            messages.error(request, f'Error adjusting stock: {str(e)}')
+            messages.error(request, 'Sorry, we could not complete that request. Please try again. If the problem continues, contact the administrator.')
     
     return redirect('inventory:detail', pk=item.pk)
 
@@ -345,7 +345,7 @@ def inventory_dispense(request):
             return redirect('billing:detail', pk=invoice.pk)
             
         except Exception as e:
-            messages.error(request, f'Error dispensing: {str(e)}')
+            messages.error(request, 'Sorry, we could not complete that request. Please try again. If the problem continues, contact the administrator.')
     
     patients = Patient.objects.filter(is_active=True)
     items = InventoryItem.objects.filter(is_active=True, quantity__gt=0)

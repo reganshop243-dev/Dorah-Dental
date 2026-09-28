@@ -79,7 +79,7 @@ def public_patients(request):
         data = get_patient_data()
         return JsonResponse({'results': data, 'count': len(data)})
     except Exception as e:
-        return JsonResponse({'error': str(e)}, status=500)
+        return JsonResponse({'error': 'Something went wrong. Please try again.', 'error_code': 'DD-API-500'}, status=500)
 
 @csrf_exempt
 @require_http_methods(["GET"])
@@ -88,7 +88,7 @@ def public_appointments(request):
         data = get_appointment_data()
         return JsonResponse({'results': data, 'count': len(data)})
     except Exception as e:
-        return JsonResponse({'error': str(e)}, status=500)
+        return JsonResponse({'error': 'Something went wrong. Please try again.', 'error_code': 'DD-API-500'}, status=500)
 
 @csrf_exempt
 @require_http_methods(["GET"])
@@ -97,7 +97,7 @@ def public_services(request):
         data = get_service_data()
         return JsonResponse({'results': data, 'count': len(data)})
     except Exception as e:
-        return JsonResponse({'error': str(e)}, status=500)
+        return JsonResponse({'error': 'Something went wrong. Please try again.', 'error_code': 'DD-API-500'}, status=500)
 
 @csrf_exempt
 @require_http_methods(["GET"])
@@ -106,7 +106,7 @@ def public_doctors(request):
         data = get_doctor_data()
         return JsonResponse({'results': data, 'count': len(data)})
     except Exception as e:
-        return JsonResponse({'error': str(e)}, status=500)
+        return JsonResponse({'error': 'Something went wrong. Please try again.', 'error_code': 'DD-API-500'}, status=500)
 
 @csrf_exempt
 @require_http_methods(["GET"])
@@ -115,7 +115,7 @@ def public_invoices(request):
         data = get_invoice_data()
         return JsonResponse({'results': data, 'count': len(data)})
     except Exception as e:
-        return JsonResponse({'error': str(e)}, status=500)
+        return JsonResponse({'error': 'Something went wrong. Please try again.', 'error_code': 'DD-API-500'}, status=500)
 
 @csrf_exempt
 @require_http_methods(["GET"])
@@ -140,7 +140,7 @@ def public_stats(request):
         }
         return JsonResponse(data)
     except Exception as e:
-        return JsonResponse({'error': str(e)}, status=500)
+        return JsonResponse({'error': 'Something went wrong. Please try again.', 'error_code': 'DD-API-500'}, status=500)
 
 # ==================== LOGIN ENDPOINT ====================
 
@@ -185,4 +185,4 @@ def public_login(request):
     except json.JSONDecodeError:
         return JsonResponse({'error': 'Invalid JSON'}, status=400)
     except Exception as e:
-        return JsonResponse({'error': str(e)}, status=500)
+        return JsonResponse({'error': 'Something went wrong. Please try again.', 'error_code': 'DD-API-500'}, status=500)

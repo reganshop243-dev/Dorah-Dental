@@ -25,7 +25,7 @@ def stats_view(request):
             ).aggregate(Sum('total_amount'))['total_amount__sum'] or 0
         return JsonResponse(data)
     except Exception as e:
-        return JsonResponse({'error': str(e)}, status=500)
+        return JsonResponse({'error': 'Something went wrong. Please try again.', 'error_code': 'DD-API-500'}, status=500)
 
 
 def offline_view(request):

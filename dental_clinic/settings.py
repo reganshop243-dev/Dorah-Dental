@@ -110,6 +110,7 @@ INSTALLED_APPS = [
 # =======================
 
 MIDDLEWARE = [
+    'core.error_middleware.FriendlyExceptionMiddleware',
     'corsheaders.middleware.CorsMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'axes.middleware.AxesMiddleware',

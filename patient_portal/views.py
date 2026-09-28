@@ -12,6 +12,7 @@ from django.db.models import Sum, Q
 from patients.models import Patient, DentalImage
 from appointments.models import Appointment, Service, Doctor
 from billing.models import Invoice
+from billing.balance_service import get_patient_outstanding_balance
 from .models import PatientPortalAccess, PatientPortalLog
 import hashlib
 import hmac
@@ -250,7 +251,7 @@ def invoices(request):
     # Calculate totals
     total_amount = invoices.aggregate(Sum('total_amount'))['total_amount__sum'] or 0
     total_paid = invoices.filter(status='paid').aggregate(Sum('total_amount'))['total_amount__sum'] or 0
-    total_balance = invoices.aggregate(Sum('balance_due'))['balance_due__sum'] or 0
+    total_balance = get_patient_outstanding_balance(patient)
     
     log_patient_action(patient, 'Viewed Invoices', request)
     

@@ -40,7 +40,7 @@ def notification_settings(request):
             settings_obj.save()
             messages.success(request, 'Notification settings updated successfully!')
         except Exception as e:
-            messages.error(request, f'Error updating settings: {str(e)}')
+            messages.error(request, 'Sorry, we could not complete that request. Please try again. If the problem continues, contact the administrator.')
     
     # Get recent notification logs
     logs = NotificationLog.objects.all()[:20]
@@ -119,7 +119,7 @@ def send_test_reminder(request):
             appointment.delete()
             
         except Exception as e:
-            messages.error(request, f'❌ Error sending test: {str(e)}')
+            messages.error(request, 'Sorry, we could not complete that request. Please try again. If the problem continues, contact the administrator.')
     
     return redirect('notifications:settings')
 
@@ -168,7 +168,7 @@ def send_test_email(request):
             
             messages.success(request, f'✅ Test email sent successfully to {email}!')
         except Exception as e:
-            messages.error(request, f'❌ Error sending test email: {str(e)}')
+            messages.error(request, 'Sorry, we could not complete that request. Please try again. If the problem continues, contact the administrator.')
     
     return redirect('notifications:settings')
 
@@ -215,7 +215,7 @@ def send_test_sms(request):
                 messages.error(request, f'❌ Failed to send SMS: {result.get("error")}')
                 
         except Exception as e:
-            messages.error(request, f'❌ Error sending test SMS: {str(e)}')
+            messages.error(request, 'Sorry, we could not complete that request. Please try again. If the problem continues, contact the administrator.')
     
     return redirect('notifications:settings')
 
@@ -247,7 +247,7 @@ def test_yoola_sms(request):
                 messages.error(request, f'❌ Failed to send SMS: {result.get("error")}')
                 
         except Exception as e:
-            messages.error(request, f'❌ Error: {str(e)}')
+            messages.error(request, 'Sorry, we could not complete that request. Please try again. If the problem continues, contact the administrator.')
     
     return redirect('notifications:settings')
 
@@ -354,7 +354,7 @@ def send_single_reminder(request, pk):
     except Appointment.DoesNotExist:
         return JsonResponse({'success': False, 'error': 'Appointment not found'})
     except Exception as e:
-        return JsonResponse({'success': False, 'error': str(e)})
+        return JsonResponse({'success': False, 'error': 'Something went wrong. Please try again.', 'error_code': 'DD-API-500'})
 
 
 

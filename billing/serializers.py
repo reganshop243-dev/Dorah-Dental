@@ -1,4 +1,4 @@
-﻿from rest_framework import serializers
+from rest_framework import serializers
 from .models import Invoice, InvoiceItem, Payment, Expense
 
 class InvoiceItemSerializer(serializers.ModelSerializer):
@@ -37,6 +37,20 @@ class PaymentSerializer(serializers.ModelSerializer):
         model = Payment
         fields = '__all__'
     
+    def validate(self, attrs):
+        invoice = attrs.get('invoice') or getattr(self.instance, 'invoice', None)
+        amount = attrs.get('amount', getattr(self.instance, 'amount', 0))
+        status_value = attrs.get('status', getattr(self.instance, 'status', 'pending'))
+        if invoice and status_value == 'completed':
+            current_completed = invoice.payments.filter(status='completed').exclude(pk=getattr(self.instance, 'pk', None)).aggregate(
+                total=__import__('django').db.models.Sum('amount')
+            )['total'] or 0
+            if amount <= 0:
+                raise serializers.ValidationError({'amount': 'Payment amount must be greater than zero.'})
+            if current_completed + amount > invoice.total_amount:
+                raise serializers.ValidationError({'amount': 'Payment cannot exceed the invoice balance.'})
+        return attrs
+
     def get_status_display(self, obj):
         return dict(Payment.PAYMENT_STATUS_CHOICES).get(obj.status, obj.status)
     

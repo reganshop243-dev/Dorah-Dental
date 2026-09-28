@@ -158,7 +158,7 @@ def otp_verify_view(request):
         time_diff = timezone.now() - profile.otp_created_at
         if time_diff.total_seconds() > 300:  # 5 minutes
             # OTP expired - clear it
-            profile.otp_code = None
+            profile.otp_code = ""
             profile.otp_created_at = None
             profile.save()
             messages.warning(request, 'Your OTP has expired. Please request a new one.')
@@ -187,7 +187,7 @@ def otp_verify_view(request):
             if request.user.profile.otp_attempts >= 3:
                 # Reset OTP and allow resend
                 profile = request.user.profile
-                profile.otp_code = None
+                profile.otp_code = ""
                 profile.otp_created_at = None
                 profile.save()
                 messages.warning(request, 'Too many failed attempts. Please request a new OTP.')
@@ -296,6 +296,9 @@ def admin_dashboard(request):
     from patients.models import Patient
     from appointments.models import Appointment, Doctor, Service, Treatment
     from billing.models import Invoice, Payment
+    from billing.balance_service import get_patient_outstanding_balance
+    from patients.models import Patient
+    from patients.models import Patient
     from django.utils import timezone
     from datetime import date, timedelta
     from django.db import models as django_models
@@ -365,13 +368,15 @@ def admin_dashboard(request):
     total_invoices = Invoice.objects.count()
     paid_invoices = Invoice.objects.filter(status='paid').count()
     pending_invoices = Invoice.objects.filter(
+        balance_due__gt=0,
         status__in=['draft', 'sent', 'partially_paid']
     ).count()
     overdue_invoices = Invoice.objects.filter(status='overdue').count()
     
-    total_outstanding = Invoice.objects.filter(
-        status__in=['draft', 'sent', 'partially_paid', 'overdue']
-    ).aggregate(django_models.Sum('balance_due'))['balance_due__sum'] or 0
+    total_outstanding = sum(
+        get_patient_outstanding_balance(patient)
+        for patient in Patient.objects.filter(is_active=True)
+    )
     
     recent_payments = Payment.objects.filter(
         status='completed'
@@ -553,6 +558,7 @@ def receptionist_dashboard(request):
 def accountant_dashboard(request):
     """Accountant dashboard for financial management"""
     from billing.models import Invoice, Payment
+    from billing.balance_service import get_patient_outstanding_balance
     from datetime import date, timedelta
     from django.db.models import Sum
     
@@ -568,6 +574,7 @@ def accountant_dashboard(request):
     
     # Pending payments
     pending_invoices = Invoice.objects.filter(
+        balance_due__gt=0,
         status__in=['draft', 'sent', 'partially_paid']
     )
     pending_total = pending_invoices.aggregate(Sum('balance_due'))['balance_due__sum'] or 0
@@ -744,7 +751,7 @@ def user_add(request):
             return redirect('core:user_list')
             
         except Exception as e:
-            messages.error(request, f'Error creating user: {str(e)}')
+            messages.error(request, 'Sorry, we could not complete that request. Please try again. If the problem continues, contact the administrator.')
     
     from appointments.models import Doctor
     doctors = Doctor.objects.filter(is_active=True)
@@ -855,7 +862,7 @@ def user_edit(request, pk):
             return redirect('core:user_list')
             
         except Exception as e:
-            messages.error(request, f'Error updating user: {str(e)}')
+            messages.error(request, 'Sorry, we could not complete that request. Please try again. If the problem continues, contact the administrator.')
     
     context = {
         'user': user,
@@ -894,7 +901,7 @@ def user_delete(request, pk):
             
             messages.success(request, f'User "{user.username}" has been deactivated.')
         except Exception as e:
-            messages.error(request, f'Error deactivating user: {str(e)}')
+            messages.error(request, 'Sorry, we could not complete that request. Please try again. If the problem continues, contact the administrator.')
         
         return redirect('core:user_list')
     
@@ -920,7 +927,7 @@ def user_activate(request, pk):
         
         messages.success(request, f'User "{user.username}" has been activated.')
     except Exception as e:
-        messages.error(request, f'Error activating user: {str(e)}')
+        messages.error(request, 'Sorry, we could not complete that request. Please try again. If the problem continues, contact the administrator.')
     
     return redirect('core:user_list')
 
@@ -1040,6 +1047,7 @@ def revenue_dashboard(request):
         messages.error(request, '❌ Doctors do not have access to financial reports.')
         return redirect('core:doctor_dashboard')
     from billing.models import Invoice, Payment
+    from billing.balance_service import get_patient_outstanding_balance
     from django.utils import timezone
     from datetime import date, timedelta, datetime
     from django.db.models import Sum, Count, Q
@@ -1135,9 +1143,10 @@ def revenue_dashboard(request):
     ).aggregate(Sum('total_amount'))['total_amount__sum'] or 0
     
     # Outstanding balance (all time)
-    total_outstanding = Invoice.objects.aggregate(
-        Sum('balance_due')
-    )['balance_due__sum'] or 0
+    total_outstanding = sum(
+        get_patient_outstanding_balance(patient)
+        for patient in Patient.objects.filter(is_active=True)
+    )
     
     # ============================================================
     # INVOICE STATUS BREAKDOWN
@@ -1247,7 +1256,7 @@ def reset_user_otp(request, pk):
     
     user.profile.last_otp_sent = timezone.now() - timedelta(days=2)
     user.profile.otp_attempts = 0
-    user.profile.otp_code = None
+    user.profile.otp_code = ""
     user.profile.otp_created_at = None
     user.profile.save()
     
@@ -1335,7 +1344,7 @@ def company_settings(request):
             return redirect('core:company_settings')
             
         except Exception as e:
-            messages.error(request, f'Error updating settings: {str(e)}')
+            messages.error(request, 'Sorry, we could not complete that request. Please try again. If the problem continues, contact the administrator.')
     
     context = {
         'settings': settings,

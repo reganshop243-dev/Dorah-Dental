@@ -384,7 +384,7 @@ def invoice_add(request):
             return redirect('billing:detail', pk=invoice.pk)
             
         except Exception as e:
-            messages.error(request, f'Error creating invoice: {str(e)}')
+            messages.error(request, 'Sorry, we could not complete that request. Please try again. If the problem continues, contact the administrator.')
             import traceback
             print(traceback.format_exc())
             return redirect('billing:add')
@@ -395,11 +395,25 @@ def invoice_add(request):
     patients = Patient.objects.filter(is_active=True).order_by('first_name', 'last_name')
     services = Service.objects.filter(is_active=True)
     inventory_items = InventoryItem.objects.filter(is_active=True, quantity__gt=0)
-    
+
+    # Preserve a patient selected before opening the invoice form.
+    selected_patient = None
+    selected_patient_balance = 0
+    selected_patient_id = request.GET.get('patient')
+    if selected_patient_id:
+        try:
+            selected_patient = Patient.objects.get(pk=selected_patient_id, is_active=True)
+            from billing.balance_service import get_patient_outstanding_balance
+            selected_patient_balance = get_patient_outstanding_balance(selected_patient)
+        except (Patient.DoesNotExist, ValueError, TypeError):
+            selected_patient = None
+
     return render(request, 'billing/invoice_add.html', {
         'patients': patients,
         'services': services,
         'inventory_items': inventory_items,
+        'selected_patient': selected_patient,
+        'selected_patient_balance': selected_patient_balance,
     })
 
 
@@ -459,17 +473,13 @@ def add_payment(request, pk):
                 status='completed'
             )
             
-            # Update invoice status
-            if invoice.balance_due <= 0:
-                invoice.status = 'paid'
-                invoice.payment_date = payment_date_obj
-            else:
-                invoice.status = 'partially_paid'
-            invoice.save()
+            # Payment.save() recalculates all completed installments and
+            # synchronizes the invoice to paid/partially_paid automatically.
+            invoice.refresh_from_db()
             
             messages.success(request, f'Payment of {amount} received successfully!')
         except Exception as e:
-            messages.error(request, f'Error processing payment: {str(e)}')
+            messages.error(request, 'Sorry, we could not complete that request. Please try again. If the problem continues, contact the administrator.')
     
     return redirect('billing:detail', pk=invoice.pk)
 
@@ -624,7 +634,7 @@ def add_invoice_item(request, pk):
                 messages.success(request, 'Item added to invoice successfully!')
                 
         except Exception as e:
-            messages.error(request, f'Error adding item: {str(e)}')
+            messages.error(request, 'Sorry, we could not complete that request. Please try again. If the problem continues, contact the administrator.')
             import traceback
             print(traceback.format_exc())
     
@@ -655,7 +665,7 @@ def remove_invoice_item(request, pk, item_pk):
         
         messages.success(request, 'Item removed from invoice!')
     except Exception as e:
-        messages.error(request, f'Error removing item: {str(e)}')
+        messages.error(request, 'Sorry, we could not complete that request. Please try again. If the problem continues, contact the administrator.')
     
     return redirect('billing:detail', pk=invoice.pk)
 
@@ -671,7 +681,7 @@ def store_cart(request):
             request.session['cart_items'] = cart_items
             return JsonResponse({'success': True, 'message': 'Cart stored in session'})
         except Exception as e:
-            return JsonResponse({'success': False, 'error': str(e)})
+            return JsonResponse({'success': False, 'error': 'Something went wrong. Please try again.', 'error_code': 'DD-API-500'})
     return JsonResponse({'success': False, 'error': 'Invalid request'})
 
 
@@ -738,7 +748,7 @@ def expense_add(request):
             messages.success(request, 'Expense added successfully!')
             return redirect('billing:expense_list')
         except Exception as e:
-            messages.error(request, f'Error adding expense: {str(e)}')
+            messages.error(request, 'Sorry, we could not complete that request. Please try again. If the problem continues, contact the administrator.')
     
     return render(request, 'billing/expense_add.html', {
         'categories': Expense.EXPENSE_CATEGORIES,
@@ -771,7 +781,7 @@ def expense_edit(request, pk):
             messages.success(request, 'Expense updated successfully!')
             return redirect('billing:expense_list')
         except Exception as e:
-            messages.error(request, f'Error updating expense: {str(e)}')
+            messages.error(request, 'Sorry, we could not complete that request. Please try again. If the problem continues, contact the administrator.')
     
     return render(request, 'billing/expense_edit.html', {
         'expense': expense,
@@ -841,7 +851,7 @@ def balance_sheet(request):
     total_invoices = invoices.count()
     total_revenue = invoices.aggregate(Sum('total_amount'))['total_amount__sum'] or 0
     paid_amount = invoices.filter(status='paid').aggregate(Sum('total_amount'))['total_amount__sum'] or 0
-    pending_amount = invoices.filter(status__in=['draft', 'sent', 'partially_paid']).aggregate(Sum('balance_due'))['balance_due__sum'] or 0
+    pending_amount = invoices.filter(balance_due__gt=0, status__in=['draft', 'sent', 'partially_paid']).aggregate(Sum('balance_due'))['balance_due__sum'] or 0
     
     # Expense calculations
     total_expenses = expenses.aggregate(Sum('amount'))['amount__sum'] or 0
@@ -875,6 +885,6 @@ def balance_sheet(request):
         'expenses_by_category': expenses_by_category,
         'revenue_by_method': revenue_by_method,
         'paid_invoices': Invoice.objects.filter(status='paid').count(),  # Add this
-        'pending_invoices': Invoice.objects.filter(status__in=['draft', 'sent', 'partially_paid']).count(),  # Add this
+        'pending_invoices': Invoice.objects.filter(balance_due__gt=0, status__in=['draft', 'sent', 'partially_paid']).count(),  # Add this
     }
     return render(request, 'billing/balance_sheet.html', context)
