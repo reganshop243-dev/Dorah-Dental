@@ -13,6 +13,8 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
+        # The Railway database may already be missing the old index.
+        # IF EXISTS makes this operation safe in either state.
         migrations.SeparateDatabaseAndState(
             database_operations=[
                 migrations.RunSQL(
@@ -37,9 +39,24 @@ class Migration(migrations.Migration):
             ],
         ),
 
-        migrations.RemoveField(
-            model_name='usernotification',
-            name='read_at',
+        # The Railway database may already have this column removed.
+        # IF EXISTS prevents the migration from failing in that case.
+        migrations.SeparateDatabaseAndState(
+            database_operations=[
+                migrations.RunSQL(
+                    sql='''
+                        ALTER TABLE "notifications_usernotification"
+                        DROP COLUMN IF EXISTS "read_at" CASCADE;
+                    ''',
+                    reverse_sql=migrations.RunSQL.noop,
+                ),
+            ],
+            state_operations=[
+                migrations.RemoveField(
+                    model_name='usernotification',
+                    name='read_at',
+                ),
+            ],
         ),
 
         migrations.AddField(
@@ -63,7 +80,10 @@ class Migration(migrations.Migration):
         migrations.AlterField(
             model_name='pushsubscription',
             name='endpoint',
-            field=models.URLField(max_length=1000, unique=True),
+            field=models.URLField(
+                max_length=1000,
+                unique=True,
+            ),
         ),
 
         migrations.AlterField(
@@ -75,7 +95,10 @@ class Migration(migrations.Migration):
         migrations.AlterField(
             model_name='pushsubscription',
             name='user_agent',
-            field=models.TextField(blank=True, default=''),
+            field=models.TextField(
+                blank=True,
+                default='',
+            ),
         ),
 
         migrations.AlterField(
@@ -95,12 +118,30 @@ class Migration(migrations.Migration):
             name='notification_type',
             field=models.CharField(
                 choices=[
-                    ('appointment_assigned', 'Appointment Assigned'),
-                    ('appointment_completed', 'Appointment Completed'),
-                    ('contact_access_request', 'Contact Access Request'),
-                    ('contact_access_approved', 'Contact Access Approved'),
-                    ('contact_access_denied', 'Contact Access Denied'),
-                    ('system', 'System'),
+                    (
+                        'appointment_assigned',
+                        'Appointment Assigned',
+                    ),
+                    (
+                        'appointment_completed',
+                        'Appointment Completed',
+                    ),
+                    (
+                        'contact_access_request',
+                        'Contact Access Request',
+                    ),
+                    (
+                        'contact_access_approved',
+                        'Contact Access Approved',
+                    ),
+                    (
+                        'contact_access_denied',
+                        'Contact Access Denied',
+                    ),
+                    (
+                        'system',
+                        'System',
+                    ),
                 ],
                 default='system',
                 max_length=40,
