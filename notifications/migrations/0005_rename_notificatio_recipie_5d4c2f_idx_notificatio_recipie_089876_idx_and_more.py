@@ -13,53 +13,107 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
-        migrations.RenameIndex(
-            model_name='usernotification',
-            new_name='notificatio_recipie_089876_idx',
-            old_name='notificatio_recipie_5d4c2f_idx',
+        migrations.SeparateDatabaseAndState(
+            database_operations=[
+                migrations.RunSQL(
+                    sql='''
+                        ALTER INDEX IF EXISTS
+                        "notificatio_recipie_5d4c2f_idx"
+                        RENAME TO "notificatio_recipie_089876_idx";
+                    ''',
+                    reverse_sql='''
+                        ALTER INDEX IF EXISTS
+                        "notificatio_recipie_089876_idx"
+                        RENAME TO "notificatio_recipie_5d4c2f_idx";
+                    ''',
+                ),
+            ],
+            state_operations=[
+                migrations.RenameIndex(
+                    model_name='usernotification',
+                    new_name='notificatio_recipie_089876_idx',
+                    old_name='notificatio_recipie_5d4c2f_idx',
+                ),
+            ],
         ),
+
         migrations.RemoveField(
             model_name='usernotification',
             name='read_at',
         ),
+
         migrations.AddField(
             model_name='usernotification',
             name='patient',
-            field=models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.CASCADE, related_name='user_notifications', to='patients.patient'),
+            field=models.ForeignKey(
+                blank=True,
+                null=True,
+                on_delete=django.db.models.deletion.CASCADE,
+                related_name='user_notifications',
+                to='patients.patient',
+            ),
         ),
+
         migrations.AlterField(
             model_name='pushsubscription',
             name='auth',
             field=models.TextField(),
         ),
+
         migrations.AlterField(
             model_name='pushsubscription',
             name='endpoint',
             field=models.URLField(max_length=1000, unique=True),
         ),
+
         migrations.AlterField(
             model_name='pushsubscription',
             name='p256dh',
             field=models.TextField(),
         ),
+
         migrations.AlterField(
             model_name='pushsubscription',
             name='user_agent',
             field=models.TextField(blank=True, default=''),
         ),
+
         migrations.AlterField(
             model_name='usernotification',
             name='appointment',
-            field=models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.CASCADE, related_name='user_notifications', to='appointments.appointment'),
+            field=models.ForeignKey(
+                blank=True,
+                null=True,
+                on_delete=django.db.models.deletion.CASCADE,
+                related_name='user_notifications',
+                to='appointments.appointment',
+            ),
         ),
+
         migrations.AlterField(
             model_name='usernotification',
             name='notification_type',
-            field=models.CharField(choices=[('appointment_assigned', 'Appointment Assigned'), ('appointment_completed', 'Appointment Completed'), ('contact_access_request', 'Contact Access Request'), ('contact_access_approved', 'Contact Access Approved'), ('contact_access_denied', 'Contact Access Denied'), ('system', 'System')], default='system', max_length=40),
+            field=models.CharField(
+                choices=[
+                    ('appointment_assigned', 'Appointment Assigned'),
+                    ('appointment_completed', 'Appointment Completed'),
+                    ('contact_access_request', 'Contact Access Request'),
+                    ('contact_access_approved', 'Contact Access Approved'),
+                    ('contact_access_denied', 'Contact Access Denied'),
+                    ('system', 'System'),
+                ],
+                default='system',
+                max_length=40,
+            ),
         ),
+
         migrations.AlterField(
             model_name='usernotification',
             name='url',
-            field=models.CharField(blank=True, default='', max_length=500),
+            field=models.CharField(
+                blank=True,
+                default='',
+                max_length=500,
+            ),
         ),
     ]
