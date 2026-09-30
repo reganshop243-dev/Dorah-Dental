@@ -10,7 +10,7 @@ from .otp_service import OTPService
 from datetime import timedelta
 from django.utils import timezone
 import re
-
+from patients.models import Patient
 OTP_TRUST_PERIOD = timedelta(hours=24)
 
 def otp_trust_is_valid(profile):

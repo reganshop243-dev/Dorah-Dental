@@ -2,14 +2,13 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.db import models
-from django.db.models import Q, Sum, Value, DecimalField, Count, OuterRef, Subquery, F
+from django.db.models import Q, Sum, Value, DecimalField, Count, OuterRef, Subquery
 from django.http import JsonResponse
 from django.utils import timezone
 from datetime import date, datetime
 from .models import Patient, DentalImage, PatientContactAccessRequest
 from appointments.models import Appointment, Treatment
 from billing.models import Invoice
-from billing.balance_service import get_patient_outstanding_balance
 from patient_portal.models import PatientPortalAccess  # âœ… ADD THIS IMPORT
 import random  # legacy compatibility
 import hashlib
@@ -101,38 +100,32 @@ def patient_list(request):
     #   0   = invoice fully paid
     #   < 0 = credit/overpayment
     # ---------------------------------------------------------
-    register_q = Q(invoices__invoice_number__startswith='REG-') | Q(invoices__notes__icontains='Imported from corrected register:')
-    normal_balance_subquery = (
-        Invoice.objects.filter(patient=OuterRef('pk'))
-        .exclude(Q(invoice_number__startswith='REG-') | Q(notes__icontains='Imported from corrected register:'))
-        .values('patient')
-        .annotate(total=Sum('balance_due'))
-        .values('total')[:1]
-    )
-    latest_register_balance_subquery = (
-        Invoice.objects.filter(patient=OuterRef('pk'))
-        .filter(Q(invoice_number__startswith='REG-') | Q(notes__icontains='Imported from corrected register:'))
-        .order_by('-issue_date', '-id')
-        .values('balance_due')[:1]
-    )
     patients = patients.annotate(
-        invoice_count=Count('invoices', distinct=True),
-        normal_balance=Coalesce(
-            Subquery(normal_balance_subquery, output_field=DecimalField(max_digits=12, decimal_places=2)),
-            Value(0, output_field=DecimalField(max_digits=12, decimal_places=2))
+        invoice_count=Count(
+            'invoices',
+            distinct=True
         ),
-        register_balance=Coalesce(
-            Subquery(latest_register_balance_subquery, output_field=DecimalField(max_digits=12, decimal_places=2)),
-            Value(0, output_field=DecimalField(max_digits=12, decimal_places=2))
-        ),
-    ).annotate(
-        patient_balance=F('normal_balance') + F('register_balance'),
-        latest_due_invoice_id=Subquery(
-            Invoice.objects.filter(
-                patient=OuterRef('pk'),
-                balance_due__gt=0,
-                status__in=['sent', 'partially_paid', 'overdue']
-            ).order_by('-issue_date', '-id').values('id')[:1]
+
+        patient_balance=Coalesce(
+            Subquery(
+                Invoice.objects.filter(
+                    patient=OuterRef('pk')
+                )
+                .values('patient')
+                .annotate(total_balance=Sum('balance_due'))
+                .values('total_balance')[:1],
+                output_field=DecimalField(
+                    max_digits=12,
+                    decimal_places=2
+                )
+            ),
+            Value(
+                0,
+                output_field=DecimalField(
+                    max_digits=12,
+                    decimal_places=2
+                )
+            )
         )
     )
 
@@ -140,9 +133,14 @@ def patient_list(request):
     # BALANCE FILTER
     # ---------------------------------------------------------
     if balance_filter == 'has_balance':
-        patients = patients.filter(patient_balance__gt=0)
+        patients = patients.filter(
+            patient_balance__gt=0
+        )
+
     elif balance_filter == 'no_balance':
-        patients = patients.filter(patient_balance__lte=0)
+        patients = patients.filter(
+            patient_balance__lte=0
+        )
 
     # ---------------------------------------------------------
     # SORTING
@@ -358,7 +356,7 @@ def patient_add(request):
             return redirect('patients:detail', pk=patient.pk)
             
         except Exception as e:
-            messages.error(request, 'Sorry, we could not complete that request. Please try again. If the problem continues, contact the administrator.')
+            messages.error(request, f'âŒ Error adding patient: {str(e)}')
             import traceback
             traceback.print_exc()
             return render(request, 'patients/add.html', {'form_data': form_data})
@@ -548,7 +546,7 @@ def patient_edit(request, pk):
             return redirect('patients:detail', pk=patient.pk)
             
         except Exception as e:
-            messages.error(request, 'Sorry, we could not complete that request. Please try again. If the problem continues, contact the administrator.')
+            messages.error(request, f'Error updating patient: {str(e)}')
             return render(request, 'patients/edit.html', {'patient': patient})
     
     context = {
@@ -580,7 +578,7 @@ def patient_delete(request, pk):
             messages.success(request, f'Patient {patient.full_name} archived successfully!')
             return redirect('patients:list')
         except Exception as e:
-            messages.error(request, 'Sorry, we could not complete that request. Please try again. If the problem continues, contact the administrator.')
+            messages.error(request, f'Error archiving patient: {str(e)}')
     
     context = {
         'patient': patient,
@@ -654,7 +652,7 @@ def patient_add_image(request, pk):
             return redirect('patients:detail', pk=patient.pk)
             
         except Exception as e:
-            messages.error(request, 'Sorry, we could not complete that request. Please try again. If the problem continues, contact the administrator.')
+            messages.error(request, f'Error uploading images: {str(e)}')
     
     return render(request, 'patients/add_image.html', {'patient': patient})
 
@@ -747,7 +745,9 @@ def patient_search_api(request):
         results = []
         for patient in patients:
             # Calculate total balance
-            total_balance = get_patient_outstanding_balance(patient)
+            total_balance = Invoice.objects.filter(
+                patient=patient
+            ).aggregate(total=Sum('balance_due'))['total'] or 0
             
             # Apply balance filter
             if balance_filter == 'has_balance' and total_balance <= 0:
@@ -792,7 +792,7 @@ def patient_search_api(request):
         print(f"Search API Error: {e}")
         import traceback
         traceback.print_exc()
-        return JsonResponse({'results': [], 'error': 'Something went wrong. Please try again.', 'error_code': 'DD-API-500'}, status=500)
+        return JsonResponse({'results': [], 'error': str(e)}, status=500)
 
 
 

@@ -791,7 +791,6 @@
                 >
             </div>
 
-            {% if can_view_financials %}
             <div class="filter-field">
                 <label for="balance-filter">Payment</label>
                 <select id="balance-filter" name="balance" class="filter-select">
@@ -804,8 +803,6 @@
                     </option>
                 </select>
             </div>
-
-            {% endif %}
 
             <div class="filter-field">
                 <label for="sort-filter">Sort by</label>
@@ -870,7 +867,7 @@
                         <th class="col-patient">Patient</th>
                         <th class="col-contact">Contact</th>
                         <th class="col-registered">Registered</th>
-                        {% if can_view_financials %}<th class="col-payment">Payment</th>{% endif %}
+                        <th class="col-payment">Payment</th>
                         <th class="col-actions">Actions</th>
                     </tr>
                 </thead>
@@ -948,7 +945,6 @@
                         </td>
 
 
-                        {% if can_view_financials %}
                         <!-- PAYMENT -->
                         <td>
                             {% if patient.invoice_count == 0 %}
@@ -991,8 +987,6 @@
                         </td>
 
 
-                        {% endif %}
-
                         <!-- ACTIONS -->
                         <td>
                             <div class="actions">
@@ -1028,16 +1022,6 @@
                                     <i class="fas fa-calendar-plus"></i>
                                 </a>
 
-{% if can_view_financials %}
-                                {% if patient.patient_balance > 0 and patient.latest_due_invoice_id %}
-                                <a
-                                    href="{% url 'billing:add_payment' patient.latest_due_invoice_id %}"
-                                    class="action-btn"
-                                    title="Add payment"
-                                >
-                                    <i class="fas fa-money-bill-wave"></i>
-                                </a>
-                                {% endif %}
                                 <!-- Invoice -->
                                 <a
                                     href="{% url 'billing:add' %}?patient={{ patient.pk }}"
@@ -1046,7 +1030,6 @@
                                 >
                                     <i class="fas fa-file-invoice-dollar"></i>
                                 </a>
-                                {% endif %}
 
                                 {% if not is_doctor %}
 
@@ -1099,8 +1082,7 @@
                 </div>
 
 
-                {% if can_view_financials %}
-            <div class="mobile-payment">
+                <div class="mobile-payment">
 
                     {% if patient.invoice_count == 0 %}
 
@@ -1176,7 +1158,6 @@
             </div>
 
 
-            {% if can_view_financials %}
             <!-- PAYMENT AMOUNT -->
             {% if patient.invoice_count > 0 and patient.patient_balance != 0 %}
             <div class="mobile-registered" style="border-top:0; margin-top:4px; padding-top:0;">
@@ -1194,10 +1175,6 @@
             </div>
             {% endif %}
 
-
-            {% endif %}
-
-            {% endif %}
 
             <!-- ACTIONS -->
             <div class="mobile-actions">
@@ -1225,16 +1202,6 @@
                 >
                     <i class="fas fa-calendar-plus"></i>
                     Appointment
-                </a>
-                {% endif %}
-
-                {% if can_view_financials and patient.patient_balance > 0 and patient.latest_due_invoice_id %}
-                <a
-                    href="{% url 'billing:add_payment' patient.latest_due_invoice_id %}"
-                    class="mobile-action"
-                >
-                    <i class="fas fa-money-bill-wave"></i>
-                    Add Payment
                 </a>
                 {% endif %}
 

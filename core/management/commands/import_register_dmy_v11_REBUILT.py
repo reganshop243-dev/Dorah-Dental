@@ -281,6 +281,27 @@ class Command(BaseCommand):
                 'reconciliation_flag': clean_text(values[headers.index('RECONCILIATION_FLAG')]) if 'RECONCILIATION_FLAG' in headers else 'OK',
             })
 
+        # Reconstruct the actual charge from the running ledger balance.
+        # Formula:
+        #   implied charge = current balance + payment - previous balance
+        # A positive result is a new charge; zero means payment only; negative
+        # means a ledger write-off/adjustment.
+        parsed.sort(key=lambda x: (normalize_name(x['name']), x['date'], x['row']))
+        previous_balance_by_patient = {}
+        for item in parsed:
+            patient_key = normalize_name(item['name'])
+            previous = previous_balance_by_patient.get(patient_key, Decimal('0.00'))
+            item['previous_balance'] = previous
+            item['implied_charge'] = (
+                Decimal(item['balance'] or 0)
+                + Decimal(item['paid'] or 0)
+                - previous
+            )
+            previous_balance_by_patient[patient_key] = Decimal(item['balance'] or 0)
+
+        # Restore source row ordering for batching/import creation.
+        parsed.sort(key=lambda x: x['row'])
+
         tx_seen = set()
         for item in parsed:
             if item['tx_id'] in tx_seen:
@@ -334,7 +355,7 @@ class Command(BaseCommand):
             phone = (item['phone'] or '')[:20]
             doctor_name = item['doctor']
             service_name = service_for(item['treatment'])
-            total_amount = item['paid'] + item['balance']
+            total_amount = max(Decimal(item.get('implied_charge', 0) or 0), Decimal('0.00'))
 
             check_model_length(Patient, 'first_name', first, f"{item['tx_id']} Patient.first_name")
             check_model_length(Patient, 'last_name', last, f"{item['tx_id']} Patient.last_name")
@@ -533,7 +554,6 @@ class Command(BaseCommand):
                 # ------------------------------------------------------------
                 pending_patients = []
                 pending_keys = set()
-                pending_historical_dates = {}
                 row_patient = {}
                 patient_updates = {}
 
@@ -577,7 +597,6 @@ class Command(BaseCommand):
                                 registered_at=historical_first,
                             )
                             pending_patients.append((pending_key, patient))
-                            pending_historical_dates[id(patient)] = historical_first
                             stats['patients_created'] += 1
                         else:
                             stats['patients_reused'] += 1
@@ -603,20 +622,10 @@ class Command(BaseCommand):
                     row_patient[f'row:{item["tx_id"]}'] = patient
 
                 if pending_patients:
-                    # Patient.registered_at is auto_now_add=True. Django therefore
-                    # replaces a supplied value with NOW() during bulk_create.
-                    # Restore the true historical first-visit date immediately
-                    # after bulk_create and persist it with bulk_update.
-                    Patient.objects.bulk_create(
-                        [p for _, p in pending_patients],
-                        batch_size=len(pending_patients),
-                    )
+                    Patient.objects.bulk_create([p for _, p in pending_patients], batch_size=len(pending_patients))
                     for pending_key, patient in pending_patients:
                         if patient.pk:
-                            historical_date = pending_historical_dates.get(id(patient))
-                            if historical_date is not None:
-                                patient.registered_at = historical_date
-                                patient_updates[patient.pk] = patient
+                            row_patient_key = None
                             if pending_key[0] == 'phone' and pending_key[1]:
                                 patient_by_phone[pending_key[1]] = patient.pk
                                 if pending_key[1].startswith('+256'):
@@ -909,15 +918,29 @@ class Command(BaseCommand):
                     return max(Decimal(inv.total_amount or 0) - Decimal(paid), Decimal('0.00'))
 
                 for item in ledger_rows:
+                    payment_left = Decimal(item['paid'] or 0)
                     marker = (
                         f"Imported from rebuilt register: transaction_id={item['tx_id']};"
                         f"source_row={item['row']};date={item['date'].isoformat()};"
                     )
 
-                    # A negative implied charge is a write-off/credit against the
-                    # patient's existing outstanding balance. Apply it before any
-                    # payment on the same register row so the row's final balance
-                    # remains the source of truth.
+                    if payment_left > 0:
+                        for inv in invoice_qs:
+                            if payment_left <= 0:
+                                break
+                            due = outstanding(inv)
+                            if due <= 0:
+                                continue
+                            amount = min(payment_left, due)
+                            Payment.objects.create(
+                                invoice=inv, amount=amount, payment_date=item['date'],
+                                payment_method='cash', status='completed',
+                                notes=marker + f" Register payment for {item['treatment']}.",
+                                processed_by=creator.username if creator else '',
+                            )
+                            payment_left -= amount
+                            stats['payments_created'] += 1
+
                     adjustment = max(-Decimal(item['implied_charge'] or 0), Decimal('0.00'))
                     if adjustment > 0:
                         remaining = adjustment
@@ -943,41 +966,6 @@ class Command(BaseCommand):
                         if remaining > Decimal('0.01'):
                             warnings.append(
                                 f"{item['tx_id']}: write-off {adjustment} exceeded available open invoices by {remaining}."
-                            )
-
-                    # A payment belongs to the current register transaction first.
-                    # This makes invoices with their own paid amount show Paid/Partially
-                    # Paid instead of incorrectly leaving the payment on an older invoice.
-                    payment_left = Decimal(item['paid'] or 0)
-                    if payment_left > 0:
-                        targets = []
-                        current_invoice = next(
-                            (inv for inv in invoice_qs if inv.invoice_number == f"REG-{item['tx_id']}"),
-                            None,
-                        )
-                        if current_invoice is not None:
-                            targets.append(current_invoice)
-                        targets.extend(inv for inv in invoice_qs if inv is not current_invoice)
-
-                        for inv in targets:
-                            if payment_left <= 0:
-                                break
-                            due = outstanding(inv)
-                            if due <= 0:
-                                continue
-                            amount = min(payment_left, due)
-                            Payment.objects.create(
-                                invoice=inv, amount=amount, payment_date=item['date'],
-                                payment_method='cash', status='completed',
-                                notes=marker + f" Register payment for {item['treatment']}.",
-                                processed_by=creator.username if creator else '',
-                            )
-                            payment_left -= amount
-                            stats['payments_created'] += 1
-
-                        if payment_left > Decimal('0.01'):
-                            warnings.append(
-                                f"{item['tx_id']}: payment {item['paid']} exceeded available open invoices by {payment_left}."
                             )
 
                 for inv in invoice_qs:
