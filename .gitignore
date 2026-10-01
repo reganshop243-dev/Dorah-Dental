@@ -60,3 +60,8 @@ project_structure_*.txt
 # Local settings
 
 dental_clinic/settings.py.*
+
+# Local imports and backup files
+*.xlsx
+*.bak
+~$*

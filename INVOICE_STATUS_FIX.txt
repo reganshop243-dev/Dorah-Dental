@@ -1,0 +1,5 @@
+Dorah Dental - Historical Invoice Status Fix
+
+The register importer now allocates each row payment to that row's own REG-<transaction_id> invoice first. Any excess is then applied FIFO to other open invoices. After reconciliation, invoice status is normalized from completed Payment records: paid, partially_paid, or sent.
+
+After replacing the project, rerun the corrected register import with --reset, then run verify_register_ledger.

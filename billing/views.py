@@ -418,6 +418,103 @@ def invoice_add(request):
 
 
 @login_required
+@financial_only("billing.edit")
+def invoice_edit(request, pk):
+    """Edit invoice header/financial fields and existing line items safely."""
+    if is_doctor(request.user):
+        messages.error(request, 'Doctors are not allowed to modify invoices.')
+        return redirect('billing:detail', pk=pk)
+
+    from decimal import Decimal, InvalidOperation
+    from django.db import transaction
+
+    invoice = get_object_or_404(Invoice, pk=pk)
+    items = list(invoice.items.select_related('service', 'inventory_item').all())
+
+    if request.method == 'POST':
+        try:
+            with transaction.atomic():
+                issue_date = request.POST.get('issue_date') or invoice.issue_date
+                due_date = request.POST.get('due_date') or None
+
+                def dec(name, default='0'):
+                    raw = (request.POST.get(name, default) or default).strip()
+                    value = Decimal(raw)
+                    if value < 0:
+                        raise ValueError(f'{name} cannot be negative')
+                    return value
+
+                tax_rate = dec('tax_rate')
+                discount = dec('discount')
+                invoice.issue_date = issue_date
+                invoice.due_date = due_date
+                invoice.tax_rate = tax_rate
+                invoice.discount = discount
+                invoice.notes = request.POST.get('notes', '').strip()
+
+                for item in items:
+                    prefix = f'item_{item.pk}_'
+                    description = request.POST.get(prefix + 'description')
+                    quantity_raw = request.POST.get(prefix + 'quantity')
+                    unit_price_raw = request.POST.get(prefix + 'unit_price')
+                    if description is None:
+                        continue
+
+                    quantity = int(quantity_raw or item.quantity)
+                    unit_price = Decimal(unit_price_raw or item.unit_price)
+                    if quantity < 1:
+                        raise ValueError(f'Quantity for "{item.description}" must be at least 1')
+                    if unit_price < 0:
+                        raise ValueError(f'Price for "{item.description}" cannot be negative')
+
+                    # Inventory-linked quantities cannot be changed here because
+                    # doing so without a stock movement would corrupt stock.
+                    if item.inventory_item:
+                        quantity = item.quantity
+
+                    item.description = description.strip() or item.description
+                    item.quantity = quantity
+                    item.unit_price = unit_price
+                    item.total_price = unit_price * quantity
+                    item.save(update_fields=['description', 'quantity', 'unit_price', 'total_price'])
+
+                subtotal = sum((item.total_price for item in invoice.items.all()), Decimal('0.00'))
+                tax_amount = (subtotal * tax_rate) / Decimal('100')
+                total_amount = subtotal + tax_amount - discount
+                if total_amount < 0:
+                    raise ValueError('Discount cannot be greater than the invoice subtotal plus tax.')
+
+                invoice.subtotal = subtotal
+                invoice.tax_amount = tax_amount
+                invoice.total_amount = total_amount
+                invoice.save(update_fields=[
+                    'issue_date', 'due_date', 'tax_rate', 'discount', 'notes',
+                    'subtotal', 'tax_amount', 'total_amount', 'updated_at'
+                ])
+
+                invoice.sync_payment_state()
+                invoice.save(update_fields=[
+                    'amount_paid', 'balance_due', 'status', 'payment_date', 'updated_at'
+                ])
+
+            messages.success(request, f'Invoice {invoice.invoice_number} updated successfully.')
+            return redirect('billing:detail', pk=invoice.pk)
+
+        except (ValueError, InvalidOperation) as e:
+            messages.error(request, str(e))
+        except Exception:
+            messages.error(request, 'We could not update this invoice. No changes were saved.')
+
+    invoice.refresh_from_db()
+    items = invoice.items.select_related('service', 'inventory_item').all()
+    return render(request, 'billing/invoice_edit.html', {
+        'invoice': invoice,
+        'items': items,
+        'is_doctor': is_doctor(request.user),
+    })
+
+
+@login_required
 @financial_only("billing.view")
 def invoice_detail(request, pk):
     """View invoice details with role-based financial protection."""

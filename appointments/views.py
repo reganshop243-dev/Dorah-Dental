@@ -695,7 +695,7 @@ def service_add(request):
     """Add a new service - PREVENT doctors from adding"""
     # ✅ PREVENT doctors from adding services
     if is_doctor(request.user):
-        messages.error(request, '❌ Doctors are not allowed to add services.')
+        messages.error(request, 'Doctors are not allowed to add services.')
         return redirect('appointments:services')
     
     if request.method == 'POST':
@@ -706,7 +706,7 @@ def service_add(request):
                 price=request.POST.get('price'),
                 duration_minutes=request.POST.get('duration_minutes', 30)
             )
-            messages.success(request, f'✅ Service "{service.name}" added successfully!')
+            messages.success(request, f'Service "{service.name}" added successfully!')
             return redirect('appointments:services')
         except Exception as e:
             messages.error(request, 'Sorry, we could not complete that request. Please try again. If the problem continues, contact the administrator.')
@@ -716,13 +716,12 @@ def service_add(request):
 @login_required
 def service_edit(request, pk):
     if not is_financial_staff(request.user):
-        from django.contrib import messages
         messages.error(request, 'Service pricing is restricted to administrators and accountants.')
         return redirect('appointments:services')
     """Edit a service - PREVENT doctors from editing"""
     # ✅ PREVENT doctors from editing services
     if is_doctor(request.user):
-        messages.error(request, '❌ Doctors are not allowed to edit services.')
+        messages.error(request, 'Doctors are not allowed to edit services.')
         return redirect('appointments:services')
     
     service = get_object_or_404(Service, pk=pk)
@@ -733,7 +732,7 @@ def service_edit(request, pk):
             service.price = request.POST.get('price')
             service.duration_minutes = request.POST.get('duration_minutes', 30)
             service.save()
-            messages.success(request, f'✅ Service "{service.name}" updated successfully!')
+            messages.success(request, f'Service "{service.name}" updated successfully!')
             return redirect('appointments:services')
         except Exception as e:
             messages.error(request, 'Sorry, we could not complete that request. Please try again. If the problem continues, contact the administrator.')
@@ -745,14 +744,14 @@ def service_delete(request, pk):
     """Delete a service - PREVENT doctors from deleting"""
     # ✅ PREVENT doctors from deleting services
     if is_doctor(request.user):
-        messages.error(request, '❌ Doctors are not allowed to delete services.')
+        messages.error(request, 'Doctors are not allowed to delete services.')
         return redirect('appointments:services')
     
     service = get_object_or_404(Service, pk=pk)
     if request.method == 'POST':
         service.is_active = False
         service.save()
-        messages.success(request, f'✅ Service "{service.name}" removed successfully!')
+        messages.success(request, f'Service "{service.name}" removed successfully!')
         return redirect('appointments:services')
     return render(request, 'appointments/service_delete.html', {'service': service})
 
