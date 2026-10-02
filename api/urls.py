@@ -2,7 +2,10 @@ from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from . import views
 from .views import simple_stats_direct
-
+from django.urls import path, include
+from rest_framework.routers import DefaultRouter
+from . import views
+from .views import simple_stats_direct
 # Create a router for ViewSets
 router = DefaultRouter()
 router.register(r'patients', views.PatientViewSet, basename='patient')
@@ -12,7 +15,7 @@ app_name = 'api'
 urlpatterns = [
     # ==================== API ROUTER ====================
     path('', include(router.urls)),
-    
+    path('mobile/', include('patient_portal.mobile_api')),
     # ==================== PUBLIC ENDPOINTS ====================
     path('services/', views.ServiceListView.as_view(), name='services'),
     path('doctors/', views.DoctorListView.as_view(), name='doctors'),
