@@ -142,6 +142,12 @@
                 <!-- Patient Portal -->
                 <div class="nav-divider"></div>
                 <div class="nav-label">Patient Portal</div>
+                {% if can_manage_patient_messages %}
+                    <a class="nav-link {% if 'portal/staff/messages' in request.path %}active{% endif %}" href="{% url 'patient_portal:staff_messages' %}">
+                        <i class="fas fa-comments"></i> <span>Patient Messages</span>
+                        {% if patient_message_unread_count %}<span class="badge rounded-pill bg-danger ms-auto">{{ patient_message_unread_count }}</span>{% endif %}
+                    </a>
+                {% endif %}
                 <a class="nav-link" href="{% url 'patient_portal:login' %}" target="_blank">
                     <i class="fas fa-user-circle"></i> <span>Patient Portal</span>
                 </a>

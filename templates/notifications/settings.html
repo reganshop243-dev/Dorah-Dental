@@ -34,6 +34,11 @@
                             <small class="text-muted">How many hours before the appointment to send reminder</small>
                         </div>
                         <div class="col-md-6 mb-3">
+                            <label for="reminder_days_before" class="form-label">Reminder Days Before (reference)</label>
+                            <input type="number" class="form-control" id="reminder_days_before" name="reminder_days_before" value="{{ settings.reminder_days_before }}" min="1">
+                            <small class="text-muted">The automatic scheduler uses the hours setting below as the exact trigger.</small>
+                        </div>
+                        <div class="col-md-6 mb-3">
                             <label for="channel" class="form-label">Notification Channel</label>
                             <select class="form-select" id="channel" name="channel">
                                 <option value="email" {% if settings.channel == 'email' %}selected{% endif %}>Email Only</option>

@@ -1,0 +1,6 @@
+{% extends 'base_portal.html' %}
+{% load humanize %}
+{% block title %}Offers{% endblock %}
+{% block content %}
+<div class="container py-4"><div class="mb-4"><h3>Clinic Offers & Promotions</h3><p class="text-muted">Current offers published by the clinic.</p></div><div class="row g-4">{% for offer in offers %}<div class="col-md-6 col-lg-4"><div class="card h-100 overflow-hidden">{% if offer.image %}<img src="{{ offer.image.url }}" class="card-img-top" style="height:190px;object-fit:cover" alt="{{ offer.title }}">{% endif %}<div class="card-body"><h5>{{ offer.title }}</h5><p class="text-muted">{{ offer.description|linebreaksbr }}</p>{% if offer.valid_until %}<small class="text-muted"><i class="fas fa-clock me-1"></i>Valid until {{ offer.valid_until|date:"M d, Y" }}</small>{% endif %}</div></div></div>{% empty %}<div class="col-12"><div class="card"><div class="card-body text-center py-5 text-muted"><i class="fas fa-bullhorn fa-3x mb-3"></i><h5>No active offers</h5><p>Check back later for clinic promotions.</p></div></div></div>{% endfor %}</div></div>
+{% endblock %}

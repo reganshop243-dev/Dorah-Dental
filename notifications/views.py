@@ -5,6 +5,7 @@ from django.core.mail import send_mail
 from django.conf import settings
 from .models import NotificationSetting, NotificationLog
 from .services import NotificationService
+from core.models import CompanySettings
 
 
 @login_required
@@ -22,7 +23,8 @@ def notification_settings(request):
     if request.method == 'POST':
         try:
             settings_obj.enable_reminders = request.POST.get('enable_reminders') == 'on'
-            settings_obj.reminder_hours_before = int(request.POST.get('reminder_hours_before', 24))
+            settings_obj.reminder_hours_before = max(1, int(request.POST.get('reminder_hours_before', 24)))
+            settings_obj.reminder_days_before = max(1, int(request.POST.get('reminder_days_before', 1)))
             settings_obj.channel = request.POST.get('channel', 'both')
             
             # Email settings
@@ -139,16 +141,17 @@ def send_test_email(request):
             
             # Prepare test data
             from datetime import datetime, timedelta
+            company = CompanySettings.get_settings()
             test_data = {
                 'patient_name': request.user.get_full_name() or 'Test User',
                 'appointment_date': (datetime.now() + timedelta(days=2)).strftime('%A, %B %d, %Y'),
                 'appointment_time': '10:00 AM',
                 'doctor_name': 'Dr. Test Doctor',
                 'service_name': 'Dental Checkup',
-                'clinic_name': getattr(settings, 'BUSINESS_SHORT_NAME', "Dora's Dental Gem"),
-                'clinic_phone': getattr(settings, 'BUSINESS_PHONE', '+256 700 000 000'),
-                'clinic_email': getattr(settings, 'BUSINESS_EMAIL', 'info@dorasdentalgem.com'),
-                'clinic_address': getattr(settings, 'BUSINESS_ADDRESS', 'Kampala, Uganda'),
+                'clinic_name': company.business_short_name or company.business_name,
+                'clinic_phone': company.phone or company.notification_phone or '',
+                'clinic_email': company.email or company.notification_email or '',
+                'clinic_address': company.address or '',
             }
             
             # Render the template
@@ -190,13 +193,14 @@ def send_test_sms(request):
             
             # Prepare test data
             from datetime import datetime, timedelta
+            company = CompanySettings.get_settings()
             test_data = {
                 'patient_name': request.user.get_full_name() or 'Test User',
                 'appointment_date': (datetime.now() + timedelta(days=2)).strftime('%A, %B %d, %Y'),
                 'appointment_time': '10:00 AM',
                 'doctor_name': 'Dr. Test Doctor',
-                'clinic_name': getattr(settings, 'BUSINESS_SHORT_NAME', "Dora's Dental Gem"),
-                'clinic_phone': getattr(settings, 'BUSINESS_PHONE', '+256 700 000 000'),
+                'clinic_name': company.business_short_name or company.business_name,
+                'clinic_phone': company.phone or company.notification_phone or '',
             }
             
             # Render SMS template
@@ -262,6 +266,7 @@ def send_upcoming_reminders(request):
     
     if request.method == 'POST':
         days = int(request.POST.get('days', 2))
+        preview_only = request.POST.get('preview_only') == 'on'
         
         from django.utils import timezone
         from datetime import timedelta
@@ -280,20 +285,24 @@ def send_upcoming_reminders(request):
         
         sent_count = 0
         error_count = 0
-        
-        for appointment in appointments:
-            try:
-                service = NotificationService()
-                service.send_appointment_reminder(appointment)
-                appointment.reminder_sent = True
-                appointment.save()
-                sent_count += 1
-            except Exception as e:
-                error_count += 1
-        
+
+        if not preview_only:
+            for appointment in appointments:
+                try:
+                    service = NotificationService()
+                    if service.send_appointment_reminder(appointment, force=True):
+                        sent_count += 1
+                    else:
+                        error_count += 1
+                except Exception:
+                    error_count += 1
+        else:
+            sent_count = appointments.count()
+
+        action = 'would be sent' if preview_only else 'sent'
         messages.success(
-            request, 
-            f'✅ Reminders sent: {sent_count} successful, {error_count} failed for {target_date}'
+            request,
+            f'Reminders {action}: {sent_count} successful, {error_count} failed for {target_date}'
         )
         return redirect('notifications:upcoming_reminders')
     
@@ -345,12 +354,8 @@ def send_single_reminder(request, pk):
             return JsonResponse({'success': False, 'error': 'Reminder already sent'})
         
         service = NotificationService()
-        service.send_appointment_reminder(appointment)
-        
-        appointment.reminder_sent = True
-        appointment.save()
-        
-        return JsonResponse({'success': True})
+        sent = service.send_appointment_reminder(appointment, force=True)
+        return JsonResponse({'success': bool(sent), 'error': None if sent else 'Reminder was not sent. Check notification settings, patient contact details, and reminder timing.'})
     except Appointment.DoesNotExist:
         return JsonResponse({'success': False, 'error': 'Appointment not found'})
     except Exception as e:

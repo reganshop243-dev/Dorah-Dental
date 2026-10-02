@@ -42,12 +42,38 @@ ALLOWED_HOSTS = [h.strip() for h in os.environ.get(
     'ALLOWED_HOSTS', 'localhost,127.0.0.1,dorah-dental-production.up.railway.app'
 ).split(',') if h.strip()]
 
-CSRF_TRUSTED_ORIGINS = [o.strip() for o in os.environ.get(
-    'CSRF_TRUSTED_ORIGINS', 'https://dorah-dental-production.up.railway.app'
-).split(',') if o.strip()]
+CSRF_TRUSTED_ORIGINS = [
+    o.strip()
+    for o in os.environ.get(
+        'CSRF_TRUSTED_ORIGINS',
+        'https://dorah-dental-production.up.railway.app'
+    ).split(',')
+    if o.strip()
+]
 
-# Keep the API usable by an explicitly configured frontend/mobile origin.
-CORS_ALLOWED_ORIGINS = [o.strip() for o in os.environ.get('CORS_ALLOWED_ORIGINS', '').split(',') if o.strip()]
+# Flutter Web development server ports are assigned dynamically.
+CSRF_TRUSTED_ORIGIN_REGEXES = [
+    r'^https://dorah-dental-production\\.up\\.railway\\.app$',
+    r'^http://localhost:\\d+$',
+    r'^http://127\\.0\\.0\\.1:\\d+$',
+]
+
+# CORS
+# Flutter Web uses a temporary localhost port (for example 59782), so do not
+# hard-code one localhost port. Explicit origins can still be supplied through
+# the Railway CORS_ALLOWED_ORIGINS environment variable.
+CORS_ALLOWED_ORIGINS = [
+    o.strip()
+    for o in os.environ.get('CORS_ALLOWED_ORIGINS', '').split(',')
+    if o.strip()
+]
+
+# Allow Flutter Web development servers regardless of their changing port.
+CORS_ALLOWED_ORIGIN_REGEXES = [
+    r'^http://localhost:\\d+$',
+    r'^http://127\\.0\\.0\\.1:\\d+$',
+]
+
 CORS_ALLOW_CREDENTIALS = True
 
 CORS_ALLOW_METHODS = [
@@ -189,6 +215,7 @@ TEMPLATES = [
                 'core.context_processors.access_flags',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
+                'patient_portal.context_processors.portal_context',
                 'core.context_processors.business_info',
             ],
         },

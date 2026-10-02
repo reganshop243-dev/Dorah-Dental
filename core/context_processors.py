@@ -115,4 +115,13 @@ def access_flags(request):
                 recipient=request.user, is_read=False
             ).count() if getattr(request, 'user', None) is not None and request.user.is_authenticated else 0
         ),
+        'patient_message_unread_count': (
+            __import__('patient_portal.models', fromlist=['PatientMessage']).PatientMessage.objects.filter(
+                sender_type='patient', read_at__isnull=True,
+                conversation__patient__is_active=True,
+            ).count() if getattr(request, 'user', None) is not None and request.user.is_authenticated and hasattr(request.user, 'profile') and request.user.profile.has_any_role(['admin', 'receptionist']) else 0
+        ),
+        'can_manage_patient_messages': (
+            request.user.profile.has_any_role(['admin', 'receptionist', 'doctor']) if getattr(request, 'user', None) is not None and request.user.is_authenticated and hasattr(request.user, 'profile') else False
+        ),
     }

@@ -1035,171 +1035,136 @@ def role_management(request):
 @login_required
 @otp_required
 def revenue_dashboard(request):
-    """Financial report showing revenue, payments, and reports with date filters.
-
-    This view deliberately keeps database work set-based.  In particular,
-    outstanding balances must never be calculated by querying every patient
-    one at a time because that becomes an expensive N+1 query as the clinic
-    grows.
-    """
+    """Financial report showing revenue, payments, and reports with date filters"""
     if not request.user.profile.has_permission('reports.revenue'):
-        messages.error(request, 'You do not have permission to view revenue reports.')
+        messages.error(request, '❌ You do not have permission to view revenue reports.')
         return redirect('core:dashboard')
     if (
         hasattr(request.user, 'profile')
         and request.user.profile.has_role('doctor')
         and not request.user.profile.has_any_role(['admin', 'accountant'])
     ):
-        messages.error(request, 'Doctors do not have access to financial reports.')
+        messages.error(request, '❌ Doctors do not have access to financial reports.')
         return redirect('core:doctor_dashboard')
-
     from billing.models import Invoice, Payment
+    from billing.balance_service import get_patient_outstanding_balance
+    from django.utils import timezone
     from datetime import date, timedelta, datetime
-    from django.db.models import (
-        Sum, Count, Q, F, Value, DecimalField, OuterRef, Subquery,
-        ExpressionWrapper,
-    )
-    from django.db.models.functions import Coalesce, TruncMonth
-
-    # ------------------------------------------------------------
-    # DATE FILTERS
-    # ------------------------------------------------------------
+    from django.db.models import Sum, Count, Q
+    
+    # Get date filters from request
     start_date_str = request.GET.get('start_date', '')
     end_date_str = request.GET.get('end_date', '')
     period = request.GET.get('period', 'this_month')
-
+    
     today = date.today()
     start_of_week = today - timedelta(days=today.weekday())
     start_of_month = today.replace(day=1)
     start_of_year = today.replace(month=1, day=1)
-
+    
+    # Determine date range based on period or custom dates
     if start_date_str and end_date_str:
         try:
             start_date = datetime.strptime(start_date_str, '%Y-%m-%d').date()
             end_date = datetime.strptime(end_date_str, '%Y-%m-%d').date()
-            if end_date < start_date:
-                start_date, end_date = end_date, start_date
             period = 'custom'
         except ValueError:
             start_date = start_of_month
             end_date = today
-            period = 'this_month'
     else:
         if period == 'today':
-            start_date, end_date = today, today
+            start_date = today
+            end_date = today
         elif period == 'this_week':
-            start_date, end_date = start_of_week, today
+            start_date = start_of_week
+            end_date = today
         elif period == 'this_month':
-            start_date, end_date = start_of_month, today
+            start_date = start_of_month
+            end_date = today
         elif period == 'this_year':
-            start_date, end_date = start_of_year, today
+            start_date = start_of_year
+            end_date = today
         elif period == 'all':
-            start_date, end_date = date(2000, 1, 1), today
+            start_date = date(2000, 1, 1)
+            end_date = today
         else:
-            start_date, end_date = start_of_month, today
+            start_date = start_of_month
+            end_date = today
             period = 'this_month'
-
+    
+    # Format dates for display
     start_date_display = start_date.strftime('%b %d, %Y')
     end_date_display = end_date.strftime('%b %d, %Y')
-
-    # ------------------------------------------------------------
-    # PERIOD / OVERALL FINANCIAL TOTALS
-    # ------------------------------------------------------------
+    
+    # ============================================================
+    # GET ALL INVOICES FOR THE PERIOD
+    # ============================================================
     period_invoices = Invoice.objects.filter(
         issue_date__gte=start_date,
-        issue_date__lte=end_date,
+        issue_date__lte=end_date
     )
-
-    period_totals = period_invoices.aggregate(
-        revenue=Coalesce(Sum('total_amount'), Value(0), output_field=DecimalField(max_digits=14, decimal_places=2)),
-        paid=Coalesce(Sum('amount_paid'), Value(0), output_field=DecimalField(max_digits=14, decimal_places=2)),
-        balance=Coalesce(Sum('balance_due'), Value(0), output_field=DecimalField(max_digits=14, decimal_places=2)),
+    
+    # Period Revenue
+    period_revenue = period_invoices.aggregate(Sum('total_amount'))['total_amount__sum'] or 0
+    period_paid = period_invoices.aggregate(Sum('amount_paid'))['amount_paid__sum'] or 0
+    period_balance = period_invoices.aggregate(Sum('balance_due'))['balance_due__sum'] or 0
+    
+    # Total revenue (all time)
+    total_revenue = Invoice.objects.aggregate(
+        Sum('total_amount')
+    )['total_amount__sum'] or 0
+    
+    # Total paid (all time)
+    total_paid = Invoice.objects.aggregate(
+        Sum('amount_paid')
+    )['amount_paid__sum'] or 0
+    
+    # Daily revenue (today)
+    daily_revenue = Invoice.objects.filter(
+        issue_date=today
+    ).aggregate(Sum('total_amount'))['total_amount__sum'] or 0
+    
+    # Weekly revenue
+    weekly_revenue = Invoice.objects.filter(
+        issue_date__gte=start_of_week,
+        issue_date__lte=today
+    ).aggregate(Sum('total_amount'))['total_amount__sum'] or 0
+    
+    # Monthly revenue
+    monthly_revenue = Invoice.objects.filter(
+        issue_date__gte=start_of_month,
+        issue_date__lte=today
+    ).aggregate(Sum('total_amount'))['total_amount__sum'] or 0
+    
+    # Yearly revenue
+    yearly_revenue = Invoice.objects.filter(
+        issue_date__gte=start_of_year,
+        issue_date__lte=today
+    ).aggregate(Sum('total_amount'))['total_amount__sum'] or 0
+    
+    # Outstanding balance (all time)
+    total_outstanding = sum(
+        get_patient_outstanding_balance(patient)
+        for patient in Patient.objects.filter(is_active=True)
     )
-
-    overall_totals = Invoice.objects.aggregate(
-        revenue=Coalesce(Sum('total_amount'), Value(0), output_field=DecimalField(max_digits=14, decimal_places=2)),
-        paid=Coalesce(Sum('amount_paid'), Value(0), output_field=DecimalField(max_digits=14, decimal_places=2)),
-    )
-
-    # One aggregate query instead of four separate queries for today/week/month/year.
-    time_totals = Invoice.objects.aggregate(
-        daily=Coalesce(
-            Sum('total_amount', filter=Q(issue_date=today)),
-            Value(0), output_field=DecimalField(max_digits=14, decimal_places=2)
-        ),
-        weekly=Coalesce(
-            Sum('total_amount', filter=Q(issue_date__gte=start_of_week, issue_date__lte=today)),
-            Value(0), output_field=DecimalField(max_digits=14, decimal_places=2)
-        ),
-        monthly=Coalesce(
-            Sum('total_amount', filter=Q(issue_date__gte=start_of_month, issue_date__lte=today)),
-            Value(0), output_field=DecimalField(max_digits=14, decimal_places=2)
-        ),
-        yearly=Coalesce(
-            Sum('total_amount', filter=Q(issue_date__gte=start_of_year, issue_date__lte=today)),
-            Value(0), output_field=DecimalField(max_digits=14, decimal_places=2)
-        ),
-    )
-
-    # ------------------------------------------------------------
-    # OUTSTANDING BALANCE — SET BASED, NO N+1 LOOP
-    # ------------------------------------------------------------
-    # Register invoices contain cumulative balance snapshots.  For each
-    # patient we therefore use only the latest imported register snapshot,
-    # plus the sum of that patient's normal (non-register) invoices.
-    register_q = Q(
-        invoices__invoice_number__startswith='REG-'
-    ) | Q(invoices__notes__icontains='Imported from corrected register:')
-
-    latest_register_balance = Invoice.objects.filter(
-        patient=OuterRef('pk')
-    ).filter(
-        Q(invoice_number__startswith='REG-') |
-        Q(notes__icontains='Imported from corrected register:')
-    ).order_by('-issue_date', '-id').values('balance_due')[:1]
-
-    balance_field = DecimalField(max_digits=14, decimal_places=2)
-    active_patients = Patient.objects.filter(is_active=True).annotate(
-        normal_balance=Coalesce(
-            Sum('invoices__balance_due', filter=~register_q),
-            Value(0), output_field=balance_field
-        ),
-        register_balance=Coalesce(
-            Subquery(latest_register_balance, output_field=balance_field),
-            Value(0), output_field=balance_field
-        ),
-    ).annotate(
-        patient_balance=ExpressionWrapper(
-            F('normal_balance') + F('register_balance'),
-            output_field=balance_field,
-        )
-    )
-
-    outstanding_result = active_patients.aggregate(
-        total=Coalesce(
-            Sum('patient_balance'),
-            Value(0), output_field=balance_field
-        )
-    )
-    total_outstanding = outstanding_result['total'] or 0
-
-    # ------------------------------------------------------------
+    
+    # ============================================================
     # INVOICE STATUS BREAKDOWN
-    # ------------------------------------------------------------
-    status_totals = period_invoices.aggregate(
-        total=Count('id'),
-        paid=Count('id', filter=Q(status='paid')),
-        partially_paid=Count('id', filter=Q(status='partially_paid')),
-        pending=Count('id', filter=Q(status__in=['draft', 'sent'])),
-        overdue=Count('id', filter=Q(status='overdue')),
-    )
-
-    # ------------------------------------------------------------
+    # ============================================================
+    total_invoices = period_invoices.count()
+    paid_invoices = period_invoices.filter(status='paid').count()
+    partially_paid_invoices = period_invoices.filter(status='partially_paid').count()
+    pending_invoices = period_invoices.filter(
+        status__in=['draft', 'sent']
+    ).count()
+    overdue_invoices = period_invoices.filter(status='overdue').count()
+    
+    # ============================================================
     # TOP PATIENTS
-    # ------------------------------------------------------------
+    # ============================================================
     top_patients = period_invoices.values(
-        'patient__id',
-        'patient__first_name',
+        'patient__id', 
+        'patient__first_name', 
         'patient__last_name'
     ).annotate(
         total_spent=Sum('total_amount'),
@@ -1207,75 +1172,61 @@ def revenue_dashboard(request):
         total_balance=Sum('balance_due'),
         visit_count=Count('id')
     ).order_by('-total_spent')[:10]
-
-    # ------------------------------------------------------------
+    
+    # ============================================================
     # RECENT PAYMENTS
-    # ------------------------------------------------------------
+    # ============================================================
     recent_payments = Payment.objects.filter(
         payment_date__gte=start_date,
         payment_date__lte=end_date
     ).select_related('invoice', 'invoice__patient').order_by('-payment_date')[:10]
-
-    # ------------------------------------------------------------
-    # MONTHLY REVENUE — ONE GROUPED QUERY
-    # ------------------------------------------------------------
-    # Build the same 12 calendar months as the old dashboard, but fetch their
-    # invoice totals in one database query instead of 24 aggregate queries.
-    month_starts = []
-    cursor = today.replace(day=1)
-    for _ in range(11):
-        month_starts.append(cursor)
-        cursor = (cursor - timedelta(days=1)).replace(day=1)
-    month_starts.append(cursor)
-    month_starts = sorted(month_starts)
-
-    chart_start = month_starts[0]
-    monthly_rows = Invoice.objects.filter(
-        issue_date__gte=chart_start,
-        issue_date__lte=today,
-    ).annotate(
-        month=TruncMonth('issue_date')
-    ).values('month').annotate(
-        revenue=Coalesce(Sum('total_amount'), Value(0), output_field=balance_field),
-        paid=Coalesce(Sum('amount_paid'), Value(0), output_field=balance_field),
-    ).order_by('month')
-
-    monthly_lookup = {
-        row['month'].date() if hasattr(row['month'], 'date') else row['month']: row
-        for row in monthly_rows
-    }
-
+    
+    # ============================================================
+    # MONTHLY REVENUE
+    # ============================================================
     monthly_data = []
-    for month_start in month_starts:
-        row = monthly_lookup.get(month_start, {})
+    for i in range(11, -1, -1):
+        month_date = today.replace(day=1) - timedelta(days=30*i)
+        month_start = month_date.replace(day=1)
+        if i == 0:
+            month_end = today
+        else:
+            next_month = month_date.replace(day=28) + timedelta(days=4)
+            month_end = next_month - timedelta(days=next_month.day)
+        
+        month_invoices = Invoice.objects.filter(
+            issue_date__gte=month_start,
+            issue_date__lte=month_end
+        )
+        
+        revenue = month_invoices.aggregate(Sum('total_amount'))['total_amount__sum'] or 0
+        paid = month_invoices.aggregate(Sum('amount_paid'))['amount_paid__sum'] or 0
+        
         monthly_data.append({
-            'month': month_start.strftime('%B'),
-            'year': month_start.year,
-            'revenue': row.get('revenue', 0),
-            'paid': row.get('paid', 0),
+            'month': month_date.strftime('%B'),
+            'year': month_date.year,
+            'revenue': revenue,
+            'paid': paid,
         })
-
-    max_monthly_revenue = max(
-        [d['revenue'] for d in monthly_data],
-        default=1,
-    )
-
+    
+    max_monthly_revenue = max([d['revenue'] for d in monthly_data]) if monthly_data else 1
+    
     context = {
-        'total_revenue': overall_totals['revenue'],
-        'total_paid': overall_totals['paid'],
-        'daily_revenue': time_totals['daily'],
-        'weekly_revenue': time_totals['weekly'],
-        'monthly_revenue': time_totals['monthly'],
-        'yearly_revenue': time_totals['yearly'],
+        'total_revenue': total_revenue,
+        'total_paid': total_paid,
+        'daily_revenue': daily_revenue,
+        'weekly_revenue': weekly_revenue,
+        'monthly_revenue': monthly_revenue,
+        'yearly_revenue': yearly_revenue,
         'total_outstanding': total_outstanding,
-        'period_revenue': period_totals['revenue'],
-        'period_paid': period_totals['paid'],
-        'period_balance': period_totals['balance'],
-        'total_invoices': status_totals['total'],
-        'paid_invoices': status_totals['paid'],
-        'partially_paid_invoices': status_totals['partially_paid'],
-        'pending_invoices': status_totals['pending'],
-        'overdue_invoices': status_totals['overdue'],
+        'period_revenue': period_revenue,
+        'period_paid': period_paid,
+        'period_balance': period_balance,
+        'total_invoices': total_invoices,
+        'paid_invoices': paid_invoices,
+        'partially_paid_invoices': partially_paid_invoices,
+        'pending_invoices': pending_invoices,
+        'overdue_invoices': overdue_invoices,
         'recent_payments': recent_payments,
         'top_patients': top_patients,
         'monthly_data': monthly_data,
@@ -1289,7 +1240,7 @@ def revenue_dashboard(request):
         'start_date_str': start_date.strftime('%Y-%m-%d'),
         'end_date_str': end_date.strftime('%Y-%m-%d'),
     }
-
+    
     return render(request, 'core/revenue_dashboard.html', context)
 
 

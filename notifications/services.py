@@ -8,6 +8,7 @@ from django.conf import settings
 from django.utils import timezone
 from datetime import datetime, timedelta
 from appointments.models import Appointment
+from core.models import CompanySettings
 from .models import NotificationSetting, NotificationLog
 
 logger = logging.getLogger(__name__)
@@ -53,59 +54,91 @@ class NotificationService:
         
         return phone
     
-    def send_appointment_reminder(self, appointment):
-        """Send appointment reminder via SMS and/or Email"""
+    def _clinic_info(self):
+        """Use the editable Company Settings values for all patient messages."""
+        try:
+            company = CompanySettings.get_settings()
+            return {
+                'clinic_name': company.business_short_name or company.business_name,
+                'clinic_phone': company.phone or company.notification_phone or '',
+                'clinic_email': company.email or company.notification_email or '',
+                'clinic_address': company.address or '',
+            }
+        except Exception:
+            return {
+                'clinic_name': getattr(settings, 'BUSINESS_SHORT_NAME', "Dora's Dental Gem"),
+                'clinic_phone': getattr(settings, 'BUSINESS_PHONE', ''),
+                'clinic_email': getattr(settings, 'BUSINESS_EMAIL', ''),
+                'clinic_address': getattr(settings, 'BUSINESS_ADDRESS', ''),
+            }
+
+    def send_appointment_reminder(self, appointment, force=False):
+        """Send configured reminder channels once the configured lead time is reached."""
         try:
             settings_obj = self.settings
-            if not settings_obj.enable_reminders:
-                return
-            
-            if not self.should_send_reminder(appointment):
-                return
-            
+            if not settings_obj.enable_reminders or not appointment.send_reminder:
+                return False
+
+            if not force and not self.should_send_reminder(appointment):
+                return False
+
             data = self.prepare_data(appointment)
-            
-            if settings_obj.channel in ['email', 'both']:
-                self.send_email_reminder(appointment, data)
-            
-            if settings_obj.channel in ['sms', 'both']:
-                self.send_sms_reminder(appointment, data)
-            
+            requested_channels = []
+            if settings_obj.channel in ['email', 'both'] and appointment.patient.email:
+                requested_channels.append('email')
+            if settings_obj.channel in ['sms', 'both'] and appointment.patient.phone:
+                requested_channels.append('sms')
+
+            success = False
+            for channel in requested_channels:
+                if NotificationLog.objects.filter(appointment=appointment, channel=channel, status='sent').exists():
+                    continue
+                if channel == 'email':
+                    success = self.send_email_reminder(appointment, data) or success
+                elif channel == 'sms':
+                    success = self.send_sms_reminder(appointment, data) or success
+
+            sent_channels = set(NotificationLog.objects.filter(
+                appointment=appointment, status='sent'
+            ).values_list('channel', flat=True))
+            all_requested_sent = bool(requested_channels) and all(channel in sent_channels for channel in requested_channels)
+            if all_requested_sent and not appointment.reminder_sent:
+                appointment.reminder_sent = True
+                appointment.save(update_fields=['reminder_sent', 'updated_at'])
+
+            return success
         except Exception as e:
-            logger.error(f"Error sending reminder: {e}")
-    
-    def should_send_reminder(self, appointment):
-        """Check if reminder should be sent"""
-        if NotificationLog.objects.filter(
-            appointment=appointment,
-            status='sent'
-        ).exists():
+            logger.exception("Error sending reminder for appointment %s: %s", appointment.pk, e)
             return False
-        
+
+    def should_send_reminder(self, appointment):
+        """Return true when the appointment has reached the configured reminder time."""
+        if appointment.reminder_sent:
+            return False
+
         appointment_datetime = datetime.combine(
             appointment.appointment_date,
             appointment.appointment_time
         )
-        now = timezone.now()
-        hours_before = self.settings.reminder_hours_before
-        reminder_time = appointment_datetime - timedelta(hours=hours_before)
-        
-        return now >= reminder_time
-    
+        appointment_datetime = timezone.make_aware(
+            appointment_datetime,
+            timezone.get_current_timezone()
+        )
+        reminder_time = appointment_datetime - timedelta(hours=self.settings.reminder_hours_before)
+        return timezone.now() >= reminder_time
+
     def prepare_data(self, appointment):
-        """Prepare data for templates"""
+        """Prepare template data using current Company Settings."""
+        clinic = self._clinic_info()
         return {
             'patient_name': appointment.patient.full_name,
             'appointment_date': appointment.appointment_date.strftime('%A, %B %d, %Y'),
             'appointment_time': appointment.appointment_time.strftime('%I:%M %p'),
             'doctor_name': appointment.doctor.name,
             'service_name': appointment.service.name,
-            'clinic_name': getattr(settings, 'BUSINESS_SHORT_NAME', "Dora's Dental Gem"),
-            'clinic_phone': getattr(settings, 'BUSINESS_PHONE', '+256 700 000 000'),
-            'clinic_email': getattr(settings, 'BUSINESS_EMAIL', 'info@dorasdentalgem.com'),
-            'clinic_address': getattr(settings, 'BUSINESS_ADDRESS', 'Kampala, Uganda'),
+            **clinic,
         }
-    
+
     def send_email_reminder(self, appointment, data):
         """Send email reminder"""
         try:
@@ -134,6 +167,7 @@ class NotificationService:
             )
             
             logger.info(f"Email reminder sent to {appointment.patient.email}")
+            return True
             
         except Exception as e:
             logger.error(f"Error sending email reminder: {e}")

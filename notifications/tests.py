@@ -1,5 +1,5 @@
 ﻿from django.test import TestCase
-from .models import NotificationSetting
+from notifications.models import NotificationSetting
 
 class NotificationModelTest(TestCase):
     def test_settings_creation(self):

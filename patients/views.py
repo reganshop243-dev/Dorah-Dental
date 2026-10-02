@@ -455,12 +455,10 @@ def patient_detail(request, pk):
     # Calculate total amount
     total_amount = invoices.aggregate(Sum('total_amount'))['total_amount__sum'] or 0
     
-    # âœ… Get portal PIN if exists
-    try:
-        portal_access = patient.portal_access
-        portal_pin = None
-    except PatientPortalAccess.DoesNotExist:
-        portal_pin = None
+    # Portal PINs are hashed and must never be displayed back to staff.
+    portal_access_enabled = PatientPortalAccess.objects.filter(
+        patient=patient, is_active=True
+    ).exists()
     
     # âœ… Get new patient PIN from session (if just created)
     new_patient_pin = request.session.pop('new_patient_pin', None)
@@ -478,7 +476,7 @@ def patient_detail(request, pk):
         'is_doctor': user_profile.has_role('doctor'),
         'can_edit_patient': user_profile.has_permission('patients.edit'),
         'can_invoice_patient': user_profile.has_permission('billing.view'),
-        'portal_pin': portal_pin,  # âœ… Pass portal PIN
+        'portal_access_enabled': portal_access_enabled,
         'new_patient_pin': new_patient_pin,  # âœ… Pass new patient PIN
         'new_patient_id': new_patient_id,  # âœ… Pass new patient ID
         'show_contact': show_contact,
@@ -672,25 +670,53 @@ def generate_portal_pin(request, pk):
     patient = get_object_or_404(Patient, pk=pk)
     
     portal_pin = f"{random.randint(100000, 999999)}"
-    
+    hashed_pin = hashlib.sha256(portal_pin.encode('utf-8')).hexdigest()
+
     portal_access, created = PatientPortalAccess.objects.get_or_create(
         patient=patient,
         defaults={
-            'portal_pin': portal_pin,
+            'portal_pin': hashed_pin,
             'is_active': True
         }
     )
-    
+
     if not created:
-        portal_access.portal_pin = portal_pin
+        portal_access.portal_pin = hashed_pin
         portal_access.is_active = True
         portal_access.login_attempts = 0
         portal_access.locked_until = None
         portal_access.save()
-        messages.success(request, f'âœ… Portal PIN updated for {patient.full_name}. New PIN: {portal_pin}')
+
+    # Send the new PIN automatically by SMS when a patient phone exists.
+    sms_sent = False
+    sms_error = ''
+    if patient.phone:
+        try:
+            from notifications.yoola_sms import YoolaSMS
+            from core.models import CompanySettings
+            company = CompanySettings.get_settings()
+            clinic_name = company.business_short_name or company.business_name
+            clinic_phone = company.phone or ''
+            message = (
+                f"{clinic_name}: Your patient portal PIN is {portal_pin}. "
+                f"Login using your Patient ID ({patient.pk}) or phone number."
+            )
+            if clinic_phone:
+                message += f" Clinic: {clinic_phone}."
+            result = YoolaSMS().send_sms(patient.phone, message)
+            sms_sent = bool(result.get('success'))
+            if not sms_sent:
+                sms_error = result.get('error', 'SMS provider rejected the request.')
+        except Exception as exc:
+            sms_error = str(exc)
+
+    if sms_sent:
+        messages.success(request, f'Portal PIN generated for {patient.full_name} and sent to {patient.phone}.')
+    elif patient.phone:
+        messages.warning(request, f'Portal PIN generated for {patient.full_name}, but the SMS could not be sent. {sms_error}')
     else:
-        messages.success(request, f'âœ… Portal access created for {patient.full_name}. PIN: {portal_pin}')
-    
+        messages.warning(request, f'Portal PIN generated for {patient.full_name}, but this patient has no phone number.')
+
     return redirect('patients:detail', pk=pk)
 
 

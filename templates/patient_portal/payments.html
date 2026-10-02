@@ -1,0 +1,10 @@
+{% extends 'base_portal.html' %}
+{% load humanize %}
+{% block title %}My Payments{% endblock %}
+{% block content %}
+<div class="container py-4">
+  <div class="d-flex justify-content-between align-items-center mb-3"><div><h3 class="mb-1">My Payments</h3><p class="text-muted mb-0">Only payments belonging to your patient account are shown.</p></div><a href="{% url 'patient_portal:invoices' %}" class="btn btn-outline-primary">Invoices</a></div>
+  <div class="row g-3 mb-3"><div class="col-md-6"><div class="card"><div class="card-body"><small class="text-muted">Total paid</small><div class="fs-4 fw-bold text-success">UGX {{ total_paid|floatformat:0|intcomma }}</div></div></div></div><div class="col-md-6"><div class="card"><div class="card-body"><small class="text-muted">Outstanding balance</small><div class="fs-4 fw-bold text-danger">UGX {{ total_balance|floatformat:0|intcomma }}</div></div></div></div></div>
+  <div class="card"><div class="card-body p-0">{% if payments %}<div class="table-responsive"><table class="table table-hover mb-0"><thead><tr><th>Date</th><th>Invoice</th><th>Method</th><th>Reference</th><th class="text-end">Amount</th></tr></thead><tbody>{% for payment in payments %}<tr><td>{{ payment.payment_date|date:"M d, Y" }}</td><td>{{ payment.invoice.invoice_number }}</td><td>{{ payment.get_payment_method_display }}</td><td>{{ payment.reference|default:payment.transaction_id|default:"—" }}</td><td class="text-end fw-bold">UGX {{ payment.amount|floatformat:0|intcomma }}</td></tr>{% endfor %}</tbody></table></div>{% else %}<div class="text-center py-5 text-muted">No completed payments found.</div>{% endif %}</div></div>
+</div>
+{% endblock %}

@@ -295,17 +295,27 @@ def appointment_add(request):
             except Exception as exc:
                 import logging
                 logging.getLogger(__name__).exception('Appointment assignment notification failed: %s', exc)
+            try:
+                from patient_portal.services import notify_appointment_event
+                notify_appointment_event(appointment, 'created')
+            except Exception:
+                pass
             
             # Send confirmation SMS if send_reminder is checked
             if send_reminder:
                 try:
                     from notifications.yoola_sms import YoolaSMS
                     from notifications.models import NotificationSetting
+                    from core.models import CompanySettings
                     
                     # Convert date and time strings to datetime objects for formatting
                     appointment_date_obj = datetime.strptime(appointment_date, '%Y-%m-%d').date()
                     appointment_time_obj = datetime.strptime(appointment_time, '%H:%M').time()
                     
+                    company = CompanySettings.get_settings()
+                    clinic_name = company.business_short_name or company.business_name
+                    clinic_phone = company.phone or company.notification_phone or ''
+
                     # Prepare data for the message
                     data = {
                         'patient_name': patient.full_name,
@@ -313,8 +323,8 @@ def appointment_add(request):
                         'appointment_time': appointment_time_obj.strftime('%I:%M %p'),
                         'doctor_name': doctor.name,
                         'service_name': service.name,
-                        'clinic_phone': getattr(settings, 'BUSINESS_PHONE', '+256 700 000 000'),
-                        'clinic_name': getattr(settings, 'BUSINESS_SHORT_NAME', "Dora's Dental Gem"),
+                        'clinic_phone': clinic_phone,
+                        'clinic_name': clinic_name,
                     }
                     
                     # Get notification settings
@@ -325,7 +335,7 @@ def appointment_add(request):
                         yoola = YoolaSMS()
                         
                         # Create the message
-                        message = f"Dora's Dental Gem: Appointment confirmed for {data['patient_name']} on {data['appointment_date']} at {data['appointment_time']} with Dr. {data['doctor_name']}. Call {data['clinic_phone']} to reschedule."
+                        message = f"{data['clinic_name']}: Appointment confirmed for {data['patient_name']} on {data['appointment_date']} at {data['appointment_time']} with Dr. {data['doctor_name']}." + (f" Call {data['clinic_phone']} to reschedule." if data['clinic_phone'] else '')
                         
                         # Send the SMS
                         result = yoola.send_sms(notification_phone, message)
@@ -449,6 +459,11 @@ def appointment_start(request, pk):
     if request.method == 'POST' and appointment.status in ('scheduled', 'checked_in'):
         appointment.status = 'in_progress'
         appointment.save(update_fields=['status', 'updated_at'])
+        try:
+            from patient_portal.services import notify_appointment_event
+            notify_appointment_event(appointment, 'status')
+        except Exception:
+            pass
         messages.success(request, 'Appointment started. Status is now In Progress.')
     return redirect('appointments:detail', pk=pk)
 
@@ -510,6 +525,11 @@ def appointment_finish(request, pk):
         except Exception as exc:
             import logging
             logging.getLogger(__name__).exception('Appointment completion notification failed: %s', exc)
+        try:
+            from patient_portal.services import notify_appointment_event
+            notify_appointment_event(appointment, 'status')
+        except Exception:
+            pass
         messages.success(request, 'Appointment finished and clinical findings saved.')
         return redirect('appointments:detail', pk=pk)
     return render(request, 'appointments/appointment_finish.html', {
@@ -536,6 +556,9 @@ def appointment_edit(request, pk):
     if request.method == 'POST':
         try:
             original_doctor_id = appointment.doctor_id
+            original_date = appointment.appointment_date
+            original_time = appointment.appointment_time
+            original_status = appointment.status
             appointment.patient_id = request.POST.get('patient')
             appointment.doctor_id = request.POST.get('doctor')
             appointment.service_id = request.POST.get('service')
@@ -566,6 +589,18 @@ def appointment_edit(request, pk):
                 appointment.reminder_sent = False
             
             appointment.save()
+            try:
+                from patient_portal.services import notify_appointment_event
+                event = 'cancelled' if appointment.status == 'cancelled' and original_status != 'cancelled' else 'updated' if (
+                    appointment.doctor_id != original_doctor_id or
+                    appointment.appointment_date != original_date or
+                    appointment.appointment_time != original_time or
+                    appointment.status != original_status
+                ) else None
+                if event:
+                    notify_appointment_event(appointment, event)
+            except Exception:
+                pass
             if appointment.doctor_id != original_doctor_id:
                 try:
                     from notifications.services import notify_appointment_assigned
@@ -621,6 +656,11 @@ def appointment_status_update(request, pk):
             previous_status = appointment.status
             appointment.status = new_status
             appointment.save(update_fields=['status', 'updated_at'])
+            try:
+                from patient_portal.services import notify_appointment_event
+                notify_appointment_event(appointment, 'cancelled' if new_status == 'cancelled' else 'status')
+            except Exception:
+                pass
             if new_status == 'completed' and previous_status != 'completed':
                 try:
                     from notifications.services import notify_appointment_completed
@@ -645,6 +685,11 @@ def appointment_delete(request, pk):
             return redirect('appointments:list')
     
     if request.method == 'POST':
+        try:
+            from patient_portal.services import notify_appointment_event
+            notify_appointment_event(appointment, 'cancelled')
+        except Exception:
+            pass
         appointment.delete()
         messages.success(request, '✅ Appointment deleted successfully!')
         return redirect('appointments:list')

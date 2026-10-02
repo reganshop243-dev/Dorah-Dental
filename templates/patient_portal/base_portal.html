@@ -1,136 +1,45 @@
+{% load static %}
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Patient Portal - {% block title %}{% endblock %}</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    
-    <style>
-        body {
-            font-family: 'Inter', sans-serif;
-            background: #f5f7fa;
-        }
-        
-        .portal-header {
-            background: white;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
-            padding: 10px 0;
-        }
-        
-        .portal-header .brand {
-            font-weight: 700;
-            font-size: 1.2rem;
-            color: #2d3436;
-        }
-        
-        .portal-header .brand span {
-            color: #667eea;
-        }
-        
-        .btn-logout {
-            color: #e74c3c;
-            text-decoration: none;
-        }
-        
-        .btn-logout:hover {
-            color: #c0392b;
-        }
-        
-        .min-vh-100 {
-            min-height: 100vh;
-        }
-        
-        .card {
-            border-radius: 16px;
-            border: none;
-            box-shadow: 0 2px 15px rgba(0,0,0,0.05);
-            transition: all 0.3s;
-        }
-        
-        .card:hover {
-            box-shadow: 0 5px 25px rgba(0,0,0,0.08);
-        }
-        
-        .btn-primary {
-            background: linear-gradient(135deg, #667eea, #764ba2);
-            border: none;
-            border-radius: 10px;
-            font-weight: 500;
-            padding: 10px 25px;
-        }
-        
-        .btn-primary:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 20px rgba(102, 126, 234, 0.4);
-        }
-        
-        .toast-container {
-            position: fixed;
-            top: 20px;
-            right: 20px;
-            z-index: 1050;
-        }
-        
-        .list-group-item {
-            border-radius: 10px !important;
-            margin-bottom: 5px;
-        }
-    </style>
-    {% block extra_css %}{% endblock %}
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#1a5276">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<link rel="manifest" href="{% static 'pwa/manifest.webmanifest' %}">
+<link rel="apple-touch-icon" href="{% static 'pwa/apple-touch-icon.png' %}">
+<link rel="icon" type="image/png" href="{% static 'pwa/favicon-64.png' %}">
+<title>{{ business_short_name|default:"Dora's Dental" }} — Patient Portal {% block title %}{% endblock %}</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<style>
+:root{--p:{{ business_primary_color|default:'#1a5276' }};--s:{{ business_secondary_color|default:'#2980b9' }};--a:{{ business_accent_color|default:'#2ecc71' }};--d:{{ business_dark_color|default:'#0a1a2e' }};--bg:#f4f7fb;--text:#1f2937;--muted:#6b7280;--line:#e7edf3}
+*{box-sizing:border-box}body{margin:0;font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:var(--bg);color:var(--text)}
+.portal-nav{background:linear-gradient(135deg,var(--d),var(--p));box-shadow:0 8px 28px rgba(10,26,46,.18);min-height:72px}.portal-brand{display:flex;align-items:center;gap:12px;color:#fff;text-decoration:none}.portal-brand img{width:46px;height:46px;object-fit:contain;border-radius:12px;background:#fff;padding:4px;box-shadow:0 4px 12px rgba(0,0,0,.15)}.portal-brand .brand-title{font-weight:800;line-height:1.05}.portal-brand small{display:block;opacity:.72;font-size:.68rem;letter-spacing:.08em;text-transform:uppercase;margin-top:3px}.portal-nav .nav-action{color:rgba(255,255,255,.9);text-decoration:none;border-radius:10px;padding:8px 10px}.portal-nav .nav-action:hover{background:rgba(255,255,255,.1);color:#fff}.patient-name{color:#fff;font-size:.9rem;font-weight:600}.portal-main{min-height:calc(100vh - 125px);padding:26px 0 50px}.card{border:1px solid rgba(20,40,60,.05);border-radius:18px;box-shadow:0 8px 30px rgba(20,40,60,.07);overflow:hidden}.card-header{background:#fff;border-bottom:1px solid var(--line);font-weight:700;padding:15px 18px}.portal-hero{position:relative;overflow:hidden;background:linear-gradient(135deg,var(--d) 0%,var(--p) 62%,var(--s) 100%);border:0;color:#fff}.portal-hero:after{content:"";position:absolute;width:260px;height:260px;border-radius:50%;right:-100px;top:-120px;background:rgba(255,255,255,.08)}.hero-logo{width:76px;height:76px;object-fit:contain;border-radius:20px;background:#fff;padding:7px;box-shadow:0 12px 30px rgba(0,0,0,.18)}.stat-card{height:100%;padding:19px}.stat-icon{width:44px;height:44px;border-radius:13px;display:grid;place-items:center;background:#eef5fb;color:var(--p);font-size:18px}.stat-value{font-size:1.35rem;font-weight:800;line-height:1.2}.stat-label{font-size:.76rem;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.04em}.section-link{font-size:.82rem;text-decoration:none;font-weight:700;color:var(--p)}.quick-link{height:100%;display:block;text-decoration:none;color:inherit}.quick-link .card{height:100%;transition:.18s ease}.quick-link:hover .card{transform:translateY(-3px);box-shadow:0 14px 34px rgba(20,40,60,.12)}.quick-icon{width:48px;height:48px;border-radius:15px;display:grid;place-items:center;background:#f0f6fb;color:var(--p);font-size:20px;margin:auto}.notification-item{display:block;text-decoration:none;color:inherit;padding:13px 0;border-bottom:1px solid var(--line)}.notification-item:last-child{border-bottom:0}.notification-item.unread{background:#f3f8fd;border-radius:12px;padding:13px}.message-bubble{max-width:min(82%,680px);padding:12px 15px;border-radius:17px;line-height:1.5}.patient-message{background:var(--p);color:#fff;border-bottom-right-radius:5px}.staff-message{background:#fff;border:1px solid var(--line);border-bottom-left-radius:5px}.message-composer{border-top:1px solid var(--line);background:#fafcfe}.empty-state{padding:42px 20px;text-align:center;color:var(--muted)}.empty-state .empty-icon{width:68px;height:68px;margin:0 auto 14px;border-radius:20px;display:grid;place-items:center;background:#edf4fa;color:var(--p);font-size:25px}.badge-status{padding:.5em .75em;border-radius:999px;font-size:.72rem;font-weight:700}.portal-footer{color:#7a8794;font-size:.82rem;padding:20px 0 30px}.toast-container{position:fixed;top:86px;right:18px;z-index:1080;max-width:390px}.form-control,.form-select{border-radius:11px;border-color:#dce5ed;padding:.72rem .85rem}.form-control:focus,.form-select:focus{border-color:var(--s);box-shadow:0 0 0 .2rem rgba(41,128,185,.12)}.btn{border-radius:10px;font-weight:600}.btn-primary{background:var(--p);border-color:var(--p)}.btn-primary:hover{background:var(--s);border-color:var(--s)}
+@media(max-width:767px){.portal-main{padding:16px 0 35px}.patient-name{display:none}.hero-logo{width:62px;height:62px}.portal-brand img{width:42px;height:42px}.message-bubble{max-width:92%}}
+</style>
+{% block extra_css %}{% endblock %}
 </head>
 <body>
-    {% if request.session.patient_portal_logged_in %}
-        <!-- Portal Header -->
-        <header class="portal-header">
-            <div class="container d-flex justify-content-between align-items-center">
-                <div class="brand">
-                    <i class="fas fa-tooth text-primary me-2"></i>
-                    Dora's <span>Dental</span>
-                </div>
-                <div>
-                    <span class="me-3 text-muted">
-                        <i class="fas fa-user me-1"></i>
-                        {{ patient.full_name }}
-                    </span>
-                    <a href="{% url 'patient_portal:logout' %}" class="btn-logout">
-                        <i class="fas fa-sign-out-alt"></i> Logout
-                    </a>
-                </div>
-            </div>
-        </header>
-    {% endif %}
-    
-    <!-- Messages -->
-    {% if messages %}
-        <div class="toast-container">
-            {% for message in messages %}
-                <div class="toast show" role="alert">
-                    <div class="toast-header {% if message.tags == 'success' %}bg-success text-white{% elif message.tags == 'error' %}bg-danger text-white{% else %}bg-warning{% endif %}">
-                        <strong class="me-auto">
-                            {% if message.tags == 'success' %}
-                                <i class="fas fa-check-circle"></i> Success
-                            {% elif message.tags == 'error' %}
-                                <i class="fas fa-exclamation-circle"></i> Error
-                            {% else %}
-                                <i class="fas fa-info-circle"></i> Info
-                            {% endif %}
-                        </strong>
-                        <button type="button" class="btn-close" data-bs-dismiss="toast"></button>
-                    </div>
-                    <div class="toast-body">
-                        {{ message }}
-                    </div>
-                </div>
-            {% endfor %}
-        </div>
-    {% endif %}
-    
-    {% block content %}{% endblock %}
-    
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    {% block extra_js %}{% endblock %}
-</body>
-</html>
+{% if request.session.patient_portal_logged_in %}
+<nav class="navbar portal-nav navbar-expand-lg">
+<div class="container">
+<a class="portal-brand" href="{% url 'patient_portal:dashboard' %}">
+{% if company and company.logo %}<img src="{{ company.logo.url }}" alt="{{ business_short_name|default:'Dora Dental' }}">{% else %}<img src="{% static 'images/dental_logo.png' %}" alt="Dental logo">{% endif %}
+<span class="brand-title">{{ business_short_name|default:"Dora's Dental" }}<small>Patient Portal</small></span>
+</a>
+<div class="d-flex align-items-center gap-1 gap-md-2">
+<a class="nav-action position-relative" href="{% url 'patient_portal:dashboard' %}" title="Dashboard"><i class="fas fa-house"></i></a>
+<a class="nav-action position-relative" href="{% url 'patient_portal:notifications' %}" title="Notifications"><i class="fas fa-bell"></i>{% if portal_unread_notifications %}<span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger">{{ portal_unread_notifications }}</span>{% endif %}</a>
+<a class="nav-action position-relative" href="{% url 'patient_portal:messages' %}" title="Messages"><i class="fas fa-comments"></i>{% if portal_unread_messages %}<span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-warning text-dark">{{ portal_unread_messages }}</span>{% endif %}</a>
+<span class="patient-name ms-1"><i class="fas fa-user-circle me-1"></i>{{ portal_patient.full_name|default:patient.full_name }}</span>
+<a class="nav-action ms-1" href="{% url 'patient_portal:logout' %}" title="Logout"><i class="fas fa-right-from-bracket"></i></a>
+</div></div></nav>
+{% endif %}
+{% if messages %}<div class="toast-container">{% for message in messages %}<div class="alert alert-{% if message.tags == 'success' %}success{% elif message.tags == 'error' %}danger{% elif message.tags == 'warning' %}warning{% else %}info{% endif %} shadow-sm border-0">{{ message }}</div>{% endfor %}</div>{% endif %}
+<main class="portal-main">{% block content %}{% endblock %}</main>
+<footer class="portal-footer text-center">{{ business_name|default:"Dora's Dental Gem" }}{% if business_phone %} · {{ business_phone }}{% endif %} · Secure Patient Portal</footer>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+{% block extra_js %}{% endblock %}
+</body></html>
