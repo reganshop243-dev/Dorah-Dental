@@ -1,6 +1,7 @@
 import hashlib
 from django.contrib.auth.models import User
 from django.db import transaction
+from django.urls import path
 from django.utils.crypto import constant_time_compare
 from django.utils import timezone
 from rest_framework import status
@@ -131,3 +132,18 @@ def message_reply(request,pk):
     if not c:return Response({'error':'Conversation not found or closed.'},status=404)
     if not body:return Response({'error':'Message cannot be empty.'},status=400)
     PatientMessage.objects.create(conversation=c,sender_type='patient',sender=patient.user,body=body);c.save(update_fields=['updated_at']);return Response({'ok':True})
+
+
+# ==================== MOBILE API URLS ====================
+
+urlpatterns = [
+    path('login/', mobile_login, name='mobile_login'),
+    path('device-token/', register_device_token, name='register_device_token'),
+    path('dashboard/', dashboard, name='mobile_dashboard'),
+    path('notifications/', notifications, name='mobile_notifications'),
+    path('notifications/<int:pk>/read/', notification_read, name='notification_read'),
+    path('messages/', messages_list, name='mobile_messages'),
+    path('messages/new/', message_new, name='mobile_message_new'),
+    path('messages/<int:pk>/', conversation, name='mobile_conversation'),
+    path('messages/<int:pk>/reply/', message_reply, name='mobile_message_reply'),
+]
