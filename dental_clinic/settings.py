@@ -53,9 +53,9 @@ CSRF_TRUSTED_ORIGINS = [
 
 # Flutter Web development server ports are assigned dynamically.
 CSRF_TRUSTED_ORIGIN_REGEXES = [
-    r'^https://dorah-dental-production\\.up\\.railway\\.app$',
-    r'^http://localhost:\\d+$',
-    r'^http://127\\.0\\.0\\.1:\\d+$',
+    r'^https://dorah-dental-production\.up\.railway\.app$',
+    r'^http://localhost:\d+$',
+    r'^http://127\.0\.0\.1:\d+$',
 ]
 
 # CORS
@@ -70,8 +70,8 @@ CORS_ALLOWED_ORIGINS = [
 
 # Allow Flutter Web development servers regardless of their changing port.
 CORS_ALLOWED_ORIGIN_REGEXES = [
-    r'^http://localhost:\\d+$',
-    r'^http://127\\.0\\.0\\.1:\\d+$',
+    r'^http://localhost:\d+$',
+    r'^http://127\.0\.0\.1:\d+$',
 ]
 
 CORS_ALLOW_CREDENTIALS = True
