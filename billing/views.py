@@ -48,58 +48,42 @@ def is_admin(user):
 
 @login_required
 def invoice_list(request):
-    """List all invoices with pagination and filtering."""
-
+    """List invoices with payment-aware Today / This Month / All filters."""
     from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
-    from django.db.models import Q, Exists, OuterRef
-
-    # ============================================================
-    # GET FILTER PARAMETERS
-    # ============================================================
+    from django.db.models import Q, Sum, Value, DecimalField, Exists, OuterRef
+    from django.db.models.functions import Coalesce
 
     search_query = request.GET.get('search', '').strip()
     status_filter = request.GET.get('status', '').strip()
     payment_method_filter = request.GET.get('payment_method', '').strip()
     date_from = request.GET.get('date_from', '').strip()
     date_to = request.GET.get('date_to', '').strip()
+    period = request.GET.get('period', 'today').strip().lower()
+    if period not in ('today', 'this_month', 'all', 'custom'):
+        period = 'today'
 
-    # Show today's invoices by default. Explicit date filters still allow
-    # staff to browse historical/future invoices.
-    from django.utils import timezone
-    today = timezone.localdate().isoformat()
-    if not date_from and not date_to:
-        date_from = today
-        date_to = today
-
-    # ============================================================
-    # BASE QUERY
-    # ============================================================
+    today = timezone.localdate()
+    start_of_month = today.replace(day=1)
 
     invoices = Invoice.objects.all()
 
-    # ============================================================
-    # FIND A LATER COMPLETED INVOICE FOR THE SAME PATIENT
-    # ============================================================
-
-    later_completed_invoice = Invoice.objects.filter(
-        patient=OuterRef('patient')
-    ).filter(
-        Q(issue_date__gt=OuterRef('issue_date')) |
-        Q(
-            issue_date=OuterRef('issue_date'),
-            id__gt=OuterRef('id')
-        )
-    ).filter(
-        balance_due__lte=0
-    )
-
+    # Calculate paid strictly from completed Payment rows.
+    # IMPORTANT: use EXISTS for activity/payment-method filters below instead
+    # of joining payments again. Multiple joins to the same one-to-many
+    # relation can multiply SUM(payments__amount), e.g. 250k + 50k becoming
+    # 600k when the invoice also has a matching activity row.
     invoices = invoices.annotate(
-        has_later_completed=Exists(later_completed_invoice)
+        actual_paid=Coalesce(
+            Sum('payments__amount', filter=Q(payments__status='completed')),
+            Value(0),
+            output_field=DecimalField(max_digits=12, decimal_places=2),
+        )
     )
 
-    # ============================================================
-    # SEARCH FILTER
-    # ============================================================
+    completed_payments = Payment.objects.filter(
+        invoice=OuterRef('pk'),
+        status='completed',
+    )
 
     if search_query:
         invoices = invoices.filter(
@@ -110,127 +94,91 @@ def invoice_list(request):
             Q(patient__last_name__icontains=search_query)
         )
 
-    # ============================================================
-    # STATUS FILTER
-    # ============================================================
-
     if status_filter:
-        invoices = invoices.filter(
-            status=status_filter
-        )
-
-    # ============================================================
-    # PAYMENT METHOD FILTER
-    # ============================================================
+        invoices = invoices.filter(status=status_filter)
 
     if payment_method_filter:
         invoices = invoices.filter(
-            payment_method=payment_method_filter
+            Q(payment_method=payment_method_filter) |
+            Exists(completed_payments.filter(payment_method=payment_method_filter))
         )
 
-    # ============================================================
-    # DATE FILTERS
-    # ============================================================
-
-    if date_from:
+    # Quick date views are based on invoice activity: an invoice appears if it
+    # was issued in the period OR received a completed payment in the period.
+    # EXISTS prevents the activity test from multiplying the payment SUM.
+    if date_from or date_to:
+        period = 'custom'
+        payment_activity = completed_payments
+        if date_from and date_to:
+            payment_activity = payment_activity.filter(
+                payment_date__gte=date_from, payment_date__lte=date_to
+            )
+            invoices = invoices.filter(
+                Q(issue_date__gte=date_from, issue_date__lte=date_to) |
+                Exists(payment_activity)
+            )
+        elif date_from:
+            payment_activity = payment_activity.filter(payment_date__gte=date_from)
+            invoices = invoices.filter(
+                Q(issue_date__gte=date_from) | Exists(payment_activity)
+            )
+        elif date_to:
+            payment_activity = payment_activity.filter(payment_date__lte=date_to)
+            invoices = invoices.filter(
+                Q(issue_date__lte=date_to) | Exists(payment_activity)
+            )
+    elif period == 'today':
+        payment_activity = completed_payments.filter(payment_date=today)
         invoices = invoices.filter(
-            issue_date__gte=date_from
+            Q(issue_date=today) | Exists(payment_activity)
         )
-
-    if date_to:
+    elif period == 'this_month':
+        payment_activity = completed_payments.filter(
+            payment_date__gte=start_of_month, payment_date__lte=today
+        )
         invoices = invoices.filter(
-            issue_date__lte=date_to
+            Q(issue_date__gte=start_of_month, issue_date__lte=today) |
+            Exists(payment_activity)
         )
+    # period == all: no date restriction
 
-    # ============================================================
-    # HIDE HISTORICAL PARTIAL INVOICES
-    # ============================================================
-    #
-    # IMPORTANT:
-    #
-    # If there are NO filters:
-    #   Hide a partially-paid invoice when the same patient
-    #   has a later completed invoice.
-    #
-    # If the user is searching/filtering:
-    #   DO NOT hide it.
-    #
-    # This means historical invoices remain searchable.
-    # ============================================================
+    invoices = invoices.distinct().order_by('-issue_date', '-id')
 
-    has_active_filter = (
-        bool(search_query) or
-        bool(status_filter) or
-        bool(payment_method_filter) or
-        bool(date_from) or
-        bool(date_to)
-    )
-
-    if not has_active_filter:
-        invoices = invoices.exclude(
-            Q(status='partially_paid') &
-            Q(has_later_completed=True)
-        )
-
-    # ============================================================
-    # ORDER
-    # ============================================================
-
-    invoices = invoices.order_by(
-        '-issue_date',
-        '-id'
-    )
-
-    # ============================================================
-    # PAGINATION
-    # ============================================================
-
-    paginator = Paginator(
-        invoices,
-        20
-    )
-
+    paginator = Paginator(invoices, 20)
     page = request.GET.get('page', 1)
-
     try:
         invoices_page = paginator.page(page)
-
     except PageNotAnInteger:
         invoices_page = paginator.page(1)
-
     except EmptyPage:
-        invoices_page = paginator.page(
-            paginator.num_pages
-        )
+        invoices_page = paginator.page(paginator.num_pages)
 
-    # ============================================================
-    # CONTEXT
-    # ============================================================
+    # Expose the effective balance and latest payment information to the list.
+    for invoice in invoices_page.object_list:
+        invoice.actual_balance = max(
+            invoice.total_amount - invoice.actual_paid,
+            0
+        )
+        invoice.latest_payment = invoice.payments.filter(
+            status='completed'
+        ).order_by('-payment_date', '-id').first()
 
     context = {
         'invoices': invoices_page,
         'paginator': paginator,
         'page_obj': invoices_page,
         'is_paginated': invoices_page.has_other_pages(),
-        'total_count': invoices.count(),
-
-        # Filter values for form persistence
+        'total_count': paginator.count,
         'search_query': search_query,
         'status_filter': status_filter,
         'payment_method_filter': payment_method_filter,
         'date_from': date_from,
         'date_to': date_to,
-
-        # REQUIRED BY THE TEMPLATE
+        'period': period,
         'status_choices': Invoice.STATUS_CHOICES,
         'payment_method_choices': Invoice.PAYMENT_METHOD_CHOICES,
     }
-
-    return render(
-        request,
-        'billing/invoice_list.html',
-        context
-    )
+    return render(request, 'billing/invoice_list.html', context)
 
 
 @login_required

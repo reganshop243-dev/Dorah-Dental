@@ -450,7 +450,7 @@
                                 <div class="details"><i class="fas fa-phone"></i> ${p.phone || 'N/A'}</div>
                                 ${p.email ? `<div class="details"><i class="fas fa-envelope"></i> ${p.email}</div>` : ''}
                             `;
-                            div.onclick = () => selectPatient(p.id, patientName, p.phone, p.email);
+                            div.onclick = () => selectPatient(p.id, patientName, p.phone, p.email, p.balance);
                             patientResults.appendChild(div);
                         });
                     } else {

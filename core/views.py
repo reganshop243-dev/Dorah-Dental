@@ -453,7 +453,8 @@ def admin_dashboard(request):
         'paid_invoices': paid_invoices,
         'pending_invoices': pending_invoices,
         'overdue_invoices': overdue_invoices,
-        'total_outstanding': total_outstanding,
+        'total_outstanding': period_outstanding,
+        'period_outstanding': period_outstanding,
         'recent_payments': recent_payments,
         
         # Patient Stats
@@ -1034,183 +1035,142 @@ def role_management(request):
 
 @login_required
 @otp_required
+@login_required
 def revenue_dashboard(request):
-    """Financial report showing revenue, payments, and reports with date filters"""
+    """Financial report based on actual completed Payment transactions."""
     if not request.user.profile.has_permission('reports.revenue'):
         messages.error(request, '❌ You do not have permission to view revenue reports.')
         return redirect('core:dashboard')
-    if (
-        hasattr(request.user, 'profile')
-        and request.user.profile.has_role('doctor')
-        and not request.user.profile.has_any_role(['admin', 'accountant'])
-    ):
-        messages.error(request, '❌ Doctors do not have access to financial reports.')
-        return redirect('core:doctor_dashboard')
+
     from billing.models import Invoice, Payment
     from billing.balance_service import get_patient_outstanding_balance
-    from django.utils import timezone
-    from datetime import date, timedelta, datetime
-    from django.db.models import Sum, Count, Q
-    
-    # Get date filters from request
+    from django.db.models import Sum, Count
+    from datetime import date, datetime, timedelta
+
     start_date_str = request.GET.get('start_date', '')
     end_date_str = request.GET.get('end_date', '')
     period = request.GET.get('period', 'this_month')
-    
-    today = date.today()
+
+    today = timezone.localdate()
     start_of_week = today - timedelta(days=today.weekday())
     start_of_month = today.replace(day=1)
     start_of_year = today.replace(month=1, day=1)
-    
-    # Determine date range based on period or custom dates
+
     if start_date_str and end_date_str:
         try:
             start_date = datetime.strptime(start_date_str, '%Y-%m-%d').date()
             end_date = datetime.strptime(end_date_str, '%Y-%m-%d').date()
             period = 'custom'
         except ValueError:
-            start_date = start_of_month
-            end_date = today
-    else:
-        if period == 'today':
-            start_date = today
-            end_date = today
-        elif period == 'this_week':
-            start_date = start_of_week
-            end_date = today
-        elif period == 'this_month':
-            start_date = start_of_month
-            end_date = today
-        elif period == 'this_year':
-            start_date = start_of_year
-            end_date = today
-        elif period == 'all':
-            start_date = date(2000, 1, 1)
-            end_date = today
-        else:
-            start_date = start_of_month
-            end_date = today
+            start_date, end_date = start_of_month, today
             period = 'this_month'
-    
-    # Format dates for display
+    elif period == 'today':
+        start_date, end_date = today, today
+    elif period == 'this_week':
+        start_date, end_date = start_of_week, today
+    elif period == 'this_month':
+        start_date, end_date = start_of_month, today
+    elif period == 'this_year':
+        start_date, end_date = start_of_year, today
+    elif period == 'all':
+        start_date, end_date = date(2000, 1, 1), today
+    else:
+        start_date, end_date = start_of_month, today
+        period = 'this_month'
+
     start_date_display = start_date.strftime('%b %d, %Y')
     end_date_display = end_date.strftime('%b %d, %Y')
-    
-    # ============================================================
-    # GET ALL INVOICES FOR THE PERIOD
-    # ============================================================
+
+    # Revenue/collections = money actually received, not invoice value.
+    period_payments = Payment.objects.filter(
+        status='completed',
+        payment_date__gte=start_date,
+        payment_date__lte=end_date,
+    ).select_related('invoice', 'invoice__patient')
+
+    period_revenue = period_payments.aggregate(total=Sum('amount'))['total'] or 0
+    period_paid = period_revenue
+
+    total_revenue = Payment.objects.filter(status='completed').aggregate(
+        total=Sum('amount')
+    )['total'] or 0
+    total_paid = total_revenue
+
+    daily_revenue = Payment.objects.filter(
+        status='completed', payment_date=today
+    ).aggregate(total=Sum('amount'))['total'] or 0
+
+    weekly_revenue = Payment.objects.filter(
+        status='completed', payment_date__gte=start_of_week, payment_date__lte=today
+    ).aggregate(total=Sum('amount'))['total'] or 0
+
+    monthly_revenue = Payment.objects.filter(
+        status='completed', payment_date__gte=start_of_month, payment_date__lte=today
+    ).aggregate(total=Sum('amount'))['total'] or 0
+
+    yearly_revenue = Payment.objects.filter(
+        status='completed', payment_date__gte=start_of_year, payment_date__lte=today
+    ).aggregate(total=Sum('amount'))['total'] or 0
+
+    # Period outstanding = current unpaid balance of invoices issued in the
+    # selected reporting period. Use completed Payment rows as the source of
+    # truth instead of the cached Invoice.balance_due field.
     period_invoices = Invoice.objects.filter(
         issue_date__gte=start_date,
-        issue_date__lte=end_date
-    )
-    
-    # Period Revenue
-    period_revenue = period_invoices.aggregate(Sum('total_amount'))['total_amount__sum'] or 0
-    period_paid = period_invoices.aggregate(Sum('amount_paid'))['amount_paid__sum'] or 0
-    period_balance = period_invoices.aggregate(Sum('balance_due'))['balance_due__sum'] or 0
-    
-    # Total revenue (all time)
-    total_revenue = Invoice.objects.aggregate(
-        Sum('total_amount')
-    )['total_amount__sum'] or 0
-    
-    # Total paid (all time)
-    total_paid = Invoice.objects.aggregate(
-        Sum('amount_paid')
-    )['amount_paid__sum'] or 0
-    
-    # Daily revenue (today)
-    daily_revenue = Invoice.objects.filter(
-        issue_date=today
-    ).aggregate(Sum('total_amount'))['total_amount__sum'] or 0
-    
-    # Weekly revenue
-    weekly_revenue = Invoice.objects.filter(
-        issue_date__gte=start_of_week,
-        issue_date__lte=today
-    ).aggregate(Sum('total_amount'))['total_amount__sum'] or 0
-    
-    # Monthly revenue
-    monthly_revenue = Invoice.objects.filter(
-        issue_date__gte=start_of_month,
-        issue_date__lte=today
-    ).aggregate(Sum('total_amount'))['total_amount__sum'] or 0
-    
-    # Yearly revenue
-    yearly_revenue = Invoice.objects.filter(
-        issue_date__gte=start_of_year,
-        issue_date__lte=today
-    ).aggregate(Sum('total_amount'))['total_amount__sum'] or 0
-    
-    # Outstanding balance (all time)
-    total_outstanding = sum(
-        get_patient_outstanding_balance(patient)
-        for patient in Patient.objects.filter(is_active=True)
-    )
-    
-    # ============================================================
-    # INVOICE STATUS BREAKDOWN
-    # ============================================================
+        issue_date__lte=end_date,
+    ).exclude(status='cancelled')
+
+    period_invoice_total = period_invoices.aggregate(
+        total=Sum('total_amount')
+    )['total'] or 0
+    period_invoice_paid = Payment.objects.filter(
+        invoice__in=period_invoices,
+        status='completed',
+    ).aggregate(
+        total=Sum('amount')
+    )['total'] or 0
+    period_outstanding = max(period_invoice_total - period_invoice_paid, 0)
     total_invoices = period_invoices.count()
     paid_invoices = period_invoices.filter(status='paid').count()
     partially_paid_invoices = period_invoices.filter(status='partially_paid').count()
-    pending_invoices = period_invoices.filter(
-        status__in=['draft', 'sent']
-    ).count()
+    pending_invoices = period_invoices.filter(status__in=['draft', 'sent', 'booked']).count()
     overdue_invoices = period_invoices.filter(status='overdue').count()
-    
-    # ============================================================
-    # TOP PATIENTS
-    # ============================================================
-    top_patients = period_invoices.values(
-        'patient__id', 
-        'patient__first_name', 
-        'patient__last_name'
+
+    # Patient spending in the selected period is based on actual payments.
+    top_patients = period_payments.values(
+        'invoice__patient__id',
+        'invoice__patient__first_name',
+        'invoice__patient__last_name',
     ).annotate(
-        total_spent=Sum('total_amount'),
-        total_paid=Sum('amount_paid'),
-        total_balance=Sum('balance_due'),
-        visit_count=Count('id')
+        total_spent=Sum('amount'),
+        total_paid=Sum('amount'),
+        visit_count=Count('invoice_id', distinct=True),
     ).order_by('-total_spent')[:10]
-    
-    # ============================================================
-    # RECENT PAYMENTS
-    # ============================================================
-    recent_payments = Payment.objects.filter(
-        payment_date__gte=start_date,
-        payment_date__lte=end_date
-    ).select_related('invoice', 'invoice__patient').order_by('-payment_date')[:10]
-    
-    # ============================================================
-    # MONTHLY REVENUE
-    # ============================================================
+
+    recent_payments = period_payments.order_by('-payment_date', '-id')[:10]
+
     monthly_data = []
     for i in range(11, -1, -1):
-        month_date = today.replace(day=1) - timedelta(days=30*i)
-        month_start = month_date.replace(day=1)
-        if i == 0:
-            month_end = today
-        else:
-            next_month = month_date.replace(day=28) + timedelta(days=4)
-            month_end = next_month - timedelta(days=next_month.day)
-        
-        month_invoices = Invoice.objects.filter(
-            issue_date__gte=month_start,
-            issue_date__lte=month_end
-        )
-        
-        revenue = month_invoices.aggregate(Sum('total_amount'))['total_amount__sum'] or 0
-        paid = month_invoices.aggregate(Sum('amount_paid'))['amount_paid__sum'] or 0
-        
+        month_date = (today.replace(day=1) - timedelta(days=30 * i)).replace(day=1)
+        month_start = month_date
+        next_month = (month_start.replace(day=28) + timedelta(days=4)).replace(day=1)
+        month_end = min(next_month - timedelta(days=1), today)
+        if month_end < month_start:
+            continue
+        revenue = Payment.objects.filter(
+            status='completed',
+            payment_date__gte=month_start,
+            payment_date__lte=month_end,
+        ).aggregate(total=Sum('amount'))['total'] or 0
         monthly_data.append({
             'month': month_date.strftime('%B'),
             'year': month_date.year,
             'revenue': revenue,
-            'paid': paid,
+            'paid': revenue,
         })
-    
-    max_monthly_revenue = max([d['revenue'] for d in monthly_data]) if monthly_data else 1
-    
+
+    max_monthly_revenue = max([d['revenue'] for d in monthly_data], default=1) or 1
+
     context = {
         'total_revenue': total_revenue,
         'total_paid': total_paid,
@@ -1218,10 +1178,11 @@ def revenue_dashboard(request):
         'weekly_revenue': weekly_revenue,
         'monthly_revenue': monthly_revenue,
         'yearly_revenue': yearly_revenue,
-        'total_outstanding': total_outstanding,
+        'total_outstanding': period_outstanding,
+        'period_outstanding': period_outstanding,
         'period_revenue': period_revenue,
         'period_paid': period_paid,
-        'period_balance': period_balance,
+        'period_balance': period_outstanding,
         'total_invoices': total_invoices,
         'paid_invoices': paid_invoices,
         'partially_paid_invoices': partially_paid_invoices,
@@ -1240,7 +1201,6 @@ def revenue_dashboard(request):
         'start_date_str': start_date.strftime('%Y-%m-%d'),
         'end_date_str': end_date.strftime('%Y-%m-%d'),
     }
-    
     return render(request, 'core/revenue_dashboard.html', context)
 
 

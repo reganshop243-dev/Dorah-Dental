@@ -2,13 +2,13 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.db import models
-from django.db.models import Q, Sum, Value, DecimalField, Count, OuterRef, Subquery
+from django.db.models import Q, Sum, Value, DecimalField, Count, OuterRef, Subquery, F
 from django.http import JsonResponse
 from django.utils import timezone
 from datetime import date, datetime
 from .models import Patient, DentalImage, PatientContactAccessRequest
 from appointments.models import Appointment, Treatment
-from billing.models import Invoice
+from billing.models import Invoice, Payment
 from patient_portal.models import PatientPortalAccess  # âœ… ADD THIS IMPORT
 import random  # legacy compatibility
 import hashlib
@@ -770,10 +770,29 @@ def patient_search_api(request):
         # Build results with all required fields
         results = []
         for patient in patients:
-            # Calculate total balance
-            total_balance = Invoice.objects.filter(
+            # Calculate the patient's REAL outstanding balance from source
+            # transactions, rather than relying on the cached Invoice.balance_due.
+            # This keeps invoice creation/search consistent with the payment-aware
+            # invoice list and revenue reports.
+            patient_invoices = Invoice.objects.filter(
                 patient=patient
-            ).aggregate(total=Sum('balance_due'))['total'] or 0
+            ).exclude(status='cancelled')
+
+            total_invoiced = patient_invoices.aggregate(
+                total=Sum('total_amount')
+            )['total'] or 0
+
+            total_paid = Payment.objects.filter(
+                invoice__in=patient_invoices,
+                status='completed'
+            ).aggregate(
+                total=Sum('amount')
+            )['total'] or 0
+
+            total_balance = max(
+                total_invoiced - total_paid,
+                0
+            )
             
             # Apply balance filter
             if balance_filter == 'has_balance' and total_balance <= 0:
