@@ -118,3 +118,18 @@ class PushSubscription(models.Model):
 
     class Meta:
         ordering = ['-updated_at']
+
+class MobileDeviceToken(models.Model):
+    patient = models.ForeignKey(
+        Patient,
+        on_delete=models.CASCADE,
+        related_name='mobile_device_tokens'
+    )
+    token = models.TextField(unique=True)
+    platform = models.CharField(max_length=20, default='mobile')
+    is_active = models.BooleanField(default=True)
+    last_seen = models.DateTimeField(auto_now=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-last_seen']
