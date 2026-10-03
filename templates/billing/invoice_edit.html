@@ -53,6 +53,12 @@
         <div class="card shadow-sm mb-3">
           <div class="card-header"><strong>Invoice Details</strong></div>
           <div class="card-body">
+            <label class="form-label">Invoice Type</label>
+            <select class="form-select mb-3" name="invoice_type">
+              {% for value, label in invoice.INVOICE_TYPE_CHOICES %}
+                <option value="{{ value }}" {% if invoice.invoice_type == value %}selected{% endif %}>{{ label }}</option>
+              {% endfor %}
+            </select>
             <label class="form-label">Issue Date</label>
             <input class="form-control mb-3" type="date" name="issue_date" value="{{ invoice.issue_date|date:'Y-m-d' }}" required>
             <label class="form-label">Due Date</label>

@@ -63,6 +63,14 @@ def invoice_list(request):
     date_from = request.GET.get('date_from', '').strip()
     date_to = request.GET.get('date_to', '').strip()
 
+    # Show today's invoices by default. Explicit date filters still allow
+    # staff to browse historical/future invoices.
+    from django.utils import timezone
+    today = timezone.localdate().isoformat()
+    if not date_from and not date_to:
+        date_from = today
+        date_to = today
+
     # ============================================================
     # BASE QUERY
     # ============================================================
@@ -229,82 +237,258 @@ def invoice_list(request):
 @financial_only("billing.create")
 def invoice_add(request):
     """Add a new invoice with items from cart"""
+
     if is_doctor(request.user):
-        messages.error(request, '❌ Doctors are not allowed to create invoices.')
+        messages.error(
+            request,
+            '❌ Doctors are not allowed to create invoices.'
+        )
         return redirect('patients:list')
+
     from inventory.models import InventoryItem
     from django.db import transaction
-    
+
     if request.method == 'POST':
         try:
             # Debug: Print all POST data
             print("=" * 60)
             print("POST DATA RECEIVED:")
+
             for key, value in request.POST.items():
-                print(f"  {key}: {value[:100] if len(str(value)) > 100 else value}")
+                print(
+                    f"  {key}: "
+                    f"{value[:100] if len(str(value)) > 100 else value}"
+                )
+
             print("=" * 60)
-            
+
             patient_id = request.POST.get('patient')
-            cart_items_json = request.POST.get('cart_items', '[]')
-            issue_date = request.POST.get('issue_date', '')
-            
-            # Try to get cart items from session if POST doesn't have it
+
+            # IMPORTANT:
+            # Get invoice type from the form.
+            # Default to normal invoice if nothing is submitted.
+            invoice_type = request.POST.get(
+                'invoice_type',
+                'invoice'
+            )
+
+            # Only allow the two valid invoice types.
+            if invoice_type not in ('invoice', 'booking'):
+                invoice_type = 'invoice'
+
+            cart_items_json = request.POST.get(
+                'cart_items',
+                '[]'
+            )
+
+            issue_date = request.POST.get(
+                'issue_date',
+                ''
+            )
+
+            # Try to get cart items from session if POST doesn't have them
             if not cart_items_json or cart_items_json == '[]':
-                cart_items_json = request.session.get('cart_items', '[]')
-                print(f"Using session cart data: {cart_items_json}")
-            
+                cart_items_json = request.session.get(
+                    'cart_items',
+                    '[]'
+                )
+
+                print(
+                    f"Using session cart data: {cart_items_json}"
+                )
+
             # Parse cart items
             try:
                 cart_items = json.loads(cart_items_json)
             except json.JSONDecodeError as e:
                 print(f"JSON Decode Error: {e}")
                 cart_items = []
-            
+
             print(f"Parsed cart items: {cart_items}")
             print(f"Number of items: {len(cart_items)}")
-            
+
+            # Validate patient
             if not patient_id:
-                messages.error(request, 'Please select a patient')
+                messages.error(
+                    request,
+                    'Please select a patient'
+                )
                 return redirect('billing:add')
-            
-            if not cart_items or len(cart_items) == 0:
-                messages.error(request, 'Please add at least one item to the invoice')
+
+            # Validate cart
+            if not cart_items:
+                messages.error(
+                    request,
+                    'Please add at least one item to the invoice'
+                )
                 return redirect('billing:add')
-            
-            patient = get_object_or_404(Patient, pk=patient_id)
-            
+
+            patient = get_object_or_404(
+                Patient,
+                pk=patient_id
+            )
+
             # Generate invoice number
             last_invoice = Invoice.objects.order_by('-id').first()
+
             if last_invoice:
-                invoice_number = f"INV-{last_invoice.id + 1:05d}"
+                invoice_number = (
+                    f"INV-{last_invoice.id + 1:05d}"
+                )
             else:
                 invoice_number = "INV-00001"
-            
+
             with transaction.atomic():
-                # Calculate subtotal
+
+                # -----------------------------------------
+                # CALCULATE TOTALS
+                # -----------------------------------------
+
                 subtotal = 0
+
                 for item in cart_items:
-                    price = float(item.get('price', 0))
-                    quantity = int(item.get('quantity', 1))
+                    price = float(
+                        item.get('price', 0)
+                    )
+
+                    quantity = int(
+                        item.get('quantity', 1)
+                    )
+
                     subtotal += price * quantity
-                
-                tax_rate = float(request.POST.get('tax_rate', 0))
-                discount = float(request.POST.get('discount', 0))
-                tax_amount = (subtotal * tax_rate) / 100 if tax_rate > 0 else 0
-                total_amount = subtotal + tax_amount - discount
-                
-                # Handle backdated issue date
+
+                tax_rate = float(
+                    request.POST.get(
+                        'tax_rate',
+                        0
+                    )
+                )
+
+                discount = float(
+                    request.POST.get(
+                        'discount',
+                        0
+                    )
+                )
+
+                tax_amount = (
+                    subtotal * tax_rate
+                ) / 100 if tax_rate > 0 else 0
+
+                total_amount = (
+                    subtotal
+                    + tax_amount
+                    - discount
+                )
+
+                # -----------------------------------------
+                # ISSUE DATE
+                # -----------------------------------------
+
                 if issue_date:
                     try:
                         from datetime import datetime
-                        issue_datetime = datetime.strptime(issue_date, '%Y-%m-%d')
-                        issue_date_obj = timezone.make_aware(issue_datetime)
-                    except:
+
+                        issue_datetime = datetime.strptime(
+                            issue_date,
+                            '%Y-%m-%d'
+                        )
+
+                        issue_date_obj = timezone.make_aware(
+                            issue_datetime
+                        )
+
+                    except (ValueError, TypeError):
                         issue_date_obj = timezone.now()
+
                 else:
                     issue_date_obj = timezone.now()
-                
-                # Create invoice
+
+                # -----------------------------------------
+                # INITIAL PAYMENT
+                # -----------------------------------------
+
+                from decimal import Decimal, InvalidOperation
+
+                initial_payment_raw = (
+                    request.POST.get(
+                        'initial_payment'
+                    ) or '0'
+                ).strip()
+
+                try:
+                    initial_payment = Decimal(
+                        initial_payment_raw
+                    )
+
+                except (
+                    InvalidOperation,
+                    ValueError
+                ):
+                    initial_payment = Decimal('0')
+
+                # Payment cannot be negative
+                # and cannot exceed invoice total.
+                if (
+                    initial_payment < 0
+                    or initial_payment > Decimal(
+                        str(total_amount)
+                    )
+                ):
+                    raise ValueError(
+                        'Initial payment cannot be negative '
+                        'or greater than the invoice total.'
+                    )
+
+                initial_payment_method = (
+                    request.POST.get(
+                        'initial_payment_method',
+                        ''
+                    ).strip()
+                )
+
+                initial_payment_date_raw = (
+                    request.POST.get(
+                        'initial_payment_date',
+                        ''
+                    ).strip()
+                )
+
+                initial_payment_date = None
+
+                if initial_payment > 0:
+
+                    from datetime import datetime
+
+                    if initial_payment_date_raw:
+                        try:
+                            initial_payment_date = (
+                                datetime.strptime(
+                                    initial_payment_date_raw,
+                                    '%Y-%m-%d'
+                                ).date()
+                            )
+
+                        except ValueError:
+                            initial_payment_date = (
+                                timezone.localdate()
+                            )
+
+                    else:
+                        initial_payment_date = (
+                            timezone.localdate()
+                        )
+
+                    if not initial_payment_method:
+                        raise ValueError(
+                            'Please select a payment method '
+                            'for the initial payment.'
+                        )
+
+                # -----------------------------------------
+                # CREATE INVOICE
+                # -----------------------------------------
+
                 invoice = Invoice.objects.create(
                     invoice_number=invoice_number,
                     patient=patient,
@@ -317,20 +501,81 @@ def invoice_add(request):
                     total_amount=total_amount,
                     amount_paid=0,
                     balance_due=total_amount,
-                    notes=request.POST.get('notes', ''),
-                    due_date=request.POST.get('due_date') or None,
+                    notes=request.POST.get(
+                        'notes',
+                        ''
+                    ),
+                    due_date=request.POST.get(
+                        'due_date'
+                    ) or None,
                     issue_date=issue_date_obj,
-                    status='draft'
+
+                    # Booking / normal invoice
+                    invoice_type=invoice_type,
+
+                    # Booking must remain BOOKED
+                    status=(
+                        'booked'
+                        if invoice_type == 'booking'
+                        else 'draft'
+                    )
                 )
-                
-                # Create invoice items
+
+                # -----------------------------------------
+                # RECORD INITIAL PAYMENT
+                # -----------------------------------------
+
+                # This creates a REAL payment transaction.
+                # Therefore money paid today appears in
+                # today's collections/income.
+
+                if initial_payment > 0:
+
+                    Payment.objects.create(
+                        invoice=invoice,
+                        amount=initial_payment,
+                        payment_date=initial_payment_date,
+                        payment_method=initial_payment_method,
+                        status='completed',
+                        processed_by=request.user.get_username(),
+                        notes=(
+                            'Initial payment recorded when '
+                            'invoice/booking was created.'
+                        )
+                    )
+
+                # -----------------------------------------
+                # CREATE INVOICE ITEMS
+                # -----------------------------------------
+
                 for item_data in cart_items:
-                    item_type = item_data.get('type', 'service')
+
+                    item_type = item_data.get(
+                        'type',
+                        'service'
+                    )
+
                     item_id = item_data.get('id')
-                    quantity = int(item_data.get('quantity', 1))
-                    price = float(item_data.get('price', 0))
-                    name = item_data.get('name', '')
-                    
+
+                    quantity = int(
+                        item_data.get(
+                            'quantity',
+                            1
+                        )
+                    )
+
+                    price = float(
+                        item_data.get(
+                            'price',
+                            0
+                        )
+                    )
+
+                    name = item_data.get(
+                        'name',
+                        ''
+                    )
+
                     # Create invoice item
                     invoice_item = InvoiceItem.objects.create(
                         invoice=invoice,
@@ -339,82 +584,189 @@ def invoice_add(request):
                         unit_price=price,
                         total_price=quantity * price,
                     )
-                    
-                    # Handle service
+
+                    # -------------------------------------
+                    # SERVICE
+                    # -------------------------------------
+
                     if item_type == 'service':
+
                         try:
-                            service = Service.objects.get(pk=item_id)
+                            service = Service.objects.get(
+                                pk=item_id
+                            )
+
                             invoice_item.service = service
                             invoice_item.save()
+
                         except Service.DoesNotExist:
                             pass
-                    
-                    # Handle inventory
+
+                    # -------------------------------------
+                    # INVENTORY ITEM
+                    # -------------------------------------
+
                     elif item_type == 'inventory':
+
                         try:
-                            inventory_item = InventoryItem.objects.get(pk=item_id)
-                            invoice_item.inventory_item = inventory_item
+                            inventory_item = (
+                                InventoryItem.objects.get(
+                                    pk=item_id
+                                )
+                            )
+
+                            invoice_item.inventory_item = (
+                                inventory_item
+                            )
+
                             invoice_item.save()
-                            
+
                             # Update inventory
-                            previous_quantity = inventory_item.quantity
+                            previous_quantity = (
+                                inventory_item.quantity
+                            )
+
                             inventory_item.quantity -= quantity
                             inventory_item.save()
-                            
+
                             # Create stock movement
                             from inventory.models import StockMovement
+
                             StockMovement.objects.create(
                                 item=inventory_item,
                                 movement_type='sale',
                                 quantity=-quantity,
                                 previous_quantity=previous_quantity,
                                 new_quantity=inventory_item.quantity,
-                                reference_number=invoice.invoice_number,
-                                notes=f"Used in invoice #{invoice.invoice_number}",
+                                reference_number=(
+                                    invoice.invoice_number
+                                ),
+                                notes=(
+                                    f"Used in invoice "
+                                    f"#{invoice.invoice_number}"
+                                ),
                                 performed_by=request.user
                             )
-                            print(f"Updated inventory for {inventory_item.name}: {previous_quantity} -> {inventory_item.quantity}")
+
+                            print(
+                                f"Updated inventory for "
+                                f"{inventory_item.name}: "
+                                f"{previous_quantity} -> "
+                                f"{inventory_item.quantity}"
+                            )
+
                         except InventoryItem.DoesNotExist:
-                            print(f"Inventory item not found: {item_id}")
-                
-                # Clear session cart
+                            print(
+                                f"Inventory item not found: "
+                                f"{item_id}"
+                            )
+
+                # -----------------------------------------
+                # CLEAR SESSION CART
+                # -----------------------------------------
+
                 request.session['cart_items'] = '[]'
-            
-            messages.success(request, f'Invoice {invoice.invoice_number} created successfully with {len(cart_items)} items!')
-            return redirect('billing:detail', pk=invoice.pk)
-            
+
+            # ---------------------------------------------
+            # SUCCESS
+            # ---------------------------------------------
+
+            messages.success(
+                request,
+                f'Invoice {invoice.invoice_number} '
+                f'created successfully with '
+                f'{len(cart_items)} items!'
+            )
+
+            return redirect(
+                'billing:detail',
+                pk=invoice.pk
+            )
+
         except Exception as e:
-            messages.error(request, 'Sorry, we could not complete that request. Please try again. If the problem continues, contact the administrator.')
+
+            messages.error(
+                request,
+                'Sorry, we could not complete that request. '
+                'Please try again. If the problem continues, '
+                'contact the administrator.'
+            )
+
             import traceback
             print(traceback.format_exc())
-            return redirect('billing:add')
-    
-    # GET request - initialize session cart
-    from inventory.models import InventoryItem
-    request.session['cart_items'] = '[]'
-    patients = Patient.objects.filter(is_active=True).order_by('first_name', 'last_name')
-    services = Service.objects.filter(is_active=True)
-    inventory_items = InventoryItem.objects.filter(is_active=True, quantity__gt=0)
 
-    # Preserve a patient selected before opening the invoice form.
+            return redirect('billing:add')
+
+    # =============================================
+    # GET REQUEST
+    # =============================================
+
+    from inventory.models import InventoryItem
+
+    request.session['cart_items'] = '[]'
+
+    patients = Patient.objects.filter(
+        is_active=True
+    ).order_by(
+        'first_name',
+        'last_name'
+    )
+
+    services = Service.objects.filter(
+        is_active=True
+    )
+
+    inventory_items = InventoryItem.objects.filter(
+        is_active=True,
+        quantity__gt=0
+    )
+
+    # Preserve a patient selected before opening
+    # the invoice form.
     selected_patient = None
     selected_patient_balance = 0
-    selected_patient_id = request.GET.get('patient')
+
+    selected_patient_id = request.GET.get(
+        'patient'
+    )
+
     if selected_patient_id:
+
         try:
-            selected_patient = Patient.objects.get(pk=selected_patient_id, is_active=True)
-            from billing.balance_service import get_patient_outstanding_balance
-            selected_patient_balance = get_patient_outstanding_balance(selected_patient)
-        except (Patient.DoesNotExist, ValueError, TypeError):
+            selected_patient = Patient.objects.get(
+                pk=selected_patient_id,
+                is_active=True
+            )
+
+            from billing.balance_service import (
+                get_patient_outstanding_balance
+            )
+
+            selected_patient_balance = (
+                get_patient_outstanding_balance(
+                    selected_patient
+                )
+            )
+
+        except (
+            Patient.DoesNotExist,
+            ValueError,
+            TypeError
+        ):
             selected_patient = None
 
-    return render(request, 'billing/invoice_add.html', {
-        'patients': patients,
-        'services': services,
-        'inventory_items': inventory_items,
-        'selected_patient': selected_patient,
-        'selected_patient_balance': selected_patient_balance,
-    })
+    return render(
+        request,
+        'billing/invoice_add.html',
+        {
+            'patients': patients,
+            'services': services,
+            'inventory_items': inventory_items,
+            'selected_patient': selected_patient,
+            'selected_patient_balance': selected_patient_balance,
+        }
+    )
+
 
 
 @login_required
@@ -436,6 +788,9 @@ def invoice_edit(request, pk):
             with transaction.atomic():
                 issue_date = request.POST.get('issue_date') or invoice.issue_date
                 due_date = request.POST.get('due_date') or None
+                invoice_type = request.POST.get('invoice_type', invoice.invoice_type)
+                if invoice_type not in dict(Invoice.INVOICE_TYPE_CHOICES):
+                    raise ValueError('Invalid invoice type.')
 
                 def dec(name, default='0'):
                     raw = (request.POST.get(name, default) or default).strip()
@@ -451,6 +806,9 @@ def invoice_edit(request, pk):
                 invoice.tax_rate = tax_rate
                 invoice.discount = discount
                 invoice.notes = request.POST.get('notes', '').strip()
+                invoice.invoice_type = invoice_type
+                if invoice.invoice_type == 'booking' and invoice.status != 'cancelled':
+                    invoice.status = 'booked'
 
                 for item in items:
                     prefix = f'item_{item.pk}_'
@@ -489,7 +847,7 @@ def invoice_edit(request, pk):
                 invoice.total_amount = total_amount
                 invoice.save(update_fields=[
                     'issue_date', 'due_date', 'tax_rate', 'discount', 'notes',
-                    'subtotal', 'tax_amount', 'total_amount', 'updated_at'
+                    'invoice_type', 'status', 'subtotal', 'tax_amount', 'total_amount', 'updated_at'
                 ])
 
                 invoice.sync_payment_state()
@@ -947,7 +1305,11 @@ def balance_sheet(request):
     # Revenue calculations
     total_invoices = invoices.count()
     total_revenue = invoices.aggregate(Sum('total_amount'))['total_amount__sum'] or 0
-    paid_amount = invoices.filter(status='paid').aggregate(Sum('total_amount'))['total_amount__sum'] or 0
+    paid_amount = Payment.objects.filter(
+        status='completed',
+        payment_date__gte=start_date,
+        payment_date__lte=end_date,
+    ).aggregate(Sum('amount'))['amount__sum'] or 0
     pending_amount = invoices.filter(balance_due__gt=0, status__in=['draft', 'sent', 'partially_paid']).aggregate(Sum('balance_due'))['balance_due__sum'] or 0
     
     # Expense calculations
@@ -958,8 +1320,12 @@ def balance_sheet(request):
     net_profit = total_revenue - total_expenses
     
     # Revenue by payment method
-    revenue_by_method = invoices.filter(status='paid').values('payment_method').annotate(
-        total=Sum('total_amount')
+    revenue_by_method = Payment.objects.filter(
+        status='completed',
+        payment_date__gte=start_date,
+        payment_date__lte=end_date,
+    ).values('payment_method').annotate(
+        total=Sum('amount')
     ).order_by('-total')
     
     # Format dates for display

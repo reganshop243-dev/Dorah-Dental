@@ -8,12 +8,18 @@ from decimal import Decimal
 
 
 class Invoice(models.Model):
+    INVOICE_TYPE_CHOICES = [
+        ('invoice', 'Normal Invoice'),
+        ('booking', 'Booking'),
+    ]
+
     STATUS_CHOICES = [
         ('draft', 'Draft'),
         ('sent', 'Sent'),
         ('paid', 'Paid'),
         ('partially_paid', 'Partially Paid'),
         ('overdue', 'Overdue'),
+        ('booked', 'Booked'),
         ('cancelled', 'Cancelled'),
     ]
     
@@ -51,6 +57,7 @@ class Invoice(models.Model):
     
     # Status and metadata
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='draft')
+    invoice_type = models.CharField(max_length=20, choices=INVOICE_TYPE_CHOICES, default='invoice', db_index=True)
     payment_method = models.CharField(max_length=50, choices=PAYMENT_METHOD_CHOICES, blank=True, null=True)
     notes = models.TextField(blank=True, null=True)
     
@@ -86,6 +93,14 @@ class Invoice(models.Model):
         total = Decimal(self.total_amount or 0)
         self.balance_due = max(total - self.amount_paid, Decimal('0.00'))
 
+        # A booking remains BOOKED even after payment. This allows staff to
+        # distinguish money received for a future visit from a completed visit.
+        if self.invoice_type == 'booking' and self.status != 'cancelled':
+            self.status = 'booked'
+            if self.amount_paid > 0 and payment_date:
+                self.payment_date = payment_date
+            return
+
         if total > 0 and self.balance_due <= 0:
             self.balance_due = Decimal('0.00')
             self.status = 'paid'
@@ -103,8 +118,12 @@ class Invoice(models.Model):
             self.tax_amount = (self.subtotal * self.tax_rate) / 100
             self.total_amount = self.subtotal + self.tax_amount - self.discount
         self.balance_due = max(Decimal(self.total_amount or 0) - Decimal(self.amount_paid or 0), Decimal('0.00'))
+        # Booking invoices stay BOOKED until staff deliberately changes the
+        # invoice type to a normal invoice/completes the visit.
+        if self.invoice_type == 'booking' and self.status != 'cancelled':
+            self.status = 'booked'
         # Never leave a paid invoice marked as partially paid/overdue.
-        if self.total_amount and self.balance_due <= 0 and self.status not in ('cancelled', 'draft'):
+        elif self.total_amount and self.balance_due <= 0 and self.status not in ('cancelled', 'draft'):
             self.balance_due = Decimal('0.00')
             self.status = 'paid'
         elif self.amount_paid and self.balance_due > 0 and self.status not in ('cancelled', 'draft'):

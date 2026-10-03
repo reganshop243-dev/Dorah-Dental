@@ -40,6 +40,7 @@
     .badge-status.sent { background: #e3f2fd; color: #1976d2; }
     .badge-status.overdue { background: #fce4ec; color: #c62828; }
     .badge-status.cancelled { background: #f5f5f5; color: #616161; }
+    .badge-status.booked { background: #e8f5e9; color: #2e7d32; }
     
     .pagination .page-link {
         border-radius: 8px;
@@ -224,6 +225,7 @@
                                     <th>Invoice #</th>
                                     <th>Patient</th>
                                     <th>Date</th>
+                                    <th>Type</th>
                                     {% if can_view_financials %}<th>Total</th><th>Paid</th><th>Balance</th>{% endif %}
                                     <th>Status</th>
                                     <th>Payment Method</th>
@@ -244,6 +246,13 @@
                                         <small class="text-muted">{{ invoice.patient_phone }}</small>
                                     </td>
                                     <td>{{ invoice.issue_date|date:"M d, Y" }}</td>
+                                    <td>
+                                        {% if invoice.invoice_type == 'booking' %}
+                                            <span class="badge bg-success"><i class="fas fa-calendar-check me-1"></i>Booking</span>
+                                        {% else %}
+                                            <span class="badge bg-primary"><i class="fas fa-file-invoice me-1"></i>Invoice</span>
+                                        {% endif %}
+                                    </td>
                                     {% if can_view_financials %}<td class="amount-total">UGX {{ invoice.total_amount|floatformat:0|intcomma }}</td><td class="amount-paid">UGX {{ invoice.amount_paid|floatformat:0|intcomma }}</td><td class="amount-balance">UGX {{ invoice.balance_due|floatformat:0|intcomma }}</td>{% endif %}
                                     <td>
                                         <span class="badge-status {{ invoice.status }}">

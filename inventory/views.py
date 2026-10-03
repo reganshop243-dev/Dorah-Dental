@@ -1,7 +1,7 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
-from django.db.models import Q, Sum, Count, F
+from django.db.models import Q, Sum, Count, F, ExpressionWrapper, DecimalField
 from django.http import JsonResponse
 from django.utils import timezone
 from datetime import date, timedelta
@@ -43,7 +43,14 @@ def inventory_list(request):
     out_of_stock_items = items.filter(status='out_of_stock').count()
     total_value = 0
     if is_financial_staff(request.user):
-        total_value = items.aggregate(total=Sum('quantity') * Sum('unit_cost'))['total'] or 0
+        total_value = items.aggregate(
+            total=Sum(
+                ExpressionWrapper(
+                    F('quantity') * F('unit_cost'),
+                    output_field=DecimalField(max_digits=20, decimal_places=2),
+                )
+            )
+        )['total'] or 0
     
     context = {
         'items': items,

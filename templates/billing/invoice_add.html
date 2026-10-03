@@ -116,6 +116,19 @@
         color: #6c757d;
         margin-top: 2px;
     }
+    .invoice-type-option {
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+    .invoice-type-option:hover {
+        background: #f8f9fa;
+        border-color: #667eea !important;
+    }
+    .invoice-type-option:has(input:checked) {
+        background: #f0f7ff;
+        border-color: #667eea !important;
+        box-shadow: 0 0 0 1px #667eea;
+    }
 </style>
 {% endblock %}
 
@@ -167,6 +180,60 @@
                     
                     <hr>
                     
+                    <!-- Invoice Type -->
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Invoice Type *</label>
+                        <div class="row g-2">
+                            <div class="col-md-6">
+                                <label class="border rounded p-3 w-100 h-100 invoice-type-option" for="typeInvoice">
+                                    <input class="form-check-input me-2" type="radio" name="invoice_type"
+                                           id="typeInvoice" value="invoice" checked>
+                                    <i class="fas fa-file-invoice text-primary me-1"></i>
+                                    <strong>Normal Invoice</strong>
+                                    <small class="d-block text-muted ms-4">For treatment/services being provided now.</small>
+                                </label>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="border rounded p-3 w-100 h-100 invoice-type-option" for="typeBooking">
+                                    <input class="form-check-input me-2" type="radio" name="invoice_type"
+                                           id="typeBooking" value="booking">
+                                    <i class="fas fa-calendar-check text-success me-1"></i>
+                                    <strong>Booking</strong>
+                                    <small class="d-block text-muted ms-4">For a patient who pays now and will come later.</small>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <hr>
+
+                    <!-- Initial Payment / Booking Deposit -->
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Payment Collected Now <span class="text-muted fw-normal">(optional)</span></label>
+                        <div class="row g-2">
+                            <div class="col-md-4">
+                                <input type="number" min="0" step="0.01" class="form-control" name="initial_payment" id="initialPayment" placeholder="e.g. 250000">
+                            </div>
+                            <div class="col-md-4">
+                                <select class="form-select" name="initial_payment_method" id="initialPaymentMethod">
+                                    <option value="">Payment method</option>
+                                    <option value="cash">Cash</option>
+                                    <option value="mobile_money">Mobile Money</option>
+                                    <option value="bank_transfer">Bank Transfer</option>
+                                    <option value="insurance">Insurance</option>
+                                    <option value="card">Card</option>
+                                    <option value="other">Other</option>
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <input type="date" class="form-control" name="initial_payment_date" id="initialPaymentDate">
+                            </div>
+                        </div>
+                        <div class="help-text">For example: service UGX 400,000, paid UGX 250,000 now → today's income/collections = UGX 250,000 and balance = UGX 150,000.</div>
+                    </div>
+
+                    <hr>
+
                     <!-- Add Items Section -->
                     <div class="mb-3">
                         <label class="form-label">Add Items to Invoice</label>

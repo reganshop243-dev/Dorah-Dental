@@ -341,29 +341,29 @@ def admin_dashboard(request):
     status_dict = {item['status']: item['count'] for item in appointment_status_counts}
     
     # ==================== FINANCIAL STATS ====================
-    total_revenue = Invoice.objects.filter(status='paid').aggregate(
-        django_models.Sum('total_amount')
-    )['total_amount__sum'] or 0
-    
-    # ✅ FIXED: Removed __date lookup
-    daily_revenue = Invoice.objects.filter(
-        status='paid',
+    # Collections are based on actual completed Payment transactions, not invoice status.
+    # This means a partial booking payment is counted on the day the money was received.
+    from billing.models import Payment
+    total_revenue = Payment.objects.filter(status='completed').aggregate(
+        django_models.Sum('amount')
+    )['amount__sum'] or 0
+
+    daily_revenue = Payment.objects.filter(
+        status='completed',
         payment_date=today
-    ).aggregate(django_models.Sum('total_amount'))['total_amount__sum'] or 0
-    
-    # ✅ FIXED: Removed __date lookup
-    weekly_revenue = Invoice.objects.filter(
-        status='paid',
+    ).aggregate(django_models.Sum('amount'))['amount__sum'] or 0
+
+    weekly_revenue = Payment.objects.filter(
+        status='completed',
         payment_date__gte=start_of_week,
         payment_date__lte=today
-    ).aggregate(django_models.Sum('total_amount'))['total_amount__sum'] or 0
-    
-    # ✅ FIXED: Removed __date lookup
-    monthly_revenue = Invoice.objects.filter(
-        status='paid',
+    ).aggregate(django_models.Sum('amount'))['amount__sum'] or 0
+
+    monthly_revenue = Payment.objects.filter(
+        status='completed',
         payment_date__gte=start_of_month,
         payment_date__lte=today
-    ).aggregate(django_models.Sum('total_amount'))['total_amount__sum'] or 0
+    ).aggregate(django_models.Sum('amount'))['amount__sum'] or 0
     
     total_invoices = Invoice.objects.count()
     paid_invoices = Invoice.objects.filter(status='paid').count()
