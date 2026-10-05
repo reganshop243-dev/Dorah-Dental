@@ -297,57 +297,64 @@ def admin_dashboard(request):
     from appointments.models import Appointment, Doctor, Service, Treatment
     from billing.models import Invoice, Payment
     from billing.balance_service import get_patient_outstanding_balance
-    from patients.models import Patient
-    from patients.models import Patient
+    from inventory.models import InventoryItem
     from django.utils import timezone
-    from datetime import date, timedelta
+    from datetime import timedelta
     from django.db import models as django_models
-    
-    today = date.today()
+
+    today = timezone.localdate()
     start_of_week = today - timedelta(days=today.weekday())
     start_of_month = today.replace(day=1)
-    
+
     # ==================== SYSTEM STATS ====================
     total_users = User.objects.count()
     active_users = User.objects.filter(is_active=True).count()
     total_patients = Patient.objects.filter(is_active=True).count()
     total_doctors = Doctor.objects.filter(is_active=True).count()
     total_services = Service.objects.filter(is_active=True).count()
-    
+
     # ==================== USERS LIST ====================
     users = User.objects.all().select_related('profile').order_by('-date_joined')[:20]
-    
+
     # ==================== SERVICES LIST ====================
     services = Service.objects.filter(is_active=True).order_by('name')[:20]
-    
+
     # ==================== DOCTORS LIST ====================
     doctors = Doctor.objects.filter(is_active=True).order_by('name')[:20]
-    
+
     # ==================== APPOINTMENT STATS ====================
-    today_appointments = Appointment.objects.filter(appointment_date=today).select_related('patient', 'doctor', 'service')
+    today_appointments = Appointment.objects.filter(
+        appointment_date=today
+    ).select_related('patient', 'doctor', 'service')
     today_appointments_count = today_appointments.count()
-    
+
     upcoming_appointments = Appointment.objects.filter(
         appointment_date__gte=today,
         status__in=['scheduled', 'checked_in']
-    ).select_related('patient', 'doctor', 'service').order_by('appointment_date', 'appointment_time')[:10]
-    
+    ).select_related('patient', 'doctor', 'service').order_by(
+        'appointment_date', 'appointment_time'
+    )[:10]
+
     total_appointments = Appointment.objects.count()
     completed_appointments = Appointment.objects.filter(status='completed').count()
     cancelled_appointments = Appointment.objects.filter(status='cancelled').count()
-    
+
     # Appointments by status
-    appointment_status_counts = Appointment.objects.values('status').annotate(count=django_models.Count('id'))
+    appointment_status_counts = Appointment.objects.values('status').annotate(
+        count=django_models.Count('id')
+    )
     status_dict = {item['status']: item['count'] for item in appointment_status_counts}
-    
+
     # ==================== FINANCIAL STATS ====================
     # Collections are based on actual completed Payment transactions, not invoice status.
     # This means a partial booking payment is counted on the day the money was received.
-    from billing.models import Payment
+
     total_revenue = Payment.objects.filter(status='completed').aggregate(
         django_models.Sum('amount')
     )['amount__sum'] or 0
 
+    # NOTE: Payment.payment_date is a DateField, so we compare it directly.
+    # Do NOT use the __date lookup here — it only works on DateTimeField.
     daily_revenue = Payment.objects.filter(
         status='completed',
         payment_date=today
@@ -364,7 +371,7 @@ def admin_dashboard(request):
         payment_date__gte=start_of_month,
         payment_date__lte=today
     ).aggregate(django_models.Sum('amount'))['amount__sum'] or 0
-    
+
     total_invoices = Invoice.objects.count()
     paid_invoices = Invoice.objects.filter(status='paid').count()
     pending_invoices = Invoice.objects.filter(
@@ -372,55 +379,56 @@ def admin_dashboard(request):
         status__in=['draft', 'sent', 'partially_paid']
     ).count()
     overdue_invoices = Invoice.objects.filter(status='overdue').count()
-    
+
+    # Outstanding balance across active patients.
     total_outstanding = sum(
         get_patient_outstanding_balance(patient)
         for patient in Patient.objects.filter(is_active=True)
     )
-    
+    period_outstanding = total_outstanding  # alias kept for template compatibility
+
     recent_payments = Payment.objects.filter(
         status='completed'
     ).select_related('invoice', 'invoice__patient').order_by('-payment_date')[:10]
-    
+
     # ==================== PATIENT STATS ====================
-    # ✅ FIXED: Removed __date lookup
+    # NOTE: Patient.registered_at is a DateTimeField, so we use the __date lookup
+    # to match against a plain date object.
     new_patients_today = Patient.objects.filter(
-        registered_at=today
+        registered_at__date=today
     ).count()
-    
-    # ✅ FIXED: Removed __date lookup
+
     new_patients_this_month = Patient.objects.filter(
-        registered_at__gte=start_of_month,
-        registered_at__lte=today
+        registered_at__date__gte=start_of_month,
+        registered_at__date__lte=today
     ).count()
-    
+
     recent_patients = Patient.objects.filter(
         is_active=True
     ).order_by('-registered_at')[:10]
-    
+
     top_patients = Invoice.objects.filter(
         status='paid'
     ).values(
-        'patient__id', 
-        'patient__first_name', 
+        'patient__id',
+        'patient__first_name',
         'patient__last_name'
     ).annotate(
         total_spent=django_models.Sum('total_amount'),
         visit_count=django_models.Count('id')
     ).order_by('-total_spent')[:10]
-    
+
     # ==================== INVENTORY ALERTS ====================
-    from inventory.models import InventoryItem
     low_stock_items = InventoryItem.objects.filter(
         is_active=True,
         quantity__lte=django_models.F('min_quantity')
     ).order_by('quantity')[:10]
-    
+
     out_of_stock_items = InventoryItem.objects.filter(
         is_active=True,
         quantity=0
     ).count()
-    
+
     # ==================== CONTEXT ====================
     context = {
         # System Stats
@@ -429,12 +437,12 @@ def admin_dashboard(request):
         'total_patients': total_patients,
         'total_doctors': total_doctors,
         'total_services': total_services,
-        
+
         # Lists
         'users': users,
         'services': services,
         'doctors': doctors,
-        
+
         # Appointment Stats
         'today_appointments': today_appointments,
         'today_appointments_count': today_appointments_count,
@@ -443,7 +451,7 @@ def admin_dashboard(request):
         'completed_appointments': completed_appointments,
         'cancelled_appointments': cancelled_appointments,
         'status_dict': status_dict,
-        
+
         # Financial Stats
         'total_revenue': total_revenue,
         'daily_revenue': daily_revenue,
@@ -453,24 +461,23 @@ def admin_dashboard(request):
         'paid_invoices': paid_invoices,
         'pending_invoices': pending_invoices,
         'overdue_invoices': overdue_invoices,
-        'total_outstanding': period_outstanding,
+        'total_outstanding': total_outstanding,
         'period_outstanding': period_outstanding,
         'recent_payments': recent_payments,
-        
+
         # Patient Stats
         'new_patients_today': new_patients_today,
         'new_patients_this_month': new_patients_this_month,
         'recent_patients': recent_patients,
         'top_patients': top_patients,
-        
+
         # Inventory Alerts
         'low_stock_items': low_stock_items,
         'out_of_stock_items': out_of_stock_items,
-        
+
         'today': today,
     }
     return render(request, 'core/admin_dashboard.html', context)
-
 
 @login_required
 @otp_required

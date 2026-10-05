@@ -212,7 +212,7 @@ class Expense(models.Model):
         ('travel', 'Travel'),
         ('other', 'Other'),
     ]
-    
+
     PAYMENT_METHOD_CHOICES = [
         ('cash', 'Cash'),
         ('mobile_money', 'Mobile Money'),
@@ -221,11 +221,11 @@ class Expense(models.Model):
         ('cheque', 'Cheque'),
         ('other', 'Other'),
     ]
-    
+
     description = models.CharField(max_length=255)
     category = models.CharField(max_length=20, choices=EXPENSE_CATEGORIES)
     amount = models.DecimalField(max_digits=12, decimal_places=2)
-    expense_date = models.DateField(default=date.today)  # Changed from DateTimeField
+    expense_date = models.DateField(default=date.today)
     payment_method = models.CharField(max_length=20, choices=PAYMENT_METHOD_CHOICES, default='cash')
     reference_number = models.CharField(max_length=100, blank=True, null=True)
     receipt = models.FileField(upload_to='expenses/receipts/', blank=True, null=True)
@@ -233,11 +233,39 @@ class Expense(models.Model):
     created_by = models.ForeignKey('auth.User', on_delete=models.SET_NULL, null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
-    
+
     class Meta:
         ordering = ['-expense_date']
         verbose_name = "Expense"
         verbose_name_plural = "Expenses"
-    
+
     def __str__(self):
         return f"{self.get_category_display()} - UGX {self.amount} - {self.expense_date}"
+
+
+class PaymentEditLog(models.Model):
+    """Audit trail for payments that were deleted or otherwise edited."""
+    payment = models.ForeignKey(
+        'billing.Payment',
+        on_delete=models.SET_NULL,
+        null=True, blank=True,
+        related_name='edit_logs',
+    )
+    edited_by = models.CharField(max_length=150, blank=True)
+    edited_at = models.DateTimeField(default=timezone.now, editable=False)
+
+    old_amount = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
+    new_amount = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
+    old_payment_date = models.DateField(null=True, blank=True)
+    new_payment_date = models.DateField(null=True, blank=True)
+    old_payment_method = models.CharField(max_length=50, blank=True)
+    new_payment_method = models.CharField(max_length=50, blank=True)
+    old_status = models.CharField(max_length=20, blank=True)
+    new_status = models.CharField(max_length=20, blank=True)
+    notes = models.TextField(blank=True)
+
+    class Meta:
+        ordering = ['-edited_at']
+
+    def __str__(self):
+        return f"Edit log #{self.pk} for Payment #{self.payment_id} at {self.edited_at:%Y-%m-%d %H:%M}"

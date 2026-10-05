@@ -29,7 +29,8 @@ class InvoiceSerializer(serializers.ModelSerializer):
 
 class PaymentSerializer(serializers.ModelSerializer):
     invoice_number = serializers.CharField(source='invoice.invoice_number', read_only=True)
-    patient_name = serializers.CharField(source='invoice.patient_name', read_only=True)
+    patient_name = serializers.CharField(source='invoice.patient.full_name', read_only=True)
+    patient_phone = serializers.CharField(source='invoice.patient.phone', read_only=True)
     status_display = serializers.SerializerMethodField()
     method_display = serializers.SerializerMethodField()
     

@@ -120,7 +120,7 @@ INSTALLED_APPS = [
     'axes',
     
     # Custom apps
-    'patients',
+    'patients.apps.PatientsConfig',
     'appointments',
     'billing',
     'core',

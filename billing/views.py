@@ -712,96 +712,337 @@ def invoice_add(request):
             'inventory_items': inventory_items,
             'selected_patient': selected_patient,
             'selected_patient_balance': selected_patient_balance,
+            'initial_cart_items': [],
         }
     )
-
-
 
 @login_required
 @financial_only("billing.edit")
 def invoice_edit(request, pk):
-    """Edit invoice header/financial fields and existing line items safely."""
+    """
+    Edit an existing invoice using the SAME UI as invoice_add.
+    Header, dates, items, and payments are all editable.
+    Payments are audited via PaymentEditLog. Inventory is reconciled.
+    """
     if is_doctor(request.user):
         messages.error(request, 'Doctors are not allowed to modify invoices.')
         return redirect('billing:detail', pk=pk)
 
     from decimal import Decimal, InvalidOperation
+    from datetime import datetime
     from django.db import transaction
+    from django.db.models import Sum
+    from inventory.models import InventoryItem, StockMovement
+    from .models import Payment, PaymentEditLog
 
     invoice = get_object_or_404(Invoice, pk=pk)
-    items = list(invoice.items.select_related('service', 'inventory_item').all())
 
+    # -----------------------------------------------------------------
+    # HELPERS
+    # -----------------------------------------------------------------
+    def _reverse_inventory_for_item(item, user):
+        if not item.inventory_item_id:
+            return
+        try:
+            inv = InventoryItem.objects.get(pk=item.inventory_item_id)
+        except InventoryItem.DoesNotExist:
+            return
+        previous = inv.quantity
+        inv.quantity = previous + item.quantity
+        inv.save(update_fields=['quantity'])
+        StockMovement.objects.create(
+            item=inv,
+            movement_type='adjustment',
+            quantity=item.quantity,
+            previous_quantity=previous,
+            new_quantity=inv.quantity,
+            reference_number=invoice.invoice_number,
+            notes=f"Reversal on edit of invoice #{invoice.invoice_number}",
+            performed_by=user,
+        )
+
+    def _apply_inventory_for_item(item, user):
+        if not item.inventory_item_id:
+            return
+        try:
+            inv = InventoryItem.objects.get(pk=item.inventory_item_id)
+        except InventoryItem.DoesNotExist:
+            return
+        previous = inv.quantity
+        inv.quantity = previous - item.quantity
+        inv.save(update_fields=['quantity'])
+        StockMovement.objects.create(
+            item=inv,
+            movement_type='sale',
+            quantity=-item.quantity,
+            previous_quantity=previous,
+            new_quantity=inv.quantity,
+            reference_number=invoice.invoice_number,
+            notes=f"Re-applied on edit of invoice #{invoice.invoice_number}",
+            performed_by=user,
+        )
+
+    def _recompute_payment_state():
+        paid = invoice.payments.filter(status='completed').aggregate(
+            Sum('amount')
+        )['amount__sum'] or Decimal('0.00')
+        invoice.amount_paid = paid
+        invoice.balance_due = invoice.total_amount - paid
+
+        if paid <= 0:
+            if invoice.invoice_type == 'booking':
+                invoice.status = 'booked'
+            else:
+                invoice.status = 'draft' if invoice.balance_due > 0 else 'paid'
+        elif invoice.balance_due <= 0:
+            invoice.status = 'paid'
+        else:
+            invoice.status = 'partially_paid'
+
+        invoice.save(update_fields=['amount_paid', 'balance_due', 'status'])
+
+    # =================================================================
+    # POST
+    # =================================================================
     if request.method == 'POST':
         try:
+            # ---------- Header ----------
+            patient_id = request.POST.get('patient')
+            invoice_type = request.POST.get('invoice_type', invoice.invoice_type or 'invoice')
+            if invoice_type not in ('invoice', 'booking'):
+                invoice_type = 'invoice'
+
+            # Cart: try POST, fall back to session
+            cart_items_json = (request.POST.get('cart_items') or '').strip()
+            if not cart_items_json or cart_items_json == '[]':
+                cart_items_json = request.session.get('cart_items', '[]')
+
+            try:
+                cart_items = json.loads(cart_items_json) if cart_items_json else []
+            except json.JSONDecodeError:
+                cart_items = []
+
+            if not patient_id:
+                raise ValueError('Please select a patient.')
+            if not cart_items:
+                raise ValueError('Please add at least one item to the invoice.')
+
+            patient = get_object_or_404(Patient, pk=patient_id)
+
+            # ---------- Dates ----------
+            issue_date_str = (request.POST.get('issue_date') or '').strip()
+            due_date_str = (request.POST.get('due_date') or '').strip()
+
+            if issue_date_str:
+                try:
+                    issue_date_obj = datetime.strptime(issue_date_str, '%Y-%m-%d').date()
+                except ValueError:
+                    raise ValueError('Invalid issue date.')
+            else:
+                issue_date_obj = invoice.issue_date or timezone.localdate()
+
+            due_date_obj = None
+            if due_date_str:
+                try:
+                    due_date_obj = datetime.strptime(due_date_str, '%Y-%m-%d').date()
+                except ValueError:
+                    raise ValueError('Invalid due date.')
+
+            # ---------- Totals ----------
+            subtotal = Decimal('0.00')
+            for it in cart_items:
+                subtotal += Decimal(str(it.get('price', 0))) * int(it.get('quantity', 1))
+
+            tax_rate = Decimal(str(request.POST.get('tax_rate', 0) or 0))
+            discount = Decimal(str(request.POST.get('discount', 0) or 0))
+            if tax_rate < 0 or discount < 0:
+                raise ValueError('Tax rate and discount cannot be negative.')
+
+            tax_amount = (subtotal * tax_rate) / Decimal('100')
+            total_amount = subtotal + tax_amount - discount
+            if total_amount < 0:
+                raise ValueError('Discount cannot exceed subtotal + tax.')
+
+            # ---------- New payment ----------
+            new_payment_raw = (request.POST.get('initial_payment') or '0').strip()
+            try:
+                new_payment_amount = Decimal(new_payment_raw)
+            except (InvalidOperation, ValueError):
+                new_payment_amount = Decimal('0')
+            if new_payment_amount < 0:
+                raise ValueError('New payment cannot be negative.')
+
+            new_payment_method = request.POST.get('initial_payment_method', '').strip()
+            new_payment_date_raw = (request.POST.get('initial_payment_date') or '').strip()
+
+            new_payment_date = timezone.localdate()
+            if new_payment_date_raw:
+                try:
+                    new_payment_date = datetime.strptime(new_payment_date_raw, '%Y-%m-%d').date()
+                except ValueError:
+                    new_payment_date = timezone.localdate()
+
+            if new_payment_amount > 0 and not new_payment_method:
+                raise ValueError('Please select a payment method for the new payment.')
+
+            # =================================================
+            # ATOMIC SAVE
+            # =================================================
             with transaction.atomic():
-                issue_date = request.POST.get('issue_date') or invoice.issue_date
-                due_date = request.POST.get('due_date') or None
-                invoice_type = request.POST.get('invoice_type', invoice.invoice_type)
-                if invoice_type not in dict(Invoice.INVOICE_TYPE_CHOICES):
-                    raise ValueError('Invalid invoice type.')
 
-                def dec(name, default='0'):
-                    raw = (request.POST.get(name, default) or default).strip()
-                    value = Decimal(raw)
-                    if value < 0:
-                        raise ValueError(f'{name} cannot be negative')
-                    return value
+                # 1. Reverse inventory
+                for old_item in invoice.items.all():
+                    _reverse_inventory_for_item(old_item, request.user)
 
-                tax_rate = dec('tax_rate')
-                discount = dec('discount')
-                invoice.issue_date = issue_date
-                invoice.due_date = due_date
-                invoice.tax_rate = tax_rate
-                invoice.discount = discount
-                invoice.notes = request.POST.get('notes', '').strip()
+                # 2. Delete old items
+                invoice.items.all().delete()
+
+                # 3. Update header
+                invoice.patient = patient
+                invoice.patient_name = patient.full_name
+                invoice.patient_phone = patient.phone or ''
                 invoice.invoice_type = invoice_type
-                if invoice.invoice_type == 'booking' and invoice.status != 'cancelled':
-                    invoice.status = 'booked'
+                invoice.issue_date = issue_date_obj
+                invoice.due_date = due_date_obj
+                invoice.subtotal = subtotal
+                invoice.tax_rate = tax_rate
+                invoice.tax_amount = tax_amount
+                invoice.discount = discount
+                invoice.total_amount = total_amount
+                invoice.notes = request.POST.get('notes', '').strip()
+                invoice.updated_by = request.user.get_username()
+                invoice.save()
 
-                for item in items:
-                    prefix = f'item_{item.pk}_'
-                    description = request.POST.get(prefix + 'description')
-                    quantity_raw = request.POST.get(prefix + 'quantity')
-                    unit_price_raw = request.POST.get(prefix + 'unit_price')
-                    if description is None:
+                # 4. Rebuild items
+                for item_data in cart_items:
+                    item_type = item_data.get('type', 'service')
+                    item_id = item_data.get('id')
+                    quantity = int(item_data.get('quantity', 1))
+                    price = Decimal(str(item_data.get('price', 0)))
+                    name = (item_data.get('name') or '').strip()
+
+                    if quantity < 1:
+                        raise ValueError(f'Quantity for "{name}" must be at least 1.')
+                    if price < 0:
+                        raise ValueError(f'Price for "{name}" cannot be negative.')
+
+                    new_item = InvoiceItem.objects.create(
+                        invoice=invoice,
+                        description=name or 'Item',
+                        quantity=quantity,
+                        unit_price=price,
+                        total_price=price * quantity,
+                    )
+
+                    if item_type == 'service' and item_id:
+                        try:
+                            new_item.service = Service.objects.get(pk=item_id)
+                            new_item.save(update_fields=['service'])
+                        except Service.DoesNotExist:
+                            pass
+
+                    elif item_type == 'inventory' and item_id:
+                        try:
+                            inv_obj = InventoryItem.objects.get(pk=item_id)
+                        except InventoryItem.DoesNotExist:
+                            continue
+                        new_item.inventory_item = inv_obj
+                        new_item.save(update_fields=['inventory_item'])
+                        _apply_inventory_for_item(new_item, request.user)
+
+                # 5. Edit/delete payments
+                for payment in invoice.payments.all():
+                    prefix = f'payment_{payment.pk}_'
+
+                    if request.POST.get(prefix + 'delete') == 'on':
+                        PaymentEditLog.objects.create(
+                            payment=payment,
+                            edited_by=request.user.get_username(),
+                            old_amount=payment.amount,
+                            new_amount=None,
+                            old_payment_date=payment.payment_date,
+                            new_payment_date=None,
+                            old_payment_method=payment.payment_method or '',
+                            new_payment_method='',
+                            old_status=payment.status,
+                            new_status='deleted',
+                            notes='Payment deleted from invoice edit form.',
+                        )
+                        payment.delete()
                         continue
 
-                    quantity = int(quantity_raw or item.quantity)
-                    unit_price = Decimal(unit_price_raw or item.unit_price)
-                    if quantity < 1:
-                        raise ValueError(f'Quantity for "{item.description}" must be at least 1')
-                    if unit_price < 0:
-                        raise ValueError(f'Price for "{item.description}" cannot be negative')
+                    if prefix + 'amount' not in request.POST:
+                        continue
 
-                    # Inventory-linked quantities cannot be changed here because
-                    # doing so without a stock movement would corrupt stock.
-                    if item.inventory_item:
-                        quantity = item.quantity
+                    try:
+                        new_amount = Decimal(
+                            str(request.POST.get(prefix + 'amount') or payment.amount)
+                        )
+                    except (InvalidOperation, ValueError):
+                        raise ValueError(f'Invalid amount for payment #{payment.pk}.')
+                    if new_amount < 0:
+                        raise ValueError(f'Amount for payment #{payment.pk} cannot be negative.')
 
-                    item.description = description.strip() or item.description
-                    item.quantity = quantity
-                    item.unit_price = unit_price
-                    item.total_price = unit_price * quantity
-                    item.save(update_fields=['description', 'quantity', 'unit_price', 'total_price'])
+                    new_date_str = (request.POST.get(prefix + 'payment_date') or '').strip()
+                    if new_date_str:
+                        try:
+                            new_payment_date_obj = datetime.strptime(
+                                new_date_str, '%Y-%m-%d'
+                            ).date()
+                        except ValueError:
+                            raise ValueError(f'Invalid date for payment #{payment.pk}.')
+                    else:
+                        new_payment_date_obj = payment.payment_date
 
-                subtotal = sum((item.total_price for item in invoice.items.all()), Decimal('0.00'))
-                tax_amount = (subtotal * tax_rate) / Decimal('100')
-                total_amount = subtotal + tax_amount - discount
-                if total_amount < 0:
-                    raise ValueError('Discount cannot be greater than the invoice subtotal plus tax.')
+                    new_method = (request.POST.get(prefix + 'payment_method') or '').strip()
+                    new_status = (request.POST.get(prefix + 'status') or payment.status).strip()
+                    new_notes = (request.POST.get(prefix + 'notes') or '').strip()
 
-                invoice.subtotal = subtotal
-                invoice.tax_amount = tax_amount
-                invoice.total_amount = total_amount
-                invoice.save(update_fields=[
-                    'issue_date', 'due_date', 'tax_rate', 'discount', 'notes',
-                    'invoice_type', 'status', 'subtotal', 'tax_amount', 'total_amount', 'updated_at'
-                ])
+                    changed = (
+                        new_amount != payment.amount
+                        or new_payment_date_obj != payment.payment_date
+                        or new_method != (payment.payment_method or '')
+                        or new_status != payment.status
+                        or new_notes != (payment.notes or '')
+                    )
 
-                invoice.sync_payment_state()
-                invoice.save(update_fields=[
-                    'amount_paid', 'balance_due', 'status', 'payment_date', 'updated_at'
-                ])
+                    if changed:
+                        PaymentEditLog.objects.create(
+                            payment=payment,
+                            edited_by=request.user.get_username(),
+                            old_amount=payment.amount,
+                            new_amount=new_amount,
+                            old_payment_date=payment.payment_date,
+                            new_payment_date=new_payment_date_obj,
+                            old_payment_method=payment.payment_method or '',
+                            new_payment_method=new_method,
+                            old_status=payment.status,
+                            new_status=new_status,
+                            notes=new_notes or '(edited via invoice edit form)',
+                        )
+                        payment.amount = new_amount
+                        payment.payment_date = new_payment_date_obj
+                        payment.payment_method = new_method
+                        payment.status = new_status
+                        payment.notes = new_notes
+                        payment.save(update_fields=[
+                            'amount', 'payment_date', 'payment_method', 'status', 'notes'
+                        ])
+
+                # 6. Add new payment
+                if new_payment_amount > 0:
+                    Payment.objects.create(
+                        invoice=invoice,
+                        amount=new_payment_amount,
+                        payment_date=new_payment_date,
+                        payment_method=new_payment_method,
+                        status='completed',
+                        processed_by=request.user.get_username(),
+                        notes='Recorded while editing invoice.',
+                    )
+
+                # 7. Recompute totals
+                _recompute_payment_state()
 
             messages.success(request, f'Invoice {invoice.invoice_number} updated successfully.')
             return redirect('billing:detail', pk=invoice.pk)
@@ -809,15 +1050,109 @@ def invoice_edit(request, pk):
         except (ValueError, InvalidOperation) as e:
             messages.error(request, str(e))
         except Exception:
+            import traceback
+            print(traceback.format_exc())
             messages.error(request, 'We could not update this invoice. No changes were saved.')
 
+    # =================================================================
+    # GET — pre-fill
+    # =================================================================
     invoice.refresh_from_db()
-    items = invoice.items.select_related('service', 'inventory_item').all()
-    return render(request, 'billing/invoice_edit.html', {
-        'invoice': invoice,
-        'items': items,
-        'is_doctor': is_doctor(request.user),
-    })
+
+    # Build the cart as a PYTHON LIST (not a JSON string).
+    # The template renders this with |json_script:"initialCartData",
+    # which produces a clean JSON array with no double-encoding.
+    initial_cart_items = []
+    for item in invoice.items.select_related('service', 'inventory_item').all():
+
+        original_price = None
+
+        if item.inventory_item_id:
+            item_type = 'inventory'
+            item_id = item.inventory_item_id
+            stock = item.inventory_item.quantity if item.inventory_item else 0
+            unit = getattr(item.inventory_item, 'unit', '') or ''
+            original_price = float(getattr(item.inventory_item, 'selling_price', 0) or 0)
+
+        elif item.service_id:
+            item_type = 'service'
+            item_id = item.service_id
+            stock = None
+            unit = ''
+            original_price = float(getattr(item.service, 'price', 0) or 0)
+
+        else:
+            item_type = 'custom'
+            item_id = None
+            stock = None
+            unit = ''
+            original_price = float(item.unit_price)
+
+        initial_cart_items.append({
+            'type': item_type,
+            'id': item_id,
+            'name': item.description,
+            'price': float(item.unit_price),
+            'original_price': original_price,
+            'quantity': item.quantity,
+            'typeLabel': (
+                'Service' if item_type == 'service'
+                else 'Supply' if item_type == 'inventory'
+                else 'Item'
+            ),
+            'stock': stock,
+            'unit': unit,
+        })
+
+    # Keep session in sync (used by the store-cart endpoint and POST fallback).
+    request.session['cart_items'] = json.dumps(initial_cart_items)
+
+    from inventory.models import InventoryItem
+    from billing.balance_service import get_patient_outstanding_balance
+
+    patients = Patient.objects.filter(is_active=True).order_by('first_name', 'last_name')
+    services = Service.objects.filter(is_active=True)
+    inventory_items = InventoryItem.objects.filter(is_active=True)
+
+    selected_patient = invoice.patient
+    selected_patient_balance = (
+        get_patient_outstanding_balance(selected_patient) if selected_patient else 0
+    )
+
+    return render(
+        request,
+        'billing/invoice_add.html',
+        {
+            'patients': patients,
+            'services': services,
+            'inventory_items': inventory_items,
+            'selected_patient': selected_patient,
+            'selected_patient_balance': selected_patient_balance,
+            'invoice': invoice,
+            'is_edit': True,
+            'existing_payments': invoice.payments.all().order_by('payment_date', 'id'),
+            'today': timezone.localdate(),
+
+            # THIS IS THE KEY FIX:
+            # Pass the list itself, not the session string.
+            'initial_cart_items': initial_cart_items,
+
+            'payment_method_choices': [
+                ('cash', 'Cash'),
+                ('mobile_money', 'Mobile Money'),
+                ('bank_transfer', 'Bank Transfer'),
+                ('insurance', 'Insurance'),
+                ('card', 'Card'),
+                ('other', 'Other'),
+            ],
+            'payment_status_choices': [
+                ('pending', 'Pending'),
+                ('completed', 'Completed'),
+                ('failed', 'Failed'),
+                ('refunded', 'Refunded'),
+            ],
+        }
+    )
 
 
 @login_required

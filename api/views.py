@@ -294,8 +294,8 @@ class AgingReportView(APIView):
                     aging_data['invoices'].append({
                         'id': invoice.id,
                         'invoice_number': invoice.invoice_number,
-                        'patient_name': invoice.patient_name,
-                        'patient_phone': invoice.patient_phone,
+                        'patient_name': invoice.patient.full_name if invoice.patient else invoice.patient_name,
+                        'patient_phone': (invoice.patient.phone if invoice.patient else invoice.patient_phone) or '',
                         'issue_date': invoice.issue_date,
                         'due_date': invoice.due_date,
                         'age_days': age_days,

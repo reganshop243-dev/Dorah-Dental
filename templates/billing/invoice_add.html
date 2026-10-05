@@ -2,405 +2,473 @@
 {% load static %}
 {% load humanize %}
 
-{% block page_title %}New Invoice{% endblock %}
+{% block page_title %}{% if is_edit %}Edit Invoice {{ invoice.invoice_number }}{% else %}New Invoice{% endif %}{% endblock %}
 
 {% block extra_css %}
 <style>
-    .search-container {
-        position: relative;
+    /* --- Compact layout --- */
+    .inv-wrap { max-width: 1500px; margin: 0 auto; }
+    .inv-card { border: 1px solid #e9ecef; border-radius: 10px; background: #fff; }
+    .inv-card .inv-card-head {
+        padding: 10px 14px; border-bottom: 1px solid #eef0f3;
+        font-weight: 600; font-size: 0.95rem; display: flex;
+        justify-content: space-between; align-items: center;
     }
+    .inv-card .inv-card-body { padding: 12px 14px; }
+
+    .compact .form-label { font-size: 0.8rem; margin-bottom: 2px; color: #566;}
+    .compact .form-control,
+    .compact .form-select,
+    .compact .input-group-text { font-size: 0.85rem; padding: 4px 8px; height: 32px; }
+    .compact textarea.form-control { height: auto; min-height: 48px; padding: 6px 8px; }
+    .compact hr { margin: 8px 0; }
+    .compact .mb-3 { margin-bottom: 8px !important; }
+    .compact .row.g-2 > * { padding-right: 4px; padding-left: 4px; }
+    .help-text { font-size: 0.72rem; color: #6c757d; margin-top: 2px; }
+
+    /* --- Patient search --- */
+    .search-container { position: relative; }
     .search-results {
-        position: absolute;
-        top: 100%;
-        left: 0;
-        right: 0;
-        max-height: 300px;
-        overflow-y: auto;
-        background: white;
-        border: 1px solid #ddd;
-        border-radius: 4px;
-        z-index: 1000;
-        display: none;
-        box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        position: absolute; top: 100%; left: 0; right: 0;
+        max-height: 260px; overflow-y: auto; background: #fff;
+        border: 1px solid #ddd; border-radius: 4px; z-index: 1000;
+        display: none; box-shadow: 0 4px 15px rgba(0,0,0,0.1);
     }
     .search-results .result-item {
-        padding: 10px 15px;
-        cursor: pointer;
-        border-bottom: 1px solid #f0f0f0;
-        transition: background 0.2s;
+        padding: 6px 10px; cursor: pointer;
+        border-bottom: 1px solid #f0f0f0; font-size: 0.85rem;
     }
-    .search-results .result-item:hover {
-        background: #f0f8ff;
-    }
-    .search-results .result-item .name {
-        font-weight: 600;
-        color: #2c3e50;
-    }
-    .search-results .result-item .details {
-        color: #7f8c8d;
-        font-size: 0.9rem;
-    }
-    .search-results .no-results {
-        padding: 20px;
-        text-align: center;
-        color: #7f8c8d;
-    }
+    .search-results .result-item:hover { background: #f0f8ff; }
+    .search-results .result-item .name { font-weight: 600; color: #2c3e50; }
+    .search-results .result-item .details { color: #7f8c8d; font-size: 0.78rem; }
+    .search-results .no-results { padding: 12px; text-align: center; color: #7f8c8d; font-size: 0.85rem; }
+    .loading-spinner { display: none; text-align: center; padding: 12px; color: #7f8c8d; }
+
     .selected-item {
-        background: #f8f9fa;
-        border: 2px solid #28a745;
-        border-radius: 8px;
-        padding: 15px;
-        margin-top: 10px;
-        display: none;
+        background: #f4fbf6; border: 1px solid #28a745; border-radius: 6px;
+        padding: 6px 10px; margin-top: 6px; display: none; font-size: 0.85rem;
     }
-    .selected-item .item-name {
-        font-size: 1.1rem;
-        font-weight: 600;
-        color: #2c3e50;
-    }
-    .selected-item .change-btn {
-        cursor: pointer;
-        color: #28a745;
-        text-decoration: underline;
-    }
-    .selected-item .change-btn:hover {
-        color: #1e7e34;
-    }
-    .loading-spinner {
-        display: none;
-        text-align: center;
-        padding: 20px;
-        color: #7f8c8d;
-    }
-    .cart-item {
-        border: 1px solid #e9ecef;
-        border-radius: 8px;
-        padding: 12px;
-        margin-bottom: 10px;
-        background: white;
-        transition: all 0.2s;
-    }
-    .cart-item:hover {
-        box-shadow: 0 2px 8px rgba(0,0,0,0.08);
-    }
-    .cart-item .item-type-badge {
-        font-size: 0.7rem;
-        padding: 2px 8px;
-        border-radius: 12px;
-    }
-    .cart-item .item-type-badge.service {
-        background: #e3f2fd;
-        color: #1976d2;
-    }
-    .cart-item .item-type-badge.supply {
-        background: #e8f5e9;
-        color: #2e7d32;
-    }
-    .quick-add-btn {
-        cursor: pointer;
-        transition: all 0.2s;
-        border: 1px solid #dee2e6;
-        background: white;
-    }
-    .quick-add-btn:hover {
-        transform: scale(1.05);
-        background: #f8f9fa;
-        border-color: #28a745;
-    }
-    .price-input {
-        width: 100px;
-        display: inline-block;
-    }
-    .help-text {
-        font-size: 0.8rem;
-        color: #6c757d;
-        margin-top: 2px;
-    }
+    .selected-item .item-name { font-weight: 600; color: #1e7e34; }
+    .selected-item .change-btn { cursor: pointer; color: #28a745; text-decoration: underline; font-size: 0.78rem; }
+    .selected-item .change-btn:hover { color: #1e7e34; }
+
+    /* --- Invoice type --- */
     .invoice-type-option {
-        cursor: pointer;
-        transition: all 0.2s ease;
+        cursor: pointer; transition: all 0.15s ease;
+        padding: 6px 10px !important; font-size: 0.85rem;
     }
-    .invoice-type-option:hover {
-        background: #f8f9fa;
-        border-color: #667eea !important;
-    }
+    .invoice-type-option:hover { background: #f8f9fa; border-color: #667eea !important; }
     .invoice-type-option:has(input:checked) {
-        background: #f0f7ff;
-        border-color: #667eea !important;
+        background: #f0f7ff; border-color: #667eea !important;
         box-shadow: 0 0 0 1px #667eea;
     }
+    .invoice-type-option small { font-size: 0.72rem; }
+
+    /* --- Quick add --- */
+    .quick-add-btn {
+        cursor: pointer; border: 1px solid #dee2e6; background: #fff;
+        padding: 4px 6px; font-size: 0.8rem; text-align: center;
+        transition: all 0.15s;
+    }
+    .quick-add-btn:hover { background: #f8f9fa; border-color: #28a745; }
+    .quick-add-btn small { display: block; line-height: 1.15; }
+
+    /* --- Cart --- */
+    .cart-item {
+        border: 1px solid #e9ecef; border-radius: 6px;
+        padding: 6px 8px; margin-bottom: 6px; background: #fff;
+    }
+    .cart-item .row { --bs-gutter-x: 6px; margin-top: 4px !important; }
+    .cart-item .item-type-badge {
+        font-size: 0.62rem; padding: 1px 6px; border-radius: 10px;
+        text-transform: uppercase; letter-spacing: .02em;
+    }
+    .cart-item .item-type-badge.service { background: #e3f2fd; color: #1976d2; }
+    .cart-item .item-type-badge.inventory,
+    .cart-item .item-type-badge.supply { background: #e8f5e9; color: #2e7d32; }
+    .cart-item .item-name { font-weight: 600; font-size: 0.9rem; }
+    .cart-item .item-meta { color: #7f8c8d; font-size: 0.74rem; }
+    .cart-item input.form-control-sm { font-size: 0.82rem; padding: 2px 6px; height: 26px; }
+
+    /* --- Payments --- */
+    .pay-row {
+        border: 1px solid #eef0f3; border-radius: 6px;
+        padding: 6px 8px; margin-bottom: 6px; background: #fbfcfe;
+    }
+    .pay-row .form-control-sm,
+    .pay-row .form-select-sm { font-size: 0.82rem; padding: 2px 6px; height: 28px; }
+    .pay-row .pay-label { font-size: 0.7rem; color: #6c757d; text-transform: uppercase; letter-spacing: .02em; }
+    .pay-row .pay-del { font-size: 0.78rem; color: #b02a37; }
+
+    .sticky-col { position: sticky; top: 12px; }
+
+    /* Cart scroll area */
+    .cart-scroll { max-height: 320px; overflow-y: auto; padding-right: 4px; }
+    .pay-scroll { max-height: 260px; overflow-y: auto; padding-right: 4px; }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="row">
-    <!-- Left Column - Invoice Form -->
-    <div class="col-md-7">
-        <div class="card">
-            <div class="card-header">
-                <i class="fas fa-file-invoice text-primary"></i> Create New Invoice
-            </div>
-            <div class="card-body">
-                <form method="post" id="invoiceForm">
-                    {% csrf_token %}
-                    
-                    <!-- Patient Search -->
-                    <div class="mb-3">
-                        <label class="form-label">Search Patient *</label>
-                        <div class="search-container">
-                            <div class="input-group">
-                                <span class="input-group-text"><i class="fas fa-search"></i></span>
-                                <input type="text" class="form-control" id="patientSearch" 
-                                       placeholder="Search by name, phone, or email..." 
-                                       autocomplete="off">
-                                <button type="button" class="btn btn-outline-secondary" id="clearPatientSearch">
-                                    <i class="fas fa-times"></i>
-                                </button>
-                            </div>
-                            <div class="search-results" id="patientResults">
-                                <div class="loading-spinner" id="patientLoading">
-                                    <i class="fas fa-spinner fa-spin"></i> Searching...
-                                </div>
-                            </div>
-                        </div>
-                        <input type="hidden" id="patient" name="patient" required>
-                        <div class="selected-item" id="selectedPatient">
-                            <div class="d-flex justify-content-between align-items-start">
-                                <div>
-                                    <div class="item-name" id="selectedPatientName"></div>
-                                    <div class="item-details" id="selectedPatientDetails"></div>
-                                    <div id="selectedPatientBalance" class="mt-2 fw-semibold"></div>
-                                </div>
-                                <span class="change-btn" onclick="clearSelectedPatient()">
-                                    <i class="fas fa-edit"></i> Change
-                                </span>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <hr>
-                    
-                    <!-- Invoice Type -->
-                    <div class="mb-3">
-                        <label class="form-label fw-bold">Invoice Type *</label>
-                        <div class="row g-2">
-                            <div class="col-md-6">
-                                <label class="border rounded p-3 w-100 h-100 invoice-type-option" for="typeInvoice">
-                                    <input class="form-check-input me-2" type="radio" name="invoice_type"
-                                           id="typeInvoice" value="invoice" checked>
-                                    <i class="fas fa-file-invoice text-primary me-1"></i>
-                                    <strong>Normal Invoice</strong>
-                                    <small class="d-block text-muted ms-4">For treatment/services being provided now.</small>
-                                </label>
-                            </div>
-                            <div class="col-md-6">
-                                <label class="border rounded p-3 w-100 h-100 invoice-type-option" for="typeBooking">
-                                    <input class="form-check-input me-2" type="radio" name="invoice_type"
-                                           id="typeBooking" value="booking">
-                                    <i class="fas fa-calendar-check text-success me-1"></i>
-                                    <strong>Booking</strong>
-                                    <small class="d-block text-muted ms-4">For a patient who pays now and will come later.</small>
-                                </label>
-                            </div>
-                        </div>
-                    </div>
+<div class="inv-wrap compact">
 
-                    <hr>
+<form method="post" id="invoiceForm"
+      action="{% if is_edit %}{% url 'billing:edit' invoice.pk %}{% else %}{% url 'billing:add' %}{% endif %}">
+{% csrf_token %}
 
-                    <!-- Initial Payment / Booking Deposit -->
-                    <div class="mb-3">
-                        <label class="form-label fw-bold">Payment Collected Now <span class="text-muted fw-normal">(optional)</span></label>
-                        <div class="row g-2">
-                            <div class="col-md-4">
-                                <input type="number" min="0" step="0.01" class="form-control" name="initial_payment" id="initialPayment" placeholder="e.g. 250000">
-                            </div>
-                            <div class="col-md-4">
-                                <select class="form-select" name="initial_payment_method" id="initialPaymentMethod">
-                                    <option value="">Payment method</option>
-                                    <option value="cash">Cash</option>
-                                    <option value="mobile_money">Mobile Money</option>
-                                    <option value="bank_transfer">Bank Transfer</option>
-                                    <option value="insurance">Insurance</option>
-                                    <option value="card">Card</option>
-                                    <option value="other">Other</option>
-                                </select>
-                            </div>
-                            <div class="col-md-4">
-                                <input type="date" class="form-control" name="initial_payment_date" id="initialPaymentDate">
-                            </div>
-                        </div>
-                        <div class="help-text">For example: service UGX 400,000, paid UGX 250,000 now → today's income/collections = UGX 250,000 and balance = UGX 150,000.</div>
-                    </div>
+<div class="row g-3">
+    <!-- ================= LEFT COLUMN ================= -->
+    <div class="col-lg-7">
 
-                    <hr>
+        <div class="inv-card mb-3">
+            <div class="inv-card-head">
+                <span><i class="fas fa-file-invoice text-primary me-1"></i>
+                    {% if is_edit %}Edit Invoice {{ invoice.invoice_number }}{% else %}New Invoice{% endif %}
+                </span>
+                <span class="text-muted small">
+                    {% if is_edit %}Created {{ invoice.created_at|date:'Y-m-d H:i' }}{% else %}All fields marked * are required{% endif %}
+                </span>
+            </div>
+            <div class="inv-card-body">
 
-                    <!-- Add Items Section -->
-                    <div class="mb-3">
-                        <label class="form-label">Add Items to Invoice</label>
-                        <div class="row g-2">
-                            <div class="col-md-5">
-                                <input type="text" class="form-control" id="itemSearch" 
-                                       placeholder="Search services or supplies..." 
-                                       autocomplete="off">
-                            </div>
-                            <div class="col-md-2">
-                                <input type="number" class="form-control" id="itemQuantity" 
-                                       placeholder="Qty" value="1" min="1">
-                            </div>
-                            <div class="col-md-3">
-                                <input type="number" step="0.01" class="form-control" id="itemPrice" 
-                                       placeholder="Price" value="0">
-                            </div>
-                            <div class="col-md-2">
-                                <button type="button" class="btn btn-success w-100" id="addItemBtn" disabled>
-                                    <i class="fas fa-plus"></i> Add
-                                </button>
-                            </div>
+                <!-- Patient -->
+                <div class="mb-3">
+                    <label class="form-label">Patient *</label>
+                    <div class="search-container">
+                        <div class="input-group input-group-sm">
+                            <span class="input-group-text"><i class="fas fa-search"></i></span>
+                            <input type="text" class="form-control" id="patientSearch"
+                                   placeholder="Name, phone, or email..." autocomplete="off">
+                            <button type="button" class="btn btn-outline-secondary btn-sm" id="clearPatientSearch">
+                                <i class="fas fa-times"></i>
+                            </button>
                         </div>
-                        <div class="search-container mt-2">
-                            <div class="search-results" id="itemResults">
-                                <div class="loading-spinner" id="itemLoading">
-                                    <i class="fas fa-spinner fa-spin"></i> Searching...
-                                </div>
+                        <div class="search-results" id="patientResults">
+                            <div class="loading-spinner" id="patientLoading">
+                                <i class="fas fa-spinner fa-spin"></i> Searching...
                             </div>
                         </div>
                     </div>
-                    
-                    <!-- Quick Add Services -->
-                    <div class="mb-3">
-                        <label class="form-label">Quick Add Services</label>
-                        <div class="row g-2">
-                            {% for service in services|slice:":6" %}
-                            <div class="col-md-4">
-                                <div class="quick-add-btn rounded p-2 text-center" 
-                                     onclick="quickAddService({{ service.id }}, '{{ service.name }}', {{ service.price }})">
-                                    <small class="d-block fw-bold">{{ service.name }}</small>
-                                    <small class="text-success">UGX {{ service.price|floatformat:0|intcomma }}</small>
-                                </div>
+                    <input type="hidden" id="patient" name="patient" required>
+                    <div class="selected-item" id="selectedPatient">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div>
+                                <div class="item-name" id="selectedPatientName"></div>
+                                <div class="item-details small" id="selectedPatientDetails"></div>
+                                <div id="selectedPatientBalance" class="small mt-1"></div>
                             </div>
-                            {% endfor %}
+                            <span class="change-btn" onclick="clearSelectedPatient()">
+                                <i class="fas fa-edit"></i> Change
+                            </span>
                         </div>
                     </div>
-                    
-                    <hr>
-                    
-                    <!-- Invoice Summary -->
-                    <div class="row">
-                        <div class="col-md-6 mb-3">
-                            <label for="subtotal" class="form-label">Subtotal</label>
-                            <input type="text" class="form-control" id="subtotalDisplay" value="UGX 0" readonly>
-                            <input type="hidden" id="subtotalHidden" name="subtotal" value="0">
-                        </div>
-                        <div class="col-md-6 mb-3">
-                            <label class="form-label">Tax Rate (%)</label>
-                            <input type="number" step="0.01" class="form-control" id="taxRate" name="tax_rate" value="0" onchange="updateTotals()">
-                        </div>
-                    </div>
-                    
-                    <div class="row">
-                        <div class="col-md-6 mb-3">
-                            <label for="issue_date" class="form-label">Invoice Date</label>
-                            <input type="date" class="form-control" id="issueDate" name="issue_date">
-                            <div class="help-text">Leave blank for today. Use this to backdate invoices.</div>
-                        </div>
-                        <div class="col-md-6 mb-3">
-                            <label for="due_date" class="form-label">Due Date</label>
-                            <input type="date" class="form-control" id="dueDate" name="due_date">
-                            <div class="help-text">Leave blank for no due date</div>
-                        </div>
-                    </div>
-                    
-                    <div class="row">
-                        <div class="col-md-6 mb-3">
-                            <label class="form-label">Discount</label>
-                            <input type="number" step="0.01" class="form-control" id="discount" name="discount" value="0" onchange="updateTotals()">
-                        </div>
-                    </div>
-                    
-                    <div class="mb-3">
-                        <label class="form-label">Notes</label>
-                        <textarea class="form-control" id="notes" name="notes" rows="2"></textarea>
-                    </div>
-                    
-                    <div class="d-flex justify-content-between">
-                        <a href="{% url 'billing:list' %}" class="btn btn-secondary">
-                            <i class="fas fa-arrow-left"></i> Cancel
-                        </a>
-                        <button type="button" class="btn btn-primary" id="submitBtn" onclick="submitInvoice()" disabled>
-                            <i class="fas fa-save"></i> Create Invoice
-                        </button>
-                    </div>
-                </form>
-            </div>
-        </div>
-    </div>
-    
-    <!-- Right Column - Cart -->
-    <div class="col-md-5">
-        <div class="card">
-            <div class="card-header">
-                <i class="fas fa-shopping-cart text-success"></i> Invoice Items
-                <span class="badge bg-secondary float-end" id="itemCount">0</span>
-            </div>
-            <div class="card-body" id="cartContainer" style="max-height: 500px; overflow-y: auto;">
-                <p class="text-muted text-center py-4" id="emptyCart">
-                    <i class="fas fa-cart-plus fa-2x d-block mb-2"></i>
-                    No items added yet.<br>
-                    Search and add items above.
-                </p>
-            </div>
-            <div class="card-footer">
-                <div class="row">
-                    <div class="col-6"><strong>Total:</strong></div>
-                    <div class="col-6 text-end"><strong id="cartTotal">UGX 0</strong></div>
                 </div>
-                <input type="hidden" id="cartItemsHidden" name="cart_items" value="">
+
+                <!-- Type + Dates: one row -->
+                <div class="row g-2 mb-3">
+                    <div class="col-md-6">
+                        <label class="form-label">Invoice Type *</label>
+                        <div class="d-flex gap-2">
+                            <label class="border rounded invoice-type-option flex-fill" for="typeInvoice">
+                                <input class="form-check-input me-1" type="radio" name="invoice_type"
+                                       id="typeInvoice" value="invoice"
+                                       {% if not invoice or invoice.invoice_type != 'booking' %}checked{% endif %}>
+                                <strong>Invoice</strong>
+                            </label>
+                            <label class="border rounded invoice-type-option flex-fill" for="typeBooking">
+                                <input class="form-check-input me-1" type="radio" name="invoice_type"
+                                       id="typeBooking" value="booking"
+                                       {% if invoice and invoice.invoice_type == 'booking' %}checked{% endif %}>
+                                <strong>Booking</strong>
+                            </label>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <label for="issueDate" class="form-label">Invoice Date</label>
+                        <input type="date" class="form-control" id="issueDate" name="issue_date"
+                               value="{{ invoice.issue_date|date:'Y-m-d'|default:'' }}">
+                    </div>
+                    <div class="col-md-3">
+                        <label for="dueDate" class="form-label">Due Date</label>
+                        <input type="date" class="form-control" id="dueDate" name="due_date"
+                               value="{{ invoice.due_date|date:'Y-m-d'|default:'' }}">
+                    </div>
+                </div>
+
+                <hr>
+
+                <!-- Items -->
+                <div class="mb-3">
+                    <label class="form-label">Add Item</label>
+                    <div class="row g-2">
+                        <div class="col-5">
+                            <input type="text" class="form-control" id="itemSearch"
+                                   placeholder="Search services or supplies..." autocomplete="off">
+                        </div>
+                        <div class="col-2">
+                            <input type="number" class="form-control" id="itemQuantity"
+                                   placeholder="Qty" value="1" min="1">
+                        </div>
+                        <div class="col-3">
+                            <input type="number" step="0.01" class="form-control" id="itemPrice"
+                                   placeholder="Price" value="0">
+                        </div>
+                        <div class="col-2">
+                            <button type="button" class="btn btn-success w-100" id="addItemBtn" disabled>
+                                <i class="fas fa-plus"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="search-container mt-1">
+                        <div class="search-results" id="itemResults">
+                            <div class="loading-spinner" id="itemLoading">
+                                <i class="fas fa-spinner fa-spin"></i> Searching...
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Quick add (collapsed) -->
+                <details class="mb-3">
+                    <summary class="small text-muted" style="cursor:pointer;">Quick add services</summary>
+                    <div class="row g-2 mt-2">
+                        {% for service in services|slice:":8" %}
+                        <div class="col-3">
+                            <div class="quick-add-btn"
+                                 onclick="quickAddService({{ service.id }}, '{{ service.name|escapejs }}', {{ service.price }})">
+                                <small class="fw-bold">{{ service.name }}</small>
+                                <small class="text-success">UGX {{ service.price|floatformat:0|intcomma }}</small>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </details>
+
+                <hr>
+
+                <!-- Totals -->
+                <div class="row g-2">
+                    <div class="col-md-4">
+                        <label class="form-label">Subtotal</label>
+                        <input type="text" class="form-control" id="subtotalDisplay" value="UGX 0" readonly>
+                        <input type="hidden" id="subtotalHidden" name="subtotal" value="0">
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label">Tax %</label>
+                        <input type="number" step="0.01" class="form-control" id="taxRate" name="tax_rate"
+                               value="{{ invoice.tax_rate|default:0 }}" onchange="updateTotals()">
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">Discount</label>
+                        <input type="number" step="0.01" class="form-control" id="discount" name="discount"
+                               value="{{ invoice.discount|default:0 }}" onchange="updateTotals()">
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">Total</label>
+                        <input type="text" class="form-control fw-bold text-success" id="grandTotalDisplay" value="UGX 0" readonly>
+                    </div>
+                </div>
+
+                <div class="mt-3">
+                    <label class="form-label">Notes</label>
+                    <textarea class="form-control" id="notes" name="notes" rows="2">{{ invoice.notes|default:'' }}</textarea>
+                </div>
             </div>
         </div>
+
+        <!-- Action bar -->
+        <div class="d-flex justify-content-between align-items-center">
+            <a href="{% if is_edit %}{% url 'billing:detail' invoice.pk %}{% else %}{% url 'billing:list' %}{% endif %}"
+               class="btn btn-outline-secondary btn-sm">
+                <i class="fas fa-arrow-left"></i> Cancel
+            </a>
+            <button type="button" class="btn btn-primary" id="submitBtn" onclick="submitInvoice()" disabled>
+                <i class="fas fa-save"></i>
+                {% if is_edit %}Save Changes{% else %}Create Invoice{% endif %}
+            </button>
+        </div>
     </div>
+
+    <!-- ================= RIGHT COLUMN ================= -->
+    <div class="col-lg-5">
+        <div class="sticky-col">
+
+            <!-- Cart -->
+            <div class="inv-card mb-3">
+                <div class="inv-card-head">
+                    <span><i class="fas fa-shopping-cart text-success me-1"></i> Items</span>
+                    <span class="badge bg-secondary" id="itemCount">0</span>
+                </div>
+                <div class="inv-card-body">
+                    <div class="cart-scroll" id="cartContainer">
+                        <p class="text-muted text-center py-4 small mb-0" id="emptyCart">
+                            <i class="fas fa-cart-plus fa-2x d-block mb-2"></i>
+                            No items yet. Search and add above.
+                        </p>
+                    </div>
+                    <input type="hidden" id="cartItemsHidden" name="cart_items" value="">
+                </div>
+                <div class="inv-card-head" style="border-top:1px solid #eef0f3; border-bottom:none;">
+                    <span>Invoice Total</span>
+                    <span class="fw-bold text-success" id="cartTotal">UGX 0</span>
+                </div>
+            </div>
+
+            {% if is_edit %}
+            <!-- Existing payments -->
+            <div class="inv-card mb-3">
+                <div class="inv-card-head">
+                    <span><i class="fas fa-money-bill-wave text-primary me-1"></i> Existing Payments</span>
+                    <span class="badge bg-secondary">{{ existing_payments|length }}</span>
+                </div>
+                <div class="inv-card-body">
+                    <div class="pay-scroll">
+                    {% if existing_payments %}
+                        {% for payment in existing_payments %}
+                        <div class="pay-row">
+                            <div class="row g-1 align-items-end">
+                                <div class="col-6">
+                                    <div class="pay-label">Amount</div>
+                                    <input type="number" step="0.01" min="0"
+                                           class="form-control form-control-sm"
+                                           name="payment_{{ payment.pk }}_amount"
+                                           value="{{ payment.amount }}">
+                                </div>
+                                <div class="col-6">
+                                    <div class="pay-label">Date</div>
+                                    <input type="date" class="form-control form-control-sm"
+                                           name="payment_{{ payment.pk }}_payment_date"
+                                           value="{{ payment.payment_date|date:'Y-m-d' }}">
+                                </div>
+                                <div class="col-5">
+                                    <div class="pay-label">Method</div>
+                                    <select class="form-select form-select-sm"
+                                            name="payment_{{ payment.pk }}_payment_method">
+                                        <option value="">—</option>
+                                        {% for value, label in payment_method_choices %}
+                                            <option value="{{ value }}"
+                                                {% if payment.payment_method == value %}selected{% endif %}>{{ label }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                                <div class="col-4">
+                                    <div class="pay-label">Status</div>
+                                    <select class="form-select form-select-sm"
+                                            name="payment_{{ payment.pk }}_status">
+                                        {% for value, label in payment_status_choices %}
+                                            <option value="{{ value }}"
+                                                {% if payment.status == value %}selected{% endif %}>{{ label }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                                <div class="col-3 text-end">
+                                    <div class="pay-label">Delete</div>
+                                    <label class="d-block text-center">
+                                        <input type="checkbox" class="form-check-input"
+                                               name="payment_{{ payment.pk }}_delete" value="on">
+                                    </label>
+                                </div>
+                                <div class="col-12">
+                                    <div class="pay-label">Notes</div>
+                                    <input type="text" class="form-control form-control-sm"
+                                           name="payment_{{ payment.pk }}_notes"
+                                           value="{{ payment.notes|default:'' }}">
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    {% else %}
+                        <p class="text-muted text-center py-2 small mb-0">No payments recorded yet.</p>
+                    {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Add new payment -->
+            <div class="inv-card">
+                <div class="inv-card-head">
+                    <span><i class="fas fa-plus-circle text-success me-1"></i> Add a New Payment</span>
+                </div>
+                <div class="inv-card-body">
+                    <div class="row g-2 align-items-end">
+                        <div class="col-5">
+                            <label class="form-label">Amount</label>
+                            <input type="number" min="0" step="0.01" class="form-control"
+                                   name="initial_payment" id="initialPayment" placeholder="0">
+                        </div>
+                        <div class="col-4">
+                            <label class="form-label">Method</label>
+                            <select class="form-select" name="initial_payment_method" id="initialPaymentMethod">
+                                <option value="">—</option>
+                                <option value="cash">Cash</option>
+                                <option value="mobile_money">Mobile Money</option>
+                                <option value="bank_transfer">Bank Transfer</option>
+                                <option value="insurance">Insurance</option>
+                                <option value="card">Card</option>
+                                <option value="other">Other</option>
+                            </select>
+                        </div>
+                        <div class="col-3">
+                            <label class="form-label">Date</label>
+                            <input type="date" class="form-control" name="initial_payment_date" id="initialPaymentDate">
+                        </div>
+                    </div>
+                    <div class="help-text mt-2">
+                        Leave amount empty to skip. To correct an existing payment, edit it above.
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+
+        </div>
+    </div>
+</div>
+</form>
 </div>
 
 <script>
     // ==================== STATE ====================
     let selectedPatientId = null;
     let cartItems = [];
-    
+
     // ==================== DOM Elements ====================
     const patientSearch = document.getElementById('patientSearch');
     const patientResults = document.getElementById('patientResults');
     const patientLoading = document.getElementById('patientLoading');
     const selectedPatient = document.getElementById('selectedPatient');
     const submitBtn = document.getElementById('submitBtn');
-    
+
     const itemSearch = document.getElementById('itemSearch');
     const itemResults = document.getElementById('itemResults');
     const itemLoading = document.getElementById('itemLoading');
     const itemQuantity = document.getElementById('itemQuantity');
     const itemPrice = document.getElementById('itemPrice');
     const addItemBtn = document.getElementById('addItemBtn');
-    
+
     const cartContainer = document.getElementById('cartContainer');
     const itemCount = document.getElementById('itemCount');
     const cartTotal = document.getElementById('cartTotal');
     const cartItemsHidden = document.getElementById('cartItemsHidden');
     const subtotalDisplay = document.getElementById('subtotalDisplay');
+    const grandTotalDisplay = document.getElementById('grandTotalDisplay');
     const subtotalHidden = document.getElementById('subtotalHidden');
     const taxRate = document.getElementById('taxRate');
     const discount = document.getElementById('discount');
     const dueDate = document.getElementById('dueDate');
     const issueDate = document.getElementById('issueDate');
-    
+
+    const IS_EDIT = {% if is_edit %}true{% else %}false{% endif %};
+
     // ==================== INIT ====================
     document.addEventListener('DOMContentLoaded', function() {
         const today = new Date().toISOString().split('T')[0];
-        const dueDateValue = new Date();
-        dueDateValue.setDate(dueDateValue.getDate() + 30);
-        
-        // Set default issue date to today
-        issueDate.value = today;
-        
-        // Set default due date to 30 days from now
-        dueDate.value = dueDateValue.toISOString().split('T')[0];
+        if (!issueDate.value) issueDate.value = today;
+        if (!dueDate.value) {
+            const d = new Date();
+            d.setDate(d.getDate() + 30);
+            dueDate.value = d.toISOString().split('T')[0];
+        }
+        const initPayDate = document.getElementById('initialPaymentDate');
+        if (initPayDate && !initPayDate.value) initPayDate.value = today;
 
         {% if selected_patient %}
         selectPatient(
@@ -411,29 +479,42 @@
             {{ selected_patient_balance|default:0 }}
         );
         {% endif %}
+
+        // Load cart from JSON
+        const cartEl = document.getElementById('initialCartData');
+        try {
+            const initial = cartEl ? JSON.parse(cartEl.textContent || '[]') : [];
+            if (Array.isArray(initial) && initial.length > 0) {
+                cartItems = initial;
+                renderCart();
+                updateTotals();
+                checkSubmit();
+                updateCartHiddenField();
+            }
+        } catch (e) {
+            console.warn('No initial cart items:', e);
+        }
+
+        updateTotals();
+        checkSubmit();
     });
-    
-    // ==================== UPDATE HIDDEN FIELD ====================
+
     function updateCartHiddenField() {
-        const cartData = JSON.stringify(cartItems);
-        document.getElementById('cartItemsHidden').value = cartData;
+        cartItemsHidden.value = JSON.stringify(cartItems);
     }
-    
+
     // ==================== PATIENT SEARCH ====================
     let patientTimeout;
     patientSearch.addEventListener('input', function() {
         clearTimeout(patientTimeout);
         const query = this.value.trim();
-        if (query.length < 2) {
-            patientResults.style.display = 'none';
-            return;
-        }
-        
+        if (query.length < 2) { patientResults.style.display = 'none'; return; }
+
         patientLoading.style.display = 'block';
         patientResults.style.display = 'block';
         patientResults.innerHTML = '';
         patientResults.appendChild(patientLoading);
-        
+
         patientTimeout = setTimeout(() => {
             fetch(`/patients/api/search/?q=${encodeURIComponent(query)}`)
                 .then(r => r.json())
@@ -447,9 +528,8 @@
                             const patientName = p.full_name || p.name || 'Unknown';
                             div.innerHTML = `
                                 <div class="name">${patientName}</div>
-                                <div class="details"><i class="fas fa-phone"></i> ${p.phone || 'N/A'}</div>
-                                ${p.email ? `<div class="details"><i class="fas fa-envelope"></i> ${p.email}</div>` : ''}
-                            `;
+                                <div class="details"><i class="fas fa-phone"></i> ${p.phone || 'N/A'}
+                                ${p.email ? ` · <i class="fas fa-envelope"></i> ${p.email}` : ''}</div>`;
                             div.onclick = () => selectPatient(p.id, patientName, p.phone, p.email, p.balance);
                             patientResults.appendChild(div);
                         });
@@ -463,17 +543,16 @@
                 });
         }, 300);
     });
-    
+
     function selectPatient(id, name, phone, email, balance = null) {
         selectedPatientId = id;
         document.getElementById('patient').value = id;
         document.getElementById('selectedPatientName').textContent = name;
-        document.getElementById('selectedPatientDetails').innerHTML = `
-            <i class="fas fa-phone"></i> ${phone || 'N/A'} ${email ? `| <i class="fas fa-envelope"></i> ${email}` : ''}
-        `;
+        document.getElementById('selectedPatientDetails').innerHTML =
+            `<i class="fas fa-phone"></i> ${phone || 'N/A'} ${email ? ` · <i class="fas fa-envelope"></i> ${email}` : ''}`;
         const balanceEl = document.getElementById('selectedPatientBalance');
         if (balance !== null && Number(balance) > 0) {
-            balanceEl.innerHTML = `<span class="text-danger"><i class="fas fa-circle-exclamation me-1"></i>Existing outstanding balance: <strong>UGX ${Number(balance).toLocaleString()}</strong></span>`;
+            balanceEl.innerHTML = `<span class="text-danger"><i class="fas fa-circle-exclamation me-1"></i>Outstanding: <strong>UGX ${Number(balance).toLocaleString()}</strong></span>`;
         } else {
             balanceEl.innerHTML = `<span class="text-success"><i class="fas fa-circle-check me-1"></i>No outstanding balance</span>`;
         }
@@ -482,7 +561,7 @@
         patientSearch.value = name;
         checkSubmit();
     }
-    
+
     function clearSelectedPatient() {
         selectedPatientId = null;
         document.getElementById('patient').value = '';
@@ -491,24 +570,20 @@
         patientSearch.focus();
         checkSubmit();
     }
-    
+
     // ==================== ITEM SEARCH ====================
     let itemTimeout;
     itemSearch.addEventListener('input', function() {
         clearTimeout(itemTimeout);
         const query = this.value.trim();
-        if (query.length < 2) {
-            itemResults.style.display = 'none';
-            addItemBtn.disabled = true;
-            return;
-        }
-        
+        if (query.length < 2) { itemResults.style.display = 'none'; addItemBtn.disabled = true; return; }
+
         itemLoading.style.display = 'block';
         itemResults.style.display = 'block';
         itemResults.innerHTML = '';
         itemResults.appendChild(itemLoading);
         addItemBtn.disabled = true;
-        
+
         itemTimeout = setTimeout(() => {
             Promise.all([
                 fetch(`/appointments/api/services/search/?q=${encodeURIComponent(query)}`).then(r => r.json()).catch(() => ({results: []})),
@@ -517,310 +592,212 @@
             .then(([services, inventory]) => {
                 itemLoading.style.display = 'none';
                 itemResults.innerHTML = '';
-                
                 let results = [];
-                
-                if (services.results && services.results.length > 0) {
-                    services.results.forEach(s => {
-                        results.push({
-                            id: s.id,
-                            name: s.name,
-                            price: s.price,
-                            type: 'service',
-                            typeLabel: 'Service',
-                            stock: null,
-                            unit: null
-                        });
-                    });
+                if (services.results) {
+                    services.results.forEach(s => results.push({
+                        id: s.id, name: s.name, price: s.price, type: 'service',
+                        typeLabel: 'Service', stock: null, unit: null
+                    }));
                 }
-                
-                if (inventory.results && inventory.results.length > 0) {
-                    inventory.results.forEach(i => {
-                        results.push({
-                            id: i.id,
-                            name: i.name,
-                            price: i.selling_price,
-                            type: 'inventory',
-                            typeLabel: 'Supply',
-                            stock: i.quantity,
-                            unit: i.unit
-                        });
-                    });
+                if (inventory.results) {
+                    inventory.results.forEach(i => results.push({
+                        id: i.id, name: i.name, price: i.selling_price, type: 'inventory',
+                        typeLabel: 'Supply', stock: i.quantity, unit: i.unit
+                    }));
                 }
-                
                 if (results.length > 0) {
                     results.forEach(item => {
                         const div = document.createElement('div');
                         div.className = 'result-item';
                         const inCart = cartItems.some(c => c.id === item.id && c.type === item.type);
+                        const nameEsc = item.name.replace(/'/g, "\\'");
                         div.innerHTML = `
                             <div class="d-flex justify-content-between align-items-center">
                                 <div>
-                                    <div class="name">
-                                        ${item.name}
+                                    <div class="name">${item.name}
                                         <span class="badge ${item.type === 'service' ? 'bg-primary' : 'bg-success'}">${item.typeLabel}</span>
                                     </div>
                                     <div class="details">
-                                        ${item.type === 'inventory' ? `<i class="fas fa-boxes"></i> Stock: ${item.stock} ${item.unit} | ` : ''}
-                                        <i class="fas fa-tag"></i> UGX ${Number(item.price).toLocaleString()}
+                                        ${item.type === 'inventory' ? `<i class="fas fa-boxes"></i> Stock: ${item.stock} ${item.unit} · ` : ''}
+                                        UGX ${Number(item.price).toLocaleString()}
                                     </div>
                                 </div>
-                                ${inCart ? 
-                                    '<span class="badge bg-success"><i class="fas fa-check"></i> Added</span>' :
-                                    `<button type="button" class="btn btn-sm btn-success" onclick="selectItemForCart(${item.id}, '${item.name.replace(/'/g, "\\'")}', ${item.price}, '${item.type}', ${item.stock || null}, '${item.unit || ''}')">
-                                        <i class="fas fa-plus"></i> Select
-                                    </button>`
-                                }
-                            </div>
-                        `;
+                                ${inCart ?
+                                    '<span class="badge bg-success">Added</span>' :
+                                    `<button type="button" class="btn btn-sm btn-success"
+                                             onclick="selectItemForCart(${item.id}, '${nameEsc}', ${item.price}, '${item.type}', ${item.stock || null}, '${item.unit || ''}')">
+                                        <i class="fas fa-plus"></i>
+                                    </button>`}
+                            </div>`;
                         itemResults.appendChild(div);
                     });
                     addItemBtn.disabled = false;
                 } else {
                     itemResults.innerHTML = '<div class="no-results"><i class="fas fa-box-open"></i> No items found.</div>';
-                    addItemBtn.disabled = true;
                 }
             })
             .catch(() => {
                 itemLoading.style.display = 'none';
-                itemResults.innerHTML = '<div class="no-results text-danger">Error searching. Please try again.</div>';
-                addItemBtn.disabled = true;
+                itemResults.innerHTML = '<div class="no-results text-danger">Error searching.</div>';
             });
-        }, 400);
+        }, 350);
     });
-    
-    // ==================== SELECT ITEM ====================
+
     let selectedItemData = null;
-    
     function selectItemForCart(id, name, price, type, stock, unit) {
-        selectedItemData = {
-            id: id,
-            name: name,
-            price: price,
-            type: type,
-            stock: stock,
-            unit: unit
-        };
-        
+        selectedItemData = {id, name, price, type, stock, unit};
         document.getElementById('itemPrice').value = price;
         document.getElementById('itemQuantity').focus();
-        
         itemResults.innerHTML = `
-            <div class="result-item" style="background: #e8f5e9;">
+            <div class="result-item" style="background:#e8f5e9;">
                 <div class="d-flex justify-content-between align-items-center">
                     <div>
-                        <div class="name">
-                            ${name}
+                        <div class="name">${name}
                             <span class="badge ${type === 'service' ? 'bg-primary' : 'bg-success'}">${type === 'service' ? 'Service' : 'Supply'}</span>
                         </div>
-                        <div class="details">
-                            ${type === 'inventory' ? `<i class="fas fa-boxes"></i> Stock: ${stock} ${unit} | ` : ''}
-                            <i class="fas fa-tag"></i> UGX ${Number(price).toLocaleString()}
-                        </div>
+                        <div class="details">UGX ${Number(price).toLocaleString()}</div>
                     </div>
                     <span class="badge bg-info">Selected</span>
                 </div>
-            </div>
-        `;
-        
+            </div>`;
         addItemBtn.disabled = false;
     }
-    
+
     // ==================== ADD ITEMS ====================
     function addItemToCart() {
-        if (!selectedItemData) {
-            alert('Please search and select an item first.');
-            return;
+        if (!selectedItemData) { alert('Please search and select an item first.'); return; }
+        const {id, name, type, stock, unit} = selectedItemData;
+        const price = parseFloat(itemPrice.value) || 0;
+        const quantity = parseInt(itemQuantity.value) || 1;
+
+        if (price <= 0) { alert('Please enter a valid price.'); return; }
+        if (quantity < 1) { alert('Quantity must be at least 1.'); return; }
+
+        if (type === 'inventory' && stock !== null && !IS_EDIT) {
+            const existing = cartItems.find(c => c.id === id && c.type === type);
+            const alreadyInCart = existing ? existing.quantity : 0;
+            if (quantity + alreadyInCart > stock) { alert(`Only ${stock} available in stock!`); return; }
         }
-        
-        const id = selectedItemData.id;
-        const name = selectedItemData.name;
-        const type = selectedItemData.type;
-        const stock = selectedItemData.stock;
-        const unit = selectedItemData.unit;
-        const price = parseFloat(document.getElementById('itemPrice').value) || 0;
-        const quantity = parseInt(document.getElementById('itemQuantity').value) || 1;
-        
-        if (price <= 0) {
-            alert('Please enter a valid price.');
-            return;
+
+        const idx = cartItems.findIndex(c => c.id === id && c.type === type);
+        if (idx >= 0) {
+            cartItems[idx].quantity += quantity;
+        } else {
+            cartItems.push({
+                id, name, price, type, original_price: price,
+                typeLabel: type === 'service' ? 'Service' : 'Supply',
+                quantity, stock, unit: unit || ''
+            });
         }
-        
-        if (quantity < 1) {
-            alert('Quantity must be at least 1.');
-            return;
-        }
-        
-        if (type === 'inventory' && stock !== null && quantity > stock) {
-            alert(`Only ${stock} items available in stock!`);
-            return;
-        }
-        
-        if (cartItems.some(c => c.id === id && c.type === type)) {
-            alert('Item already in cart!');
-            return;
-        }
-        
-        const newItem = {
-            id: id,
-            name: name,
-            price: price,
-            type: type,
-            typeLabel: type === 'service' ? 'Service' : 'Supply',
-            quantity: quantity,
-            stock: stock,
-            unit: unit || ''
-        };
-        
-        cartItems.push(newItem);
-        
-        renderCart();
-        updateTotals();
-        checkSubmit();
-        updateCartHiddenField();
-        
-        itemSearch.value = '';
-        itemResults.style.display = 'none';
-        itemResults.innerHTML = '';
-        itemQuantity.value = 1;
-        itemPrice.value = 0;
-        addItemBtn.disabled = true;
+
+        renderCart(); updateTotals(); checkSubmit(); updateCartHiddenField();
+        itemSearch.value = ''; itemResults.style.display = 'none'; itemResults.innerHTML = '';
+        itemQuantity.value = 1; itemPrice.value = 0; addItemBtn.disabled = true;
         selectedItemData = null;
-        
         storeCartInSession();
     }
-    
+
     function quickAddService(id, name, price) {
-        if (cartItems.some(c => c.id === id && c.type === 'service')) {
-            alert('Service already in cart!');
-            return;
+        const idx = cartItems.findIndex(c => c.id === id && c.type === 'service');
+        if (idx >= 0) { cartItems[idx].quantity += 1; }
+        else {
+            const quantity = parseInt(itemQuantity.value) || 1;
+            cartItems.push({
+                id, name, price, type: 'service', original_price: price,
+                typeLabel: 'Service', quantity, stock: null, unit: ''
+            });
         }
-        
-        const quantity = parseInt(document.getElementById('itemQuantity').value) || 1;
-        
-        cartItems.push({
-            id: id,
-            name: name,
-            price: price,
-            type: 'service',
-            typeLabel: 'Service',
-            quantity: quantity,
-            stock: null,
-            unit: ''
-        });
-        
-        renderCart();
-        updateTotals();
-        checkSubmit();
-        updateCartHiddenField();
-        storeCartInSession();
+        renderCart(); updateTotals(); checkSubmit(); updateCartHiddenField(); storeCartInSession();
     }
-    
+
     function removeFromCart(index) {
         cartItems.splice(index, 1);
-        renderCart();
-        updateTotals();
-        checkSubmit();
-        updateCartHiddenField();
-        storeCartInSession();
+        renderCart(); updateTotals(); checkSubmit(); updateCartHiddenField(); storeCartInSession();
     }
-    
+
     function updateQuantity(index, newQty) {
         if (newQty < 1) { removeFromCart(index); return; }
         const item = cartItems[index];
-        if (item.type === 'inventory' && item.stock !== null && newQty > item.stock) {
-            alert(`Only ${item.stock} items available in stock!`);
-            return;
+        if (item.type === 'inventory' && item.stock !== null && newQty > item.stock && !IS_EDIT) {
+            alert(`Only ${item.stock} available!`); return;
         }
         item.quantity = newQty;
-        renderCart();
-        updateTotals();
-        updateCartHiddenField();
-        storeCartInSession();
+        renderCart(); updateTotals(); updateCartHiddenField(); storeCartInSession();
     }
-    
+
     function updatePrice(index, newPrice) {
-        if (newPrice < 0) { return; }
-        const item = cartItems[index];
-        item.price = newPrice;
-        renderCart();
-        updateTotals();
-        updateCartHiddenField();
-        storeCartInSession();
+        if (newPrice < 0) return;
+        cartItems[index].price = newPrice;
+        renderCart(); updateTotals(); updateCartHiddenField(); storeCartInSession();
     }
-    
-    // ==================== STORE CART IN SESSION ====================
+
     function storeCartInSession() {
-        const cartData = JSON.stringify(cartItems);
+        const token = document.querySelector('[name=csrfmiddlewaretoken]').value;
         fetch('/billing/store-cart/', {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
-            },
-            body: JSON.stringify({ cart_items: cartData })
-        }).catch(error => console.error('Error storing cart:', error));
+            headers: {'Content-Type': 'application/json', 'X-CSRFToken': token},
+            body: JSON.stringify({cart_items: JSON.stringify(cartItems)})
+        }).catch(() => {});
     }
-    
-    // ==================== RENDER CART ====================
+
+    // ==================== RENDER CART (compact) ====================
     function renderCart() {
         cartContainer.innerHTML = '';
         if (cartItems.length === 0) {
             cartContainer.innerHTML = `
-                <p class="text-muted text-center py-4">
+                <p class="text-muted text-center py-4 small mb-0">
                     <i class="fas fa-cart-plus fa-2x d-block mb-2"></i>
-                    No items added yet.<br>
-                    Search and add items above.
-                </p>
-            `;
+                    No items yet. Search and add above.
+                </p>`;
             itemCount.textContent = '0';
             return;
         }
-        
+
         cartItems.forEach((item, index) => {
+            const currentPrice = Number(item.price) || 0;
+            const originalPrice = item.original_price != null ? Number(item.original_price) : null;
+            const priceChanged = originalPrice !== null && originalPrice !== currentPrice;
+
             const div = document.createElement('div');
             div.className = 'cart-item';
             div.innerHTML = `
                 <div class="d-flex justify-content-between align-items-start">
-                    <div>
+                    <div class="flex-grow-1 me-2">
                         <div>
-                            <span class="item-type-badge ${item.type}">${item.typeLabel}</span>
-                            <span class="fw-bold">${item.name}</span>
+                            <span class="item-type-badge ${item.type}">${item.typeLabel || item.type}</span>
+                            <span class="item-name">${item.name}</span>
                         </div>
-                        <div class="small text-muted">
-                            ${item.type === 'inventory' ? `Stock: ${item.stock} ${item.unit} | ` : ''}
+                        <div class="item-meta">
+                            ${item.type === 'inventory' ? `Stock: ${item.stock} ${item.unit || ''}` : ''}
+                            ${originalPrice !== null ? (item.type === 'inventory' ? ' · ' : '') + `List: UGX ${originalPrice.toLocaleString()}` : ''}
+                            ${priceChanged ? ` · <span class="text-warning">was UGX ${originalPrice.toLocaleString()}</span>` : ''}
                         </div>
                     </div>
-                    <button type="button" class="btn btn-sm btn-outline-danger" onclick="removeFromCart(${index})">
+                    <button type="button" class="btn btn-sm btn-outline-danger py-0 px-1" onclick="removeFromCart(${index})">
                         <i class="fas fa-times"></i>
                     </button>
                 </div>
-                <div class="row mt-2">
-                    <div class="col-4">
-                        <label class="form-label small">Qty</label>
-                        <input type="number" class="form-control form-control-sm" 
-                               value="${item.quantity}" min="1" 
-                               ${item.type === 'inventory' && item.stock !== null ? `max="${item.stock}"` : ''}
+                <div class="row">
+                    <div class="col-3">
+                        <input type="number" class="form-control form-control-sm" min="1"
+                               value="${item.quantity}"
                                onchange="updateQuantity(${index}, parseInt(this.value))">
                     </div>
                     <div class="col-4">
-                        <label class="form-label small">Price</label>
-                        <input type="number" step="0.01" class="form-control form-control-sm" 
-                               value="${item.price}" min="0"
+                        <input type="number" step="0.01" class="form-control form-control-sm" min="0"
+                               value="${item.price}"
                                onchange="updatePrice(${index}, parseFloat(this.value))">
                     </div>
-                    <div class="col-4 text-end">
-                        <label class="form-label small">Total</label>
-                        <div class="fw-bold text-success">UGX ${(item.price * item.quantity).toLocaleString()}</div>
+                    <div class="col-5 text-end">
+                        <div class="fw-bold text-success small">UGX ${(item.price * item.quantity).toLocaleString()}</div>
                     </div>
-                </div>
-            `;
+                </div>`;
             cartContainer.appendChild(div);
         });
-        
+
         itemCount.textContent = cartItems.length;
     }
-    
+
     // ==================== TOTALS ====================
     function updateTotals() {
         const subtotal = cartItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
@@ -828,85 +805,50 @@
         const discountVal = parseFloat(discount.value) || 0;
         const taxAmount = (subtotal * taxRateVal) / 100;
         const total = subtotal + taxAmount - discountVal;
-        
         subtotalDisplay.value = `UGX ${subtotal.toLocaleString()}`;
         subtotalHidden.value = subtotal;
         cartTotal.textContent = `UGX ${total.toLocaleString()}`;
+        grandTotalDisplay.value = `UGX ${total.toLocaleString()}`;
     }
-    
-    // ==================== CHECK SUBMIT ====================
+
     function checkSubmit() {
-        const hasPatient = selectedPatientId !== null;
-        const hasItems = cartItems.length > 0;
-        submitBtn.disabled = !(hasPatient && hasItems);
+        submitBtn.disabled = !(selectedPatientId !== null && cartItems.length > 0);
     }
-    
-    // ==================== SUBMIT INVOICE ====================
+
     function submitInvoice() {
-        if (cartItems.length === 0) {
-            alert('Please add at least one item to the invoice.');
-            return;
-        }
-        
-        if (!selectedPatientId) {
-            alert('Please select a patient.');
-            return;
-        }
-        
-        const cartData = JSON.stringify(cartItems);
-        document.getElementById('cartItemsHidden').value = cartData;
-        
+        if (cartItems.length === 0) { alert('Please add at least one item.'); return; }
+        if (!selectedPatientId) { alert('Please select a patient.'); return; }
+        cartItemsHidden.value = JSON.stringify(cartItems);
         document.getElementById('invoiceForm').submit();
     }
-    
+
     // ==================== EVENTS ====================
     document.addEventListener('click', function(e) {
         document.querySelectorAll('.search-container .search-results').forEach(el => {
-            if (!el.parentElement.contains(e.target)) {
-                el.style.display = 'none';
-            }
+            if (!el.parentElement.contains(e.target)) el.style.display = 'none';
         });
     });
-    
     document.addEventListener('keydown', function(e) {
         if (e.key === 'Escape') {
             document.querySelectorAll('.search-results').forEach(el => el.style.display = 'none');
         }
     });
-    
     document.getElementById('clearPatientSearch').onclick = clearSelectedPatient;
-    
-    addItemBtn.addEventListener('click', function() {
-        addItemToCart();
+    addItemBtn.addEventListener('click', addItemToCart);
+    itemPrice.addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') { e.preventDefault(); addItemToCart(); }
     });
-    
-    document.getElementById('itemPrice').addEventListener('keypress', function(e) {
-        if (e.key === 'Enter') {
-            e.preventDefault();
-            addItemToCart();
-        }
+    itemQuantity.addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') { e.preventDefault(); addItemToCart(); }
     });
-    
-    document.getElementById('itemQuantity').addEventListener('keypress', function(e) {
-        if (e.key === 'Enter') {
-            e.preventDefault();
-            addItemToCart();
-        }
-    });
-    
     itemSearch.addEventListener('keypress', function(e) {
         if (e.key === 'Enter') {
             e.preventDefault();
             const firstSelectBtn = itemResults.querySelector('.btn-success');
-            if (firstSelectBtn) {
-                firstSelectBtn.click();
-            }
+            if (firstSelectBtn) firstSelectBtn.click();
         }
     });
-    
-    document.getElementById('invoiceForm').addEventListener('submit', function(e) {
-        e.preventDefault();
-        submitInvoice();
-    });
 </script>
+
+{{ initial_cart_items|json_script:"initialCartData" }}
 {% endblock %}

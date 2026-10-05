@@ -64,7 +64,7 @@ def get_invoice_data():
     return [{
         'id': i.id,
         'invoice_number': i.invoice_number,
-        'patient_name': i.patient_name,
+        'patient_name': i.patient.full_name if i.patient else i.patient_name,
         'total_amount': float(i.total_amount),
         'status': i.status,
         'issue_date': i.issue_date.strftime('%Y-%m-%d') if i.issue_date else None,
