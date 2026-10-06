@@ -47,6 +47,8 @@ CSRF_TRUSTED_ORIGINS = [
     for o in os.environ.get(
         'CSRF_TRUSTED_ORIGINS',
         'https://dorah-dental-production.up.railway.app'
+         "https://dorahdental.world",
+    "https://www.dorahdental.world',
     ).split(',')
     if o.strip()
 ]
@@ -57,12 +59,16 @@ CSRF_TRUSTED_ORIGINS = [
 PUBLIC_BASE_URL = os.environ.get(
     'PUBLIC_BASE_URL',
     'https://dorah-dental-production.up.railway.app'
+     "https://dorahdental.world",
+    "https://www.dorahdental.world",
 ).strip().rstrip('/')
 ANDROID_APP_URL = os.environ.get('ANDROID_APP_URL', '').strip()
 IOS_APP_URL = os.environ.get('IOS_APP_URL', '').strip()
 
 CSRF_TRUSTED_ORIGIN_REGEXES = [
     r'^https://dorah-dental-production\.up\.railway\.app$',
+     "https://dorahdental.world",
+    "https://www.dorahdental.world",
     r'^http://localhost:\d+$',
     r'^http://127\.0\.0\.1:\d+$',
 ]
