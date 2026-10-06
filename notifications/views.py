@@ -1,6 +1,7 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
+from core.security import permission_required
 from django.core.mail import send_mail
 from django.conf import settings
 from .models import NotificationSetting, NotificationLog
@@ -55,6 +56,7 @@ def notification_settings(request):
 
 
 @login_required
+@permission_required('settings.notifications')
 def send_test_reminder(request):
     """Send a test reminder to the logged-in user"""
     if request.method == 'POST':
@@ -127,6 +129,7 @@ def send_test_reminder(request):
 
 
 @login_required
+@permission_required('settings.notifications')
 def send_test_email(request):
     """Send a test email only"""
     if request.method == 'POST':
@@ -177,6 +180,7 @@ def send_test_email(request):
 
 
 @login_required
+@permission_required('settings.notifications')
 def send_test_sms(request):
     """Send a test SMS only"""
     if request.method == 'POST':
@@ -225,6 +229,7 @@ def send_test_sms(request):
 
 
 @login_required
+@permission_required('settings.notifications')
 def test_yoola_sms(request):
     """Test Yoola SMS integration"""
     if request.method == 'POST':

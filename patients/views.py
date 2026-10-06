@@ -1,6 +1,7 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
+from core.security import permission_required
 from django.db import models
 from django.db.models import Q, Sum, Value, DecimalField, Count, OuterRef, Subquery, F
 from django.http import JsonResponse
@@ -188,6 +189,7 @@ def patient_list(request):
 # ====================
 
 @login_required
+@permission_required('patients.create')
 def patient_add(request):
     """Add a new patient - Doctors are NOT allowed"""
     user_profile = request.user.profile
@@ -493,6 +495,7 @@ def patient_detail(request, pk):
 # ====================
 
 @login_required
+@permission_required('patients.edit')
 def patient_edit(request, pk):
     """Edit patient information - Doctors are NOT allowed"""
     user_profile = request.user.profile
@@ -559,6 +562,7 @@ def patient_edit(request, pk):
 # ====================
 
 @login_required
+@permission_required('patients.archive')
 def patient_delete(request, pk):
     """Archive/delete patient - Doctors are NOT allowed"""
     user_profile = request.user.profile
@@ -608,6 +612,7 @@ def patient_status(request, pk):
 
 
 @login_required
+@permission_required('patients.images')
 def patient_add_image(request, pk):
     """Add dental images - Doctors can add images to their patients"""
     patient = get_object_or_404(Patient, pk=pk)

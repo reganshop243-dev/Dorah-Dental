@@ -59,5 +59,4 @@ urlpatterns = [
 
     # ==================== REVENUE ====================
     path('core/revenue/', views.RevenueDashboardView.as_view(), name='revenue'),
-    path('debug/app/', views.DebugAppView.as_view(), name='debug-app'),
 ]

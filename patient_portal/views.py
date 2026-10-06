@@ -113,17 +113,17 @@ def patient_portal_login(request):
         try:
             portal_access = patient.portal_access
         except PatientPortalAccess.DoesNotExist:
-            messages.error(request, 'Portal access not enabled for this patient. Please contact the clinic.')
+            messages.error(request, 'Invalid credentials. Please check and try again.')
             return render(request, 'patient_portal/login.html')
         
         # Check if locked
         if portal_access.is_locked():
-            messages.error(request, f'Account locked. Please try again after {portal_access.locked_until.strftime("%I:%M %p")}.')
+            messages.error(request, 'Invalid credentials. Please try again later.')
             return render(request, 'patient_portal/login.html')
         
         # Check if active
         if not portal_access.is_active:
-            messages.error(request, 'Portal access has been disabled. Please contact the clinic.')
+            messages.error(request, 'Invalid credentials. Please check and try again.')
             return render(request, 'patient_portal/login.html')
         
         # PINs are stored as SHA-256 hashes.
@@ -134,7 +134,8 @@ def patient_portal_login(request):
             portal_access.last_login = timezone.now()
             portal_access.save()
             
-            # Set session
+            # Rotate the session key after authentication to prevent session fixation.
+            request.session.cycle_key()
             request.session['patient_portal_logged_in'] = True
             request.session['patient_portal_patient_id'] = patient.id
             

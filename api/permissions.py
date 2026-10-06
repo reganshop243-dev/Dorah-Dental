@@ -44,6 +44,22 @@ class IsClinicStaff(permissions.BasePermission):
     def has_permission(self, request, view):
         return (request.user.is_authenticated and
                 hasattr(request.user, 'profile') and
-                request.user.profile.role in self.allowed_roles and
                 request.user.profile.is_active and
-                request.user.is_active)
+                request.user.is_active and
+                request.user.profile.has_any_role(self.allowed_roles))
+
+
+class HasClinicPermission(permissions.BasePermission):
+    """Require the permission named by ``view.required_permission``."""
+    def has_permission(self, request, view):
+        if not request.user.is_authenticated or not hasattr(request.user, 'profile'):
+            return False
+        profile = request.user.profile
+        return bool(profile.is_active and profile.has_permission(getattr(view, 'required_permission', '')))
+
+
+class IsNotificationManager(permissions.BasePermission):
+    def has_permission(self, request, view):
+        return (request.user.is_authenticated and hasattr(request.user, 'profile')
+                and request.user.profile.is_active
+                and request.user.profile.has_permission('settings.notifications'))

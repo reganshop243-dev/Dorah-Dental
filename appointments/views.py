@@ -2,6 +2,7 @@ from core.permissions import is_financial_staff
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
+from core.security import permission_required
 from django.db import IntegrityError, transaction
 from django.db.models import Sum, Count, Q
 from django.utils import timezone
@@ -203,6 +204,7 @@ def appointment_list(request):
 
 
 @login_required
+@permission_required('appointments.create')
 def appointment_add(request):
     """Add a new appointment"""
     user_profile = request.user.profile
@@ -541,6 +543,7 @@ def appointment_finish(request, pk):
 
 
 @login_required
+@permission_required('appointments.edit')
 def appointment_edit(request, pk):
     """Edit an appointment"""
     appointment = get_object_or_404(Appointment, pk=pk)
@@ -672,6 +675,7 @@ def appointment_status_update(request, pk):
 
 
 @login_required
+@permission_required('appointments.delete')
 def appointment_delete(request, pk):
     """Delete an appointment"""
     appointment = get_object_or_404(Appointment, pk=pk)
@@ -785,6 +789,7 @@ def service_edit(request, pk):
 
 
 @login_required
+@permission_required('services.prices.manage')
 def service_delete(request, pk):
     """Delete a service - PREVENT doctors from deleting"""
     # ✅ PREVENT doctors from deleting services
@@ -816,6 +821,7 @@ def doctor_list(request):
 
 
 @login_required
+@permission_required('users.edit')
 def doctor_add(request):
     """Add a new doctor - PREVENT doctors from adding"""
     # ✅ PREVENT doctors from adding doctors
@@ -846,6 +852,7 @@ def doctor_add(request):
 
 
 @login_required
+@permission_required('users.edit')
 def doctor_edit(request, pk):
     """Edit a doctor - PREVENT doctors from editing"""
     # ✅ PREVENT doctors from editing doctors
@@ -876,6 +883,7 @@ def doctor_edit(request, pk):
 
 
 @login_required
+@permission_required('users.delete')
 def doctor_delete(request, pk):
     """Delete a doctor - PREVENT doctors from deleting"""
     # ✅ PREVENT doctors from deleting doctors

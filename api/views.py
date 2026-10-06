@@ -27,7 +27,7 @@ from .serializers import (
     InventoryItemSerializer,
     CompanySettingsSerializer,
 )
-from .permissions import IsPatient, IsDoctor, IsAdmin, IsReceptionist, IsClinicStaff
+from .permissions import IsPatient, IsDoctor, IsAdmin, IsReceptionist, IsClinicStaff, HasClinicPermission
 
 
 # ==================== PATIENT VIEWSET ====================
@@ -35,9 +35,40 @@ class PatientViewSet(viewsets.ModelViewSet):
     queryset = Patient.objects.filter(is_active=True)
     serializer_class = PatientSerializer
     permission_classes = [IsClinicStaff]
-    
+
+    ACTION_PERMISSIONS = {
+        'list': 'patients.view',
+        'retrieve': 'patients.view',
+        'create': 'patients.create',
+        'update': 'patients.edit',
+        'partial_update': 'patients.edit',
+        'destroy': 'patients.archive',
+    }
+
+    def has_permission_for_action(self):
+        code = self.ACTION_PERMISSIONS.get(getattr(self, 'action', None), 'patients.view')
+        profile = getattr(self.request.user, 'profile', None)
+        return bool(profile and profile.is_active and profile.has_permission(code))
+
+    def check_permissions(self, request):
+        super().check_permissions(request)
+        if not self.has_permission_for_action():
+            from rest_framework.exceptions import PermissionDenied
+            raise PermissionDenied('You do not have permission to perform this patient action.')
+
+    def perform_destroy(self, instance):
+        instance.is_active = False
+        instance.save(update_fields=['is_active'])
+
     def get_queryset(self):
         queryset = super().get_queryset()
+        profile = getattr(self.request.user, 'profile', None)
+        if profile and profile.has_role('doctor') and not profile.has_role('admin'):
+            doctor = getattr(profile, 'doctor', None)
+            if doctor:
+                queryset = queryset.filter(appointment__doctor=doctor).distinct()
+            else:
+                queryset = queryset.none()
         search = self.request.query_params.get('search', '')
         if search:
             queryset = queryset.filter(
@@ -66,18 +97,21 @@ class DoctorListView(generics.ListAPIView):
 class AppointmentListView(generics.ListAPIView):
     queryset = Appointment.objects.all().order_by('-appointment_date')
     serializer_class = AppointmentSerializer
-    permission_classes = [IsClinicStaff]
+    permission_classes = [IsClinicStaff, HasClinicPermission]
+    required_permission = 'appointments.view'
 
 
 class InvoiceListView(generics.ListAPIView):
     queryset = Invoice.objects.all().order_by('-issue_date')
     serializer_class = InvoiceSerializer
-    permission_classes = [IsClinicStaff]
+    permission_classes = [IsClinicStaff, HasClinicPermission]
+    required_permission = 'billing.view'
 
 
 class InventoryListView(generics.ListAPIView):
     serializer_class = InventoryItemSerializer
-    permission_classes = [IsClinicStaff]
+    permission_classes = [IsClinicStaff, HasClinicPermission]
+    required_permission = 'inventory.view'
     
     def get_queryset(self):
         return InventoryItem.objects.filter(is_active=True)
@@ -209,7 +243,8 @@ class PatientAppointmentCreateView(generics.CreateAPIView):
 
 class AllAppointmentsView(generics.ListAPIView):
     serializer_class = AppointmentSerializer
-    permission_classes = [IsClinicStaff]
+    permission_classes = [IsClinicStaff, HasClinicPermission]
+    required_permission = 'appointments.view'
 
     def get_queryset(self):
         return Appointment.objects.all().order_by('-appointment_date')
@@ -217,7 +252,8 @@ class AllAppointmentsView(generics.ListAPIView):
 
 class AllPatientsView(generics.ListAPIView):
     serializer_class = PatientSerializer
-    permission_classes = [IsClinicStaff]
+    permission_classes = [IsClinicStaff, HasClinicPermission]
+    required_permission = 'patients.view'
 
     def get_queryset(self):
         return Patient.objects.filter(is_active=True)
@@ -225,13 +261,20 @@ class AllPatientsView(generics.ListAPIView):
 
 class SettingsView(APIView):
     permission_classes = [IsClinicStaff]
+
+    def _allowed(self, request, code):
+        return bool(getattr(request.user, 'profile', None) and request.user.profile.has_permission(code))
     
     def get(self, request):
+        if not self._allowed(request, 'settings.view'):
+            return Response({'detail': 'You do not have permission to view settings.'}, status=403)
         settings = CompanySettings.get_settings()
         serializer = CompanySettingsSerializer(settings)
         return Response(serializer.data)
     
     def post(self, request):
+        if not self._allowed(request, 'settings.edit'):
+            return Response({'detail': 'You do not have permission to modify settings.'}, status=403)
         settings = CompanySettings.get_settings()
         serializer = CompanySettingsSerializer(settings, data=request.data, partial=True)
         if serializer.is_valid():
@@ -262,7 +305,8 @@ class DashboardStatsView(APIView):
 # ==================== REPORT VIEWS ====================
 
 class AgingReportView(APIView):
-    permission_classes = [IsClinicStaff]
+    permission_classes = [IsClinicStaff, HasClinicPermission]
+    required_permission = 'reports.aging'
     
     def get(self, request):
         from datetime import date, timedelta
@@ -324,7 +368,8 @@ class AgingReportView(APIView):
 
 
 class PatientVisitsView(APIView):
-    permission_classes = [IsClinicStaff]
+    permission_classes = [IsClinicStaff, HasClinicPermission]
+    required_permission = 'reports.patient'
     
     def get(self, request):
         from datetime import date, timedelta
@@ -377,7 +422,8 @@ class PatientVisitsView(APIView):
 
 
 class DoctorPerformanceView(APIView):
-    permission_classes = [IsClinicStaff]
+    permission_classes = [IsClinicStaff, HasClinicPermission]
+    required_permission = 'reports.doctor_performance'
     
     def get(self, request):
         from datetime import date, timedelta
@@ -418,6 +464,8 @@ class DoctorPerformanceView(APIView):
 
 # ==================== SIMPLE STATS ====================
 
+@api_view(['GET'])
+@permission_classes([IsClinicStaff])
 def simple_stats_direct(request):
     from django.http import JsonResponse
     from datetime import date
@@ -440,7 +488,8 @@ def simple_stats_direct(request):
 
 # ==================== BALANCE SHEET VIEW ====================
 class BalanceSheetView(APIView):
-    permission_classes = [IsClinicStaff]
+    permission_classes = [IsClinicStaff, HasClinicPermission]
+    required_permission = 'reports.balance_sheet'
     
     def get(self, request):
         from datetime import date, timedelta, datetime
@@ -490,7 +539,8 @@ class BalanceSheetView(APIView):
 
 # ==================== REVENUE DASHBOARD VIEW ====================
 class RevenueDashboardView(APIView):
-    permission_classes = [IsClinicStaff]
+    permission_classes = [IsClinicStaff, HasClinicPermission]
+    required_permission = 'reports.revenue'
     
     def get(self, request):
         from datetime import date, timedelta
@@ -551,285 +601,3 @@ class RevenueDashboardView(APIView):
             'end_date': end_date.strftime('%Y-%m-%d'),
             'period': period,
         })
-
-
-# ==================== COMPLETE DEBUG VIEW ====================
-class DebugAppView(APIView):
-    """
-    Complete debug view to understand the entire Django app structure.
-    Shows all models, endpoints, and sample data.
-    """
-    permission_classes = [AllowAny]
-    
-    def get(self, request):
-        from django.apps import apps
-        from django.urls import get_resolver
-        from django.db import connection
-        import json
-        
-        result = {
-            'app_name': 'Dental Clinic',
-            'timestamp': str(datetime.now()),
-            'endpoints': {},
-            'models': {},
-            'database_tables': [],
-            'sample_data': {},
-            'summary': {}
-        }
-        
-        # 1. Get all URL endpoints
-        resolver = get_resolver()
-        endpoints = []
-        for pattern in resolver.url_patterns:
-            if hasattr(pattern, 'name') and pattern.name:
-                endpoints.append({
-                    'name': pattern.name,
-                    'pattern': str(pattern.pattern),
-                })
-        result['endpoints'] = endpoints
-        
-        # 2. Get all models from all apps
-        for app_config in apps.get_app_configs():
-            app_name = app_config.name
-            models = apps.get_app_config(app_name).get_models()
-            
-            for model in models:
-                model_name = model.__name__
-                result['models'][f'{app_name}.{model_name}'] = {
-                    'fields': [field.name for field in model._meta.fields],
-                    'field_types': {field.name: str(field.get_internal_type()) for field in model._meta.fields},
-                    'has_data': model.objects.exists() if hasattr(model, 'objects') else False,
-                    'count': model.objects.count() if hasattr(model, 'objects') else 0,
-                }
-        
-        # 3. Get database tables
-        with connection.cursor() as cursor:
-            cursor.execute("SELECT name FROM sqlite_master WHERE type='table';")
-            tables = cursor.fetchall()
-            result['database_tables'] = [table[0] for table in tables]
-        
-        # 4. Get sample data from key models
-        try:
-            from patients.models import Patient
-            result['sample_data']['patients'] = list(Patient.objects.all().values()[:5])
-        except:
-            result['sample_data']['patients'] = []
-            
-        try:
-            from billing.models import Invoice
-            result['sample_data']['invoices'] = list(Invoice.objects.all().values()[:5])
-        except:
-            result['sample_data']['invoices'] = []
-            
-        try:
-            from doctors.models import Doctor
-            result['sample_data']['doctors'] = list(Doctor.objects.all().values()[:5])
-        except:
-            result['sample_data']['doctors'] = []
-            
-        try:
-            from services.models import Service
-            result['sample_data']['services'] = list(Service.objects.all().values()[:5])
-        except:
-            result['sample_data']['services'] = []
-            
-        try:
-            from appointments.models import Appointment
-            result['sample_data']['appointments'] = list(Appointment.objects.all().values()[:5])
-        except:
-            result['sample_data']['appointments'] = []
-            
-        try:
-            from inventory.models import InventoryItem
-            result['sample_data']['inventory'] = list(InventoryItem.objects.all().values()[:5])
-        except:
-            result['sample_data']['inventory'] = []
-        
-        # 5. Test all API endpoints
-        from django.test.client import RequestFactory
-        factory = RequestFactory()
-        
-        api_endpoints_to_test = [
-            '/api/patients/',
-            '/api/doctors/',
-            '/api/services/',
-            '/api/appointments/',
-            '/api/invoices/',
-            '/api/inventory/',
-            '/api/stats/',
-            '/api/balance-sheet/',
-            '/api/revenue-dashboard/',
-            '/api/settings/',
-            '/api/reports/aging/',
-            '/api/reports/patient-visits/',
-            '/api/reports/doctor-performance/',
-        ]
-        
-        endpoint_results = {}
-        for path in api_endpoints_to_test:
-            try:
-                fake_request = factory.get(path)
-                from django.urls import resolve
-                match = resolve(path)
-                view_func = match.func
-                response = view_func(fake_request)
-                
-                # Get response data
-                if hasattr(response, 'data'):
-                    data = response.data
-                elif hasattr(response, 'content'):
-                    try:
-                        data = json.loads(response.content)
-                    except:
-                        data = str(response.content)
-                else:
-                    data = 'Unknown'
-                
-                endpoint_results[path] = {
-                    'status_code': response.status_code,
-                    'data_type': str(type(data)),
-                    'is_list': isinstance(data, list),
-                    'is_dict': isinstance(data, dict),
-                    'keys': list(data.keys()) if isinstance(data, dict) else [],
-                    'length': len(data) if isinstance(data, (list, dict)) else 0,
-                    'sample': data[:2] if isinstance(data, list) else data,
-                    'full_data': data,
-                }
-            except Exception as e:
-                endpoint_results[path] = {
-                    'status_code': 500,
-                    'error': 'Something went wrong. Please try again.', 'error_code': 'DD-API-500',
-                }
-        
-        result['api_test_results'] = endpoint_results
-        
-        # 6. Summary
-        total_models = len(result['models'])
-        total_endpoints = len(result['endpoints'])
-        working_apis = sum(1 for r in result['api_test_results'].values() if r.get('status_code') == 200)
-        total_apis = len(result['api_test_results'])
-        
-        result['summary'] = {
-            'total_models': total_models,
-            'total_endpoints': total_endpoints,
-            'total_apis_tested': total_apis,
-            'working_apis': working_apis,
-            'failed_apis': total_apis - working_apis,
-            'database_tables': len(result['database_tables']),
-        }
-        
-        return Response(result)
-
-
-
-
-
-
-# ==================== SIMPLE DEBUG VIEW ====================
-class DebugAppView(APIView):
-    """
-    Simple debug view to understand the Django app structure.
-    """
-    permission_classes = [AllowAny]
-    
-    def get(self, request):
-        from django.apps import apps
-        from django.urls import get_resolver
-        import json
-        from datetime import datetime
-        
-        result = {
-            'app_name': 'Dental Clinic',
-            'timestamp': str(datetime.now()),
-            'endpoints': [],
-            'models': {},
-            'sample_data': {},
-            'api_test_results': {},
-            'summary': {}
-        }
-        
-        # 1. Get all URL endpoints
-        resolver = get_resolver()
-        endpoints = []
-        for pattern in resolver.url_patterns:
-            if hasattr(pattern, 'name') and pattern.name:
-                endpoints.append({
-                    'name': pattern.name,
-                    'pattern': str(pattern.pattern),
-                })
-        result['endpoints'] = endpoints
-        
-        # 2. Get all models (simplified, skip admin)
-        for app_config in apps.get_app_configs():
-            app_name = app_config.name
-            # Skip Django internal apps
-            if app_name.startswith('django.'):
-                continue
-            if app_name == 'admin':
-                continue
-                
-            try:
-                models = app_config.get_models()
-                for model in models:
-                    model_name = model.__name__
-                    result['models'][f'{app_name}.{model_name}'] = {
-                        'fields': [field.name for field in model._meta.fields],
-                        'count': model.objects.count() if hasattr(model, 'objects') else 0,
-                    }
-            except:
-                pass
-        
-        # 3. Get sample data from key models
-        try:
-            from patients.models import Patient
-            data = list(Patient.objects.all().values()[:3])
-            result['sample_data']['patients'] = data
-        except:
-            result['sample_data']['patients'] = []
-            
-        try:
-            from billing.models import Invoice
-            data = list(Invoice.objects.all().values()[:3])
-            result['sample_data']['invoices'] = data
-        except:
-            result['sample_data']['invoices'] = []
-            
-        try:
-            from doctors.models import Doctor
-            data = list(Doctor.objects.all().values()[:3])
-            result['sample_data']['doctors'] = data
-        except:
-            result['sample_data']['doctors'] = []
-            
-        try:
-            from services.models import Service
-            data = list(Service.objects.all().values()[:3])
-            result['sample_data']['services'] = data
-        except:
-            result['sample_data']['services'] = []
-            
-        try:
-            from appointments.models import Appointment
-            data = list(Appointment.objects.all().values()[:3])
-            result['sample_data']['appointments'] = data
-        except:
-            result['sample_data']['appointments'] = []
-            
-        try:
-            from inventory.models import InventoryItem
-            data = list(InventoryItem.objects.all().values()[:3])
-            result['sample_data']['inventory'] = data
-        except:
-            result['sample_data']['inventory'] = []
-        
-        # 4. Summary
-        total_models = len(result['models'])
-        total_endpoints = len(result['endpoints'])
-        
-        result['summary'] = {
-            'total_models': total_models,
-            'total_endpoints': total_endpoints,
-            'apps_found': [app.name for app in apps.get_app_configs() if not app.name.startswith('django.') and app.name != 'admin'],
-        }
-        
-        return Response(result)

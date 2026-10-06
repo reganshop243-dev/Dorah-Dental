@@ -1,12 +1,13 @@
 from rest_framework import permissions, status
 from rest_framework.decorators import api_view, permission_classes
+from api.permissions import IsNotificationManager
 from rest_framework.response import Response
 from .models import NotificationSetting, NotificationLog
 from .services import NotificationService
 from appointments.models import Appointment
 
 @api_view(['GET', 'POST'])
-@permission_classes([permissions.IsAuthenticated])
+@permission_classes([permissions.IsAuthenticated, IsNotificationManager])
 def notification_settings(request):
     if request.method == 'GET':
         settings = NotificationSetting.objects.first()
@@ -34,7 +35,7 @@ def notification_settings(request):
     return Response({'message': 'Settings updated successfully'})
 
 @api_view(['POST'])
-@permission_classes([permissions.IsAuthenticated])
+@permission_classes([permissions.IsAuthenticated, IsNotificationManager])
 def send_reminder(request, pk):
     try:
         appointment = Appointment.objects.get(pk=pk)
@@ -47,7 +48,7 @@ def send_reminder(request, pk):
         return Response({'error': 'Something went wrong. Please try again.', 'error_code': 'DD-API-500'}, status=status.HTTP_400_BAD_REQUEST)
 
 @api_view(['GET'])
-@permission_classes([permissions.IsAuthenticated])
+@permission_classes([permissions.IsAuthenticated, IsNotificationManager])
 def upcoming_reminders(request):
     from django.utils import timezone
     from datetime import timedelta

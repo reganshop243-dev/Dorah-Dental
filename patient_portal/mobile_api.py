@@ -36,9 +36,9 @@ def mobile_login(request):
     patient=Patient.objects.filter(is_active=True,phone=phone).first()
     if patient is None and identifier.isdigit():
         patient=Patient.objects.filter(is_active=True,pk=int(identifier)).first()
-    if not patient: return Response({'error':'Patient account not found.'},status=401)
+    if not patient: return Response({'error':'Invalid credentials.'},status=401)
     access=PatientPortalAccess.objects.filter(patient=patient,is_active=True).first()
-    if not access or access.is_locked(): return Response({'error':'Portal access is unavailable. Please contact the clinic.'},status=403)
+    if not access or access.is_locked(): return Response({'error':'Invalid credentials.'},status=401)
     supplied=hashlib.sha256(pin.encode()).hexdigest()
     if not constant_time_compare(access.portal_pin or '',supplied):
         access.login_attempts+=1
