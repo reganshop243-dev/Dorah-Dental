@@ -48,7 +48,7 @@ CSRF_TRUSTED_ORIGINS = [
         'CSRF_TRUSTED_ORIGINS',
         'https://dorah-dental-production.up.railway.app'
          "https://dorahdental.world",
-    "https://www.dorahdental.world',
+    "https://www.dorahdental.world",
     ).split(',')
     if o.strip()
 ]
