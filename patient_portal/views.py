@@ -29,6 +29,19 @@ import re
 # HELPER FUNCTIONS
 # ====================
 
+def app_download(request):
+    """Public patient app download landing page for Android and iOS."""
+    from django.conf import settings
+    public_base = getattr(
+        settings, 'PUBLIC_BASE_URL', 'https://dorah-dental-production.up.railway.app'
+    ).rstrip('/')
+    return render(request, 'patient_portal/app_download.html', {
+        'android_app_url': getattr(settings, 'ANDROID_APP_URL', '').strip(),
+        'ios_app_url': getattr(settings, 'IOS_APP_URL', '').strip(),
+        'web_portal_url': f'{public_base}/portal/login/',
+    })
+
+
 def log_patient_action(patient, action, request):
     """Log patient portal activity"""
     PatientPortalLog.objects.create(

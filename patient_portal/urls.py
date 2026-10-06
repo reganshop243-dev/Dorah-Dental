@@ -5,6 +5,7 @@ from patients.views import generate_portal_pin
 app_name = 'patient_portal'
 
 urlpatterns = [
+    path('app/', views.app_download, name='app_download'),
     path('login/', views.patient_portal_login, name='login'),
     path('logout/', views.patient_portal_logout, name='logout'),
     path('', views.dashboard, name='dashboard'),

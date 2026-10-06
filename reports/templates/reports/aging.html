@@ -146,7 +146,7 @@
     <div class="filter-card">
         <div class="row align-items-center">
             <div class="col-md-12">
-                <form method="get" class="row g-2">
+                <form method="get" class="row g-2 live-filter-form" data-live-filter="true">
                     <div class="col-md-3">
                         <input type="date" class="form-control" name="start_date" value="{{ start_date_str }}" placeholder="Start Date">
                     </div>
@@ -255,9 +255,9 @@
                                     </span>
                                 </td>
                                 <td class="amount">UGX {{ item.total_amount|floatformat:0|intcomma }}</td>
-                                <td class="amount success">UGX {{ item.amount_paid|floatformat:0|intcomma }}</td>
-                                <td class="amount {% if item.balance_due > 0 %}danger{% else %}success{% endif %}">
-                                    UGX {{ item.balance_due|floatformat:0|intcomma }}
+                                <td class="amount success">UGX {{ item.actual_paid|floatformat:0|intcomma }}</td>
+                                <td class="amount {% if item.actual_balance > 0 %}danger{% else %}success{% endif %}">
+                                    UGX {{ item.actual_balance|floatformat:0|intcomma }}
                                 </td>
                                 <td>
                                     <span class="risk-indicator 

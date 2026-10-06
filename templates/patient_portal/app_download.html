@@ -1,0 +1,59 @@
+{% extends 'base_portal.html' %}
+{% load static %}
+{% block title %}Dorah Dental App{% endblock %}
+{% block content %}
+<div class="container py-5">
+  <div class="row justify-content-center">
+    <div class="col-lg-8">
+      <div class="card border-0 shadow-lg rounded-4 overflow-hidden">
+        <div class="card-body p-4 p-md-5 text-center">
+          <img src="{% static 'images/dental_logo.png' %}" alt="Dorah Dental" style="height:90px;max-width:240px;object-fit:contain;">
+          <h1 class="h2 fw-bold mt-3">Dorah Dental Patient App</h1>
+          <p class="text-muted mb-4">Access your appointments, invoices, payments, treatment history and secure clinic messages from your phone.</p>
+
+          <div class="row g-3 mb-4">
+            <div class="col-md-6">
+              {% if android_app_url %}
+                <a class="btn btn-dark btn-lg w-100 py-3" href="{{ android_app_url }}" target="_blank" rel="noopener">
+                  <i class="fab fa-android me-2"></i>Download for Android
+                </a>
+                <div class="small text-muted mt-2">Android APK / Google Play</div>
+              {% else %}
+                <div class="border rounded-4 p-3 h-100">
+                  <div class="fw-bold"><i class="fab fa-android me-2"></i>Android</div>
+                  <div class="small text-muted mt-2">Android download link will appear here when the app is published.</div>
+                </div>
+              {% endif %}
+            </div>
+            <div class="col-md-6">
+              {% if ios_app_url %}
+                <a class="btn btn-dark btn-lg w-100 py-3" href="{{ ios_app_url }}" target="_blank" rel="noopener">
+                  <i class="fab fa-apple me-2"></i>Download for iPhone
+                </a>
+                <div class="small text-muted mt-2">Apple App Store</div>
+              {% else %}
+                <div class="border rounded-4 p-3 h-100">
+                  <div class="fw-bold"><i class="fab fa-apple me-2"></i>iPhone / iPad</div>
+                  <div class="small text-muted mt-2">The iOS App Store link will appear here when the app is published.</div>
+                </div>
+              {% endif %}
+            </div>
+          </div>
+
+          <div class="border-top pt-4">
+            <h5 class="fw-bold">Already have your PIN?</h5>
+            <p class="small text-muted">You can use the same Patient ID or phone number and PIN on the web portal.</p>
+            <a href="{% url 'patient_portal:login' %}" class="btn btn-primary px-4">
+              <i class="fas fa-right-to-bracket me-2"></i>Open Patient Portal
+            </a>
+          </div>
+
+          <div class="small text-muted mt-4">
+            Your portal PIN is private. Never share it with anyone other than the patient or authorized caregiver.
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

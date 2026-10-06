@@ -52,6 +52,15 @@ CSRF_TRUSTED_ORIGINS = [
 ]
 
 # Flutter Web development server ports are assigned dynamically.
+# Patient mobile app download links. Set these in Railway environment variables
+# when the Android APK / Google Play and iOS App Store listings are published.
+PUBLIC_BASE_URL = os.environ.get(
+    'PUBLIC_BASE_URL',
+    'https://dorah-dental-production.up.railway.app'
+).strip().rstrip('/')
+ANDROID_APP_URL = os.environ.get('ANDROID_APP_URL', '').strip()
+IOS_APP_URL = os.environ.get('IOS_APP_URL', '').strip()
+
 CSRF_TRUSTED_ORIGIN_REGEXES = [
     r'^https://dorah-dental-production\.up\.railway\.app$',
     r'^http://localhost:\d+$',

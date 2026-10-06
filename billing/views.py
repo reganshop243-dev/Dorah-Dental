@@ -58,7 +58,12 @@ def invoice_list(request):
     payment_method_filter = request.GET.get('payment_method', '').strip()
     date_from = request.GET.get('date_from', '').strip()
     date_to = request.GET.get('date_to', '').strip()
+    period_supplied = 'period' in request.GET
     period = request.GET.get('period', 'today').strip().lower()
+    # A standalone search should search the whole invoice history unless
+    # the user explicitly selected a date period.
+    if search_query and not period_supplied:
+        period = 'all'
     if period not in ('today', 'this_month', 'all', 'custom'):
         period = 'today'
 
@@ -1585,22 +1590,41 @@ def balance_sheet(request):
         invoices = invoices.filter(issue_date__lte=end_date)  # ✅ Fixed
         expenses = expenses.filter(expense_date__lte=end_date)
     
-    # Revenue calculations
-    total_invoices = invoices.count()
-    total_revenue = invoices.aggregate(Sum('total_amount'))['total_amount__sum'] or 0
+    # Financial calculations are cash-aware: revenue is money actually
+    # collected from completed payments during the selected period.
+    # Outstanding is based on invoice totals minus completed payments rather
+    # than trusting the cached Invoice.balance_due field.
+    from django.db.models import Q, F, Value, DecimalField
+    from django.db.models.functions import Coalesce
+
+    total_invoices = invoices.exclude(status='cancelled').count()
     paid_amount = Payment.objects.filter(
         status='completed',
         payment_date__gte=start_date,
         payment_date__lte=end_date,
     ).aggregate(Sum('amount'))['amount__sum'] or 0
-    pending_amount = invoices.filter(balance_due__gt=0, status__in=['draft', 'sent', 'partially_paid']).aggregate(Sum('balance_due'))['balance_due__sum'] or 0
+
+    active_invoices = invoices.exclude(status='cancelled').annotate(
+        actual_paid=Coalesce(
+            Sum('payments__amount', filter=Q(payments__status='completed')),
+            Value(0),
+            output_field=DecimalField(max_digits=12, decimal_places=2),
+        )
+    )
+    invoice_total = active_invoices.aggregate(Sum('total_amount'))['total_amount__sum'] or 0
+    invoice_paid = active_invoices.aggregate(Sum('actual_paid'))['actual_paid__sum'] or 0
+    pending_amount = max(invoice_total - invoice_paid, 0)
+
+    # Keep the existing variable name used by the template, but make it
+    # represent actual collections, consistent with the Revenue Dashboard.
+    total_revenue = paid_amount
     
     # Expense calculations
     total_expenses = expenses.aggregate(Sum('amount'))['amount__sum'] or 0
     expenses_by_category = expenses.values('category').annotate(total=Sum('amount')).order_by('-total')
     
-    # Net profit
-    net_profit = total_revenue - total_expenses
+    # Cash-basis operating result: collections minus operating expenses.
+    net_profit = paid_amount - total_expenses
     
     # Revenue by payment method
     revenue_by_method = Payment.objects.filter(
@@ -1630,7 +1654,7 @@ def balance_sheet(request):
         'net_profit': net_profit,
         'expenses_by_category': expenses_by_category,
         'revenue_by_method': revenue_by_method,
-        'paid_invoices': Invoice.objects.filter(status='paid').count(),  # Add this
-        'pending_invoices': Invoice.objects.filter(balance_due__gt=0, status__in=['draft', 'sent', 'partially_paid']).count(),  # Add this
+        'paid_invoices': active_invoices.filter(total_amount__gt=0, actual_paid__gte=F('total_amount')).count(),
+        'pending_invoices': active_invoices.filter(total_amount__gt=0, actual_paid__lt=F('total_amount')).count()
     }
     return render(request, 'billing/balance_sheet.html', context)

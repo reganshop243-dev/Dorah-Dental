@@ -87,7 +87,7 @@
     <!-- Filter -->
     <div class="card mb-3">
         <div class="card-body">
-            <form method="get" class="row g-2">
+            <form method="get" class="row g-2 live-filter-form" data-live-filter="true">
                 <div class="col-md-3">
                     <input type="date" class="form-control" name="start_date" value="{{ start_date_str }}">
                 </div>
@@ -161,7 +161,7 @@
                                 <th>Phone</th>
                                 <th>Gender</th>
                                 <th>Visits</th>
-                                <th>Total Spent</th>
+                                <th>Total Paid</th>
                                 <th>Avg per Visit</th>
                                 <th>First Visit</th>
                                 <th>Last Visit</th>
@@ -211,7 +211,7 @@
 
 <script>
     function exportCSV() {
-        var csv = 'Patient,Phone,Gender,Visits,Total Spent,Avg per Visit,First Visit,Last Visit\n';
+        var csv = 'Patient,Phone,Gender,Visits,Total Paid,Avg per Visit,First Visit,Last Visit\n';
         var rows = document.querySelectorAll('.visit-table tbody tr');
         rows.forEach(function(row) {
             var cols = row.querySelectorAll('td');

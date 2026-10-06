@@ -4,6 +4,7 @@ from django.contrib.auth.decorators import login_required
 from django.db import models
 from django.db.models import Q, Sum, Value, DecimalField, Count, OuterRef, Subquery, F
 from django.http import JsonResponse
+from django.urls import reverse
 from django.utils import timezone
 from datetime import date, datetime
 from .models import Patient, DentalImage, PatientContactAccessRequest
@@ -697,9 +698,18 @@ def generate_portal_pin(request, pk):
             company = CompanySettings.get_settings()
             clinic_name = company.business_short_name or company.business_name
             clinic_phone = company.phone or ''
+            from django.conf import settings
+            public_base = getattr(
+                settings, 'PUBLIC_BASE_URL',
+                'https://dorah-dental-production.up.railway.app'
+            ).rstrip('/')
+            portal_url = f'{public_base}{reverse('patient_portal:login')}'
+            app_url = f'{public_base}{reverse('patient_portal:app_download')}'
             message = (
                 f"{clinic_name}: Your patient portal PIN is {portal_pin}. "
-                f"Login using your Patient ID ({patient.pk}) or phone number."
+                f"Patient ID: {patient.pk}. "
+                f"Portal: {portal_url} "
+                f"App: {app_url}"
             )
             if clinic_phone:
                 message += f" Clinic: {clinic_phone}."

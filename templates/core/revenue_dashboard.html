@@ -109,7 +109,7 @@
   <a href="?period=this_year" class="btn btn-outline-primary {% if period == 'this_year' %}active{% endif %}"><i class="fas fa-calendar me-1"></i>This Year</a>
   <a href="?period=all" class="btn btn-outline-primary {% if period == 'all' %}active{% endif %}"><i class="fas fa-infinity me-1"></i>All Time</a>
  </div>
- <form method="get" class="row g-2 align-items-end">
+ <form method="get" class="row g-2 align-items-end live-filter-form" data-live-filter="true">
   <div class="col-12 col-md-4"><label class="form-label mb-1 small fw-semibold text-muted">Start date</label><input type="date" class="form-control" name="start_date" value="{{ start_date_str }}" required></div>
   <div class="col-12 col-md-4"><label class="form-label mb-1 small fw-semibold text-muted">End date</label><input type="date" class="form-control" name="end_date" value="{{ end_date_str }}" required></div>
   <div class="col-12 col-md-4"><button type="submit" class="btn btn-primary w-100"><i class="fas fa-filter me-1"></i>Apply Custom Range</button></div>

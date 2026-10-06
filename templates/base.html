@@ -598,5 +598,102 @@ window.addEventListener('load',function(){if(window.Notification && Notification
 })();
 </script>
 
+
+<script>
+/*
+ * Dorah Dental - Live GET Search / Filters
+ * Search fields debounce and automatically submit. The active field is
+ * restored after the GET refresh so users can keep typing continuously
+ * without clicking the search box after every character.
+ */
+(function () {
+    'use strict';
+
+    var STORAGE_KEY = 'dorah_live_filter_focus';
+
+    function rememberFocus(form, field) {
+        try {
+            sessionStorage.setItem(STORAGE_KEY, JSON.stringify({
+                action: form.getAttribute('action') || window.location.pathname,
+                name: field.name || '',
+                id: field.id || '',
+                selectionStart: typeof field.selectionStart === 'number' ? field.selectionStart : null,
+                selectionEnd: typeof field.selectionEnd === 'number' ? field.selectionEnd : null
+            }));
+        } catch (e) {}
+    }
+
+    function restoreFocus() {
+        try {
+            var raw = sessionStorage.getItem(STORAGE_KEY);
+            if (!raw) return;
+            sessionStorage.removeItem(STORAGE_KEY);
+            var saved = JSON.parse(raw);
+            if (!saved || saved.action !== window.location.pathname) return;
+
+            var field = null;
+            if (saved.id) field = document.getElementById(saved.id);
+            if (!field && saved.name) field = document.querySelector('form.live-filter-form [name="' + CSS.escape(saved.name) + '"]');
+            if (!field) return;
+
+            field.focus({preventScroll: true});
+            if (typeof field.setSelectionRange === 'function' && saved.selectionStart !== null) {
+                var end = saved.selectionEnd === null ? saved.selectionStart : saved.selectionEnd;
+                var pos = Math.min(saved.selectionStart, (field.value || '').length);
+                var endPos = Math.min(end, (field.value || '').length);
+                field.setSelectionRange(pos, endPos);
+            }
+        } catch (e) {}
+    }
+
+    function initLiveFilters() {
+        document.querySelectorAll('form.live-filter-form').forEach(function (form) {
+            if ((form.method || 'get').toLowerCase() !== 'get' || form.dataset.liveBound === '1') return;
+            form.dataset.liveBound = '1';
+
+            var timer = null;
+            var searchFields = form.querySelectorAll(
+                'input[name="search"], input[name="q"], input[type="search"]'
+            );
+
+            function submitSoon(delay, field) {
+                window.clearTimeout(timer);
+                timer = window.setTimeout(function () {
+                    if (field) rememberFocus(form, field);
+                    if (typeof form.requestSubmit === 'function') {
+                        form.requestSubmit();
+                    } else {
+                        form.submit();
+                    }
+                }, delay);
+            }
+
+            searchFields.forEach(function (field) {
+                field.addEventListener('input', function () {
+                    submitSoon(650, field);
+                });
+            });
+
+            form.querySelectorAll('select, input[type="date"], input[type="checkbox"], input[type="radio"]').forEach(function (field) {
+                field.addEventListener('change', function () {
+                    rememberFocus(form, field);
+                    submitSoon(100, field);
+                });
+            });
+        });
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', function () {
+            initLiveFilters();
+            restoreFocus();
+        });
+    } else {
+        initLiveFilters();
+        restoreFocus();
+    }
+})();
+</script>
+
 </body>
 </html>

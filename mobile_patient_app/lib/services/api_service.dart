@@ -5,7 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 class ApiService {
   static const String baseUrl = String.fromEnvironment(
     'DORAH_API_URL',
-    defaultValue: 'http://10.0.2.2:8000/api',
+    defaultValue: 'https://dorah-dental-production.up.railway.app/api',
   );
 
   static String? token;
