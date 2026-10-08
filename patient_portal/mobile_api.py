@@ -72,7 +72,8 @@ def dashboard(request):
     patient=_patient(request)
     if not patient:return Response({'error':'Patient account not found.'},status=403)
     today=timezone.localdate(); appointments=Appointment.objects.filter(patient=patient,appointment_date__gte=today,status__in=['scheduled','checked_in']).select_related('doctor','service').order_by('appointment_date','appointment_time'); a=appointments.first()
-    balance=sum((i.balance_due or 0) for i in Invoice.objects.filter(patient=patient))
+    from billing.balance_service import get_patient_outstanding_balance
+    balance=get_patient_outstanding_balance(patient)
     ns=PortalNotification.objects.filter(patient=patient).order_by('-created_at')[:5]
     return Response({'patient':{'id':patient.id,'name':patient.full_name},'balance':str(balance),'unread_notifications':PortalNotification.objects.filter(patient=patient,is_read=False).count(),'unread_messages':PatientMessage.objects.filter(conversation__patient=patient,sender_type='staff',read_at__isnull=True).count(),'next_appointment':({'id':a.id,'date':a.appointment_date.strftime('%A, %d %B %Y'),'time':a.appointment_time.strftime('%I:%M %p'),'service':a.service.name if a.service_id else 'Dental appointment','doctor':a.doctor.display_name if a.doctor_id else None} if a else None),'recent_notifications':[{'id':n.id,'title':n.title,'message':n.message,'is_read':n.is_read,'created_at':n.created_at.isoformat()} for n in ns]})
 

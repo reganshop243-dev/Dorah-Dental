@@ -297,42 +297,32 @@ def invoice_add(request):
                 # CALCULATE TOTALS
                 # -----------------------------------------
 
-                subtotal = 0
+                from decimal import Decimal, InvalidOperation
+
+                subtotal = Decimal('0.00')
 
                 for item in cart_items:
-                    price = float(
-                        item.get('price', 0)
-                    )
-
-                    quantity = int(
-                        item.get('quantity', 1)
-                    )
-
+                    try:
+                        price = Decimal(str(item.get('price', 0)))
+                        quantity = int(item.get('quantity', 1))
+                    except (InvalidOperation, ValueError, TypeError):
+                        raise ValueError('Invalid invoice item price or quantity.')
+                    if quantity < 1 or price < 0:
+                        raise ValueError('Invoice item quantity must be at least 1 and price cannot be negative.')
                     subtotal += price * quantity
 
-                tax_rate = float(
-                    request.POST.get(
-                        'tax_rate',
-                        0
-                    )
-                )
+                try:
+                    tax_rate = Decimal(str(request.POST.get('tax_rate', 0) or 0))
+                    discount = Decimal(str(request.POST.get('discount', 0) or 0))
+                except (InvalidOperation, ValueError):
+                    raise ValueError('Invalid tax rate or discount.')
+                if tax_rate < 0 or discount < 0:
+                    raise ValueError('Tax rate and discount cannot be negative.')
 
-                discount = float(
-                    request.POST.get(
-                        'discount',
-                        0
-                    )
-                )
-
-                tax_amount = (
-                    subtotal * tax_rate
-                ) / 100 if tax_rate > 0 else 0
-
-                total_amount = (
-                    subtotal
-                    + tax_amount
-                    - discount
-                )
+                tax_amount = (subtotal * tax_rate) / Decimal('100')
+                total_amount = subtotal + tax_amount - discount
+                if total_amount < 0:
+                    raise ValueError('Discount cannot exceed subtotal plus tax.')
 
                 # -----------------------------------------
                 # ISSUE DATE
@@ -342,20 +332,12 @@ def invoice_add(request):
                     try:
                         from datetime import datetime
 
-                        issue_datetime = datetime.strptime(
-                            issue_date,
-                            '%Y-%m-%d'
-                        )
-
-                        issue_date_obj = timezone.make_aware(
-                            issue_datetime
-                        )
-
+                        issue_date_obj = datetime.strptime(issue_date, '%Y-%m-%d').date()
                     except (ValueError, TypeError):
-                        issue_date_obj = timezone.now()
+                        issue_date_obj = timezone.localdate()
 
                 else:
-                    issue_date_obj = timezone.now()
+                    issue_date_obj = timezone.localdate()
 
                 # -----------------------------------------
                 # INITIAL PAYMENT
@@ -517,12 +499,7 @@ def invoice_add(request):
                         )
                     )
 
-                    price = float(
-                        item_data.get(
-                            'price',
-                            0
-                        )
-                    )
+                    price = Decimal(str(item_data.get('price', 0)))
 
                     name = item_data.get(
                         'name',
@@ -1046,7 +1023,17 @@ def invoice_edit(request, pk):
                         notes='Recorded while editing invoice.',
                     )
 
-                # 7. Recompute totals
+                # 7. Validate the final payment ledger before recomputing.
+                # Never allow edited/new completed payments to exceed the invoice total.
+                completed_total = invoice.payments.filter(status='completed').aggregate(
+                    total=Sum('amount')
+                )['total'] or Decimal('0.00')
+                if completed_total > invoice.total_amount:
+                    raise ValueError(
+                        f'Completed payments ({completed_total}) cannot exceed the invoice total ({invoice.total_amount}).'
+                    )
+
+                # 8. Recompute totals
                 _recompute_payment_state()
 
             messages.success(request, f'Invoice {invoice.invoice_number} updated successfully.')
@@ -1185,7 +1172,13 @@ def add_payment(request, pk):
     
     if request.method == 'POST':
         try:
-            amount = float(request.POST.get('amount', 0))
+            from decimal import Decimal, InvalidOperation
+            amount_raw = (request.POST.get('amount', '0') or '0').strip()
+            try:
+                amount = Decimal(amount_raw)
+            except (InvalidOperation, ValueError):
+                messages.error(request, 'Invalid payment amount.')
+                return redirect('billing:detail', pk=invoice.pk)
             payment_method = request.POST.get('payment_method')
             payment_date = request.POST.get('payment_date', '')
             
@@ -1201,12 +1194,11 @@ def add_payment(request, pk):
             if payment_date:
                 try:
                     from datetime import datetime
-                    payment_datetime = datetime.strptime(payment_date, '%Y-%m-%d')
-                    payment_date_obj = timezone.make_aware(payment_datetime)
-                except:
-                    payment_date_obj = timezone.now()
+                    payment_date_obj = datetime.strptime(payment_date, '%Y-%m-%d').date()
+                except (ValueError, TypeError):
+                    payment_date_obj = timezone.localdate()
             else:
-                payment_date_obj = timezone.now()
+                payment_date_obj = timezone.localdate()
             
             Payment.objects.create(
                 invoice=invoice,
@@ -1289,12 +1281,13 @@ def add_invoice_item(request, pk):
                 except (ValueError, TypeError):
                     quantity = 1
                     
+                from decimal import Decimal, InvalidOperation
                 try:
-                    unit_price = float(unit_price_str) if unit_price_str else 0.0
+                    unit_price = Decimal(unit_price_str) if unit_price_str else Decimal('0.00')
                     if unit_price < 0:
-                        unit_price = 0.0
-                except (ValueError, TypeError):
-                    unit_price = 0.0
+                        unit_price = Decimal('0.00')
+                except (InvalidOperation, ValueError, TypeError):
+                    unit_price = Decimal('0.00')
                 
                 if not description:
                     messages.error(request, 'Description is required')
@@ -1371,6 +1364,10 @@ def add_invoice_item(request, pk):
                 invoice.subtotal = subtotal
                 invoice.tax_amount = (subtotal * invoice.tax_rate) / 100 if invoice.tax_rate > 0 else 0
                 invoice.total_amount = subtotal + invoice.tax_amount - invoice.discount
+                if invoice.total_amount < invoice.amount_paid:
+                    raise ValueError(
+                        f'Cannot reduce invoice total below completed payments ({invoice.amount_paid}).'
+                    )
                 invoice.balance_due = invoice.total_amount - invoice.amount_paid
                 invoice.save()
                 

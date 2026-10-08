@@ -64,6 +64,11 @@ DATA_DIR.mkdir(exist_ok=True)
 
 DEBUG = os.environ.get('DEBUG', 'False').lower() in ('1', 'true', 'yes')
 
+# Clinic timezone. Uganda uses UTC+03:00; keeping this explicit prevents
+# day-boundary errors in payments, reports, reminders, and 'today' filters.
+TIME_ZONE = os.environ.get('TIME_ZONE', 'Africa/Kampala')
+USE_TZ = True
+
 SECRET_KEY = os.environ.get('SECRET_KEY')
 
 if not SECRET_KEY:

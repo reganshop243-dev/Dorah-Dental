@@ -3,6 +3,10 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
 from rest_framework.permissions import BasePermission
 from core.permissions import is_financial_staff
+from django.utils import timezone
+from django.db.models import Sum, Q
+from .models import Invoice, Payment, Expense
+from .serializers import InvoiceSerializer, PaymentSerializer, ExpenseSerializer
 
 class IsFinancialStaff(BasePermission):
     message = "Financial API access is restricted to administrators and accountants."
@@ -71,10 +75,10 @@ def revenue_stats(request):
     if not request.user.profile.has_permission('reports.revenue'):
         return Response({'detail': 'Report permission required.'}, status=status.HTTP_403_FORBIDDEN)
     period = request.query_params.get('period', 'month')
-    now = timezone.now()
+    now = timezone.localdate()
     
     if period == 'today':
-        start_date = now.replace(hour=0, minute=0, second=0)
+        start_date = now
     elif period == 'week':
         start_date = now - timedelta(days=7)
     elif period == 'year':
@@ -82,13 +86,15 @@ def revenue_stats(request):
     else:  # month
         start_date = now - timedelta(days=30)
     
-    invoices = Invoice.objects.filter(
-        issue_date__gte=start_date,
-        status='paid'
+    payments = Payment.objects.filter(
+        status='completed',
+        payment_date__gte=start_date,
+        payment_date__lte=now,
     )
-    
-    total_revenue = invoices.aggregate(Sum('total_amount'))['total_amount__sum'] or 0
-    total_paid = invoices.aggregate(Sum('amount_paid'))['amount_paid__sum'] or 0
+    total_revenue = payments.aggregate(Sum('amount'))['amount__sum'] or 0
+    total_paid = total_revenue
+    invoice_ids = payments.values('invoice_id').distinct()
+    invoice_count = invoice_ids.count()
     
     return Response({
         'period': period,
@@ -96,8 +102,8 @@ def revenue_stats(request):
         'end_date': now,
         'total_revenue': total_revenue,
         'total_paid': total_paid,
-        'invoice_count': invoices.count(),
-        'average_invoice': total_revenue / invoices.count() if invoices.count() > 0 else 0
+        'invoice_count': invoice_count,
+        'average_invoice': total_revenue / invoice_count if invoice_count > 0 else 0
     })
 
 @api_view(['GET'])

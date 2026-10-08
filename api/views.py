@@ -10,7 +10,7 @@ from django.utils.decorators import method_decorator
 from django.db.models import Q, Sum
 from patients.models import Patient
 from appointments.models import Appointment, Service, Doctor, BookingRequest
-from billing.models import Invoice
+from billing.models import Invoice, Payment
 from inventory.models import InventoryItem
 from core.models import CompanySettings
 from .serializers import (
@@ -475,10 +475,10 @@ def simple_stats_direct(request):
         'total_appointments_today': Appointment.objects.filter(appointment_date=today).count(),
         'total_services': Service.objects.filter(is_active=True).count(),
         'total_doctors': Doctor.objects.filter(is_active=True).count(),
-        'revenue_today': Invoice.objects.filter(
-            status='paid',
+        'revenue_today': Payment.objects.filter(
+            status='completed',
             payment_date=today
-        ).aggregate(Sum('total_amount'))['total_amount__sum'] or 0,
+        ).aggregate(Sum('amount'))['amount__sum'] or 0,
         'message': 'Stats working!'
     }
     return JsonResponse(data)
