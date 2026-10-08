@@ -314,7 +314,7 @@ def admin_dashboard(request):
     total_services = Service.objects.filter(is_active=True).count()
 
     # ==================== USERS LIST ====================
-    users = User.objects.all().select_related('profile').order_by('-date_joined')[:20]
+    users = User.objects.all().select_related('profile', 'patient_record').order_by('-date_joined')[:20]
 
     # ==================== SERVICES LIST ====================
     services = Service.objects.filter(is_active=True).order_by('name')[:20]
@@ -615,29 +615,70 @@ def accountant_dashboard(request):
 
 @login_required
 def user_list(request):
-    """List all users with their roles"""
+    """List users in manageable role/patient categories."""
     if not request.user.profile.has_permission('users.view'):
         messages.error(request, 'Access denied. Admin only.')
         return redirect('core:dashboard')
-    
-    users = User.objects.all().select_related('profile').order_by('-date_joined')
-    
-    # Search functionality
-    search = request.GET.get('search', '')
+
+    # Patient accounts are identified by the Patient.user one-to-one link.
+    # Keep them separate from staff so the Users page is not one congested list.
+    base_users = User.objects.all().select_related('profile', 'patient_record').order_by('-date_joined')
+
+    search = request.GET.get('search', '').strip()
     if search:
-        users = users.filter(
+        base_users = base_users.filter(
             models.Q(username__icontains=search) |
             models.Q(first_name__icontains=search) |
             models.Q(last_name__icontains=search) |
             models.Q(email__icontains=search) |
-            models.Q(profile__role__icontains=search)
+            models.Q(profile__role__icontains=search) |
+            models.Q(profile__phone__icontains=search)
         )
-    
+
+    tab = request.GET.get('tab', 'all').lower()
+    valid_tabs = {'all', 'staff', 'patients', 'admin', 'doctor', 'receptionist', 'accountant', 'nurse', 'assistant'}
+    if tab not in valid_tabs:
+        tab = 'all'
+
+    patient_users = base_users.filter(patient_record__isnull=False)
+    staff_users = base_users.filter(patient_record__isnull=True)
+
+    role_map = {
+        'admin': 'admin',
+        'doctor': 'doctor',
+        'receptionist': 'receptionist',
+        'accountant': 'accountant',
+        'nurse': 'nurse',
+        'assistant': 'assistant',
+    }
+
+    if tab == 'patients':
+        users = patient_users
+    elif tab == 'staff':
+        users = staff_users
+    elif tab in role_map:
+        users = staff_users.filter(profile__role=role_map[tab])
+    else:
+        users = base_users
+
+    # Counts are based on the current search, so the tabs always describe
+    # the records currently being searched.
+    counts = {
+        'all': base_users.count(),
+        'staff': staff_users.count(),
+        'patients': patient_users.count(),
+    }
+    for key, role in role_map.items():
+        counts[key] = staff_users.filter(profile__role=role).count()
+
     context = {
         'users': users,
         'search_query': search,
+        'active_tab': tab,
+        'counts': counts,
     }
     return render(request, 'core/user_list.html', context)
+
 
 
 @login_required
