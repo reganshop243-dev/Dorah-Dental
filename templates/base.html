@@ -151,6 +151,11 @@
                 <a class="nav-link" href="{% url 'patient_portal:login' %}" target="_blank">
                     <i class="fas fa-user-circle"></i> <span>Patient Portal</span>
                 </a>
+                {% if user.profile.is_admin_role %}
+                    <a class="nav-link {% if 'portal/manage-content' in request.path %}active{% endif %}" href="{% url 'patient_portal:portal_content' %}">
+                        <i class="fas fa-bullhorn"></i> <span>Portal Content</span>
+                    </a>
+                {% endif %}
                 
                 <!-- Admin -->
                 {% if user.profile.is_admin_role %}

@@ -1,6 +1,6 @@
 from django.contrib import admin
 from .models import (
-    PatientPortalAccess, PatientPortalLog, PortalOffer,
+    PatientPortalAccess, PatientPortalLog, PortalOffer, PortalDentalTip,
     PatientConversation, PatientMessage, PortalNotification,
 )
 
@@ -26,6 +26,15 @@ class PortalOfferAdmin(admin.ModelAdmin):
     list_display = ['title', 'valid_from', 'valid_until', 'is_published', 'created_at']
     list_filter = ['is_published', 'valid_from', 'valid_until']
     search_fields = ['title', 'description']
+    list_editable = ['is_published']
+    readonly_fields = ['created_at', 'updated_at']
+
+
+@admin.register(PortalDentalTip)
+class PortalDentalTipAdmin(admin.ModelAdmin):
+    list_display = ['title', 'is_published', 'created_at', 'updated_at']
+    list_filter = ['is_published', 'created_at']
+    search_fields = ['title', 'content']
     list_editable = ['is_published']
     readonly_fields = ['created_at', 'updated_at']
 

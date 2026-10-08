@@ -1,0 +1,28 @@
+{% extends 'base.html' %}
+{% block title %}Patient Portal Content{% endblock %}
+{% block page_title %}Patient Portal Content{% endblock %}
+{% block content %}
+<div class="container-fluid py-4">
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <div><h2 class="mb-1">Patient Portal Content</h2><p class="text-muted mb-0">Manage what patients see in Dental Tips and Clinic Offers.</p></div>
+  </div>
+  <ul class="nav nav-tabs mb-4" role="tablist">
+    <li class="nav-item"><button class="nav-link active" data-bs-toggle="tab" data-bs-target="#tips" type="button">Dental Tips <span class="badge bg-secondary">{{ tips|length }}</span></button></li>
+    <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#offers" type="button">Clinic Offers <span class="badge bg-secondary">{{ offers|length }}</span></button></li>
+  </ul>
+  <div class="tab-content">
+    <div class="tab-pane fade show active" id="tips">
+      <div class="d-flex justify-content-end mb-3"><a class="btn btn-primary" href="{% url 'patient_portal:portal_tip_add' %}"><i class="fas fa-plus"></i> Add Dental Tip</a></div>
+      <div class="card shadow-sm"><div class="card-body p-0"><div class="table-responsive"><table class="table table-hover mb-0"><thead><tr><th>Title</th><th>Status</th><th>Created</th><th class="text-end">Actions</th></tr></thead><tbody>
+      {% for tip in tips %}<tr><td><strong>{{ tip.title }}</strong></td><td>{% if tip.is_published %}<span class="badge bg-success">Published</span>{% else %}<span class="badge bg-secondary">Draft</span>{% endif %}</td><td>{{ tip.created_at|date:'d M Y' }}</td><td class="text-end"><a class="btn btn-sm btn-outline-primary" href="{% url 'patient_portal:portal_tip_edit' tip.pk %}">Edit</a> <form method="post" action="{% url 'patient_portal:portal_tip_delete' tip.pk %}" class="d-inline" onsubmit="return confirm('Delete this dental tip?');">{% csrf_token %}<button class="btn btn-sm btn-outline-danger">Delete</button></form></td></tr>{% empty %}<tr><td colspan="4" class="text-center py-4 text-muted">No dental tips yet.</td></tr>{% endfor %}
+      </tbody></table></div></div></div>
+    </div>
+    <div class="tab-pane fade" id="offers">
+      <div class="d-flex justify-content-end mb-3"><a class="btn btn-primary" href="{% url 'patient_portal:portal_offer_add' %}"><i class="fas fa-plus"></i> Add Clinic Offer</a></div>
+      <div class="card shadow-sm"><div class="card-body p-0"><div class="table-responsive"><table class="table table-hover mb-0"><thead><tr><th>Title</th><th>Validity</th><th>Status</th><th class="text-end">Actions</th></tr></thead><tbody>
+      {% for offer in offers %}<tr><td><strong>{{ offer.title }}</strong></td><td>{{ offer.valid_from|date:'d M Y'|default:'Any date' }}{% if offer.valid_until %} – {{ offer.valid_until|date:'d M Y' }}{% endif %}</td><td>{% if offer.is_published %}<span class="badge bg-success">Published</span>{% else %}<span class="badge bg-secondary">Draft</span>{% endif %}</td><td class="text-end"><a class="btn btn-sm btn-outline-primary" href="{% url 'patient_portal:portal_offer_edit' offer.pk %}">Edit</a> <form method="post" action="{% url 'patient_portal:portal_offer_delete' offer.pk %}" class="d-inline" onsubmit="return confirm('Delete this clinic offer?');">{% csrf_token %}<button class="btn btn-sm btn-outline-danger">Delete</button></form></td></tr>{% empty %}<tr><td colspan="4" class="text-center py-4 text-muted">No clinic offers yet.</td></tr>{% endfor %}
+      </tbody></table></div></div></div>
+    </div>
+  </div>
+</div>
+{% endblock %}

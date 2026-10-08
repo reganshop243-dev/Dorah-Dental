@@ -1,0 +1,5 @@
+{% extends 'patient_portal/base_portal.html' %}
+{% block title %}Dental Tips{% endblock %}
+{% block content %}
+<div class="container py-4"><div class="mb-4"><h3><i class="fas fa-tooth text-primary me-2"></i>Dental Care Tips</h3><p class="text-muted">Helpful advice published by the clinic to help you care for your teeth and gums.</p></div><div class="row g-4">{% for tip in tips %}<div class="col-md-6 col-lg-4"><div class="card h-100 overflow-hidden">{% if tip.image %}<img src="{{ tip.image.url }}" class="card-img-top" style="height:190px;object-fit:cover" alt="{{ tip.title }}">{% endif %}<div class="card-body"><h5>{{ tip.title }}</h5><p class="text-muted mb-0">{{ tip.content|linebreaksbr }}</p></div></div></div>{% empty %}<div class="col-12"><div class="card"><div class="card-body text-center py-5 text-muted"><i class="fas fa-tooth fa-3x mb-3"></i><h5>No dental tips published</h5><p>Check back later for advice from the clinic.</p></div></div></div>{% endfor %}</div></div>
+{% endblock %}

@@ -12,76 +12,13 @@
     </a>
 </div>
 
-<!-- Category tabs -->
-<div class="card mb-4">
-    <div class="card-body pb-0">
-        <ul class="nav nav-tabs flex-wrap" role="tablist">
-            <li class="nav-item">
-                <a class="nav-link {% if active_tab == 'all' %}active{% endif %}"
-                   href="?tab=all{% if search_query %}&search={{ search_query|urlencode }}{% endif %}">
-                    <i class="fas fa-users"></i> All <span class="badge bg-secondary ms-1">{{ counts.all }}</span>
-                </a>
-            </li>
-            <li class="nav-item">
-                <a class="nav-link {% if active_tab == 'staff' %}active{% endif %}"
-                   href="?tab=staff{% if search_query %}&search={{ search_query|urlencode }}{% endif %}">
-                    <i class="fas fa-user-tie"></i> Staff <span class="badge bg-primary ms-1">{{ counts.staff }}</span>
-                </a>
-            </li>
-            <li class="nav-item">
-                <a class="nav-link {% if active_tab == 'patients' %}active{% endif %}"
-                   href="?tab=patients{% if search_query %}&search={{ search_query|urlencode }}{% endif %}">
-                    <i class="fas fa-user-injured"></i> Patients <span class="badge bg-info ms-1">{{ counts.patients }}</span>
-                </a>
-            </li>
-            <li class="nav-item">
-                <a class="nav-link {% if active_tab == 'admin' %}active{% endif %}"
-                   href="?tab=admin{% if search_query %}&search={{ search_query|urlencode }}{% endif %}">
-                    <i class="fas fa-user-shield"></i> Administrators <span class="badge bg-danger ms-1">{{ counts.admin }}</span>
-                </a>
-            </li>
-            <li class="nav-item">
-                <a class="nav-link {% if active_tab == 'doctor' %}active{% endif %}"
-                   href="?tab=doctor{% if search_query %}&search={{ search_query|urlencode }}{% endif %}">
-                    <i class="fas fa-user-md"></i> Doctors <span class="badge bg-primary ms-1">{{ counts.doctor }}</span>
-                </a>
-            </li>
-            <li class="nav-item">
-                <a class="nav-link {% if active_tab == 'receptionist' %}active{% endif %}"
-                   href="?tab=receptionist{% if search_query %}&search={{ search_query|urlencode }}{% endif %}">
-                    <i class="fas fa-concierge-bell"></i> Receptionists <span class="badge bg-info ms-1">{{ counts.receptionist }}</span>
-                </a>
-            </li>
-            <li class="nav-item">
-                <a class="nav-link {% if active_tab == 'accountant' %}active{% endif %}"
-                   href="?tab=accountant{% if search_query %}&search={{ search_query|urlencode }}{% endif %}">
-                    <i class="fas fa-calculator"></i> Accountants <span class="badge bg-success ms-1">{{ counts.accountant }}</span>
-                </a>
-            </li>
-            <li class="nav-item">
-                <a class="nav-link {% if active_tab == 'nurse' %}active{% endif %}"
-                   href="?tab=nurse{% if search_query %}&search={{ search_query|urlencode }}{% endif %}">
-                    <i class="fas fa-user-nurse"></i> Nurses <span class="badge bg-secondary ms-1">{{ counts.nurse }}</span>
-                </a>
-            </li>
-            <li class="nav-item">
-                <a class="nav-link {% if active_tab == 'assistant' %}active{% endif %}"
-                   href="?tab=assistant{% if search_query %}&search={{ search_query|urlencode }}{% endif %}">
-                    <i class="fas fa-user-friends"></i> Assistants <span class="badge bg-secondary ms-1">{{ counts.assistant }}</span>
-                </a>
-            </li>
-        </ul>
-    </div>
-</div>
-
 <!-- Search -->
 <div class="card mb-4">
     <div class="card-body">
         <form method="get" class="row g-3 live-filter-form" data-live-search="true" data-live-filter="true">
-            <input type="hidden" name="tab" value="{{ active_tab }}">
             <div class="col-md-10">
-                <input type="text" class="form-control" name="search"
-                       placeholder="Search by username, name, email, phone, or role..."
+                <input type="text" class="form-control" name="search" 
+                       placeholder="Search by username, name, email, or role..." 
                        value="{{ search_query }}">
             </div>
             <div class="col-md-2">
@@ -95,30 +32,16 @@
 
 <!-- Users Table -->
 <div class="card">
-    <div class="card-header d-flex justify-content-between align-items-center">
-        <strong>
-            {% if active_tab == 'patients' %}Patients
-            {% elif active_tab == 'staff' %}Staff
-            {% elif active_tab == 'admin' %}Administrators
-            {% elif active_tab == 'doctor' %}Doctors
-            {% elif active_tab == 'receptionist' %}Receptionists
-            {% elif active_tab == 'accountant' %}Accountants
-            {% elif active_tab == 'nurse' %}Nurses
-            {% elif active_tab == 'assistant' %}Assistants
-            {% else %}All Users{% endif %}
-        </strong>
-        <span class="text-muted">{{ users|length }} shown</span>
-    </div>
     <div class="card-body">
         <div class="table-responsive">
-            <table class="table table-hover align-middle">
+            <table class="table table-hover">
                 <thead>
                     <tr>
                         <th>Username</th>
                         <th>Name</th>
                         <th>Email</th>
                         <th>Phone</th>
-                        <th>Category / Role</th>
+                        <th>Role</th>
                         <th>Status</th>
                         <th>Actions</th>
                     </tr>
@@ -131,15 +54,9 @@
                         <td>{{ user.email|default:"-" }}</td>
                         <td>{{ user.profile.phone|default:"-" }}</td>
                         <td>
-                            {% if user.patient_record %}
-                                <span class="badge bg-info">
-                                    <i class="fas fa-user-injured"></i> Patient
-                                </span>
-                            {% else %}
-                                <span class="badge {% if user.profile.is_admin_role %}bg-danger{% elif user.profile.is_doctor_role %}bg-primary{% elif user.profile.is_accountant_role %}bg-success{% elif user.profile.is_receptionist_role %}bg-info{% elif user.profile.is_nurse_role %}bg-warning text-dark{% elif user.profile.is_assistant_role %}bg-secondary{% else %}bg-secondary{% endif %}">
-                                    {{ user.profile.get_role_display }}
-                                </span>
-                            {% endif %}
+                            <span class="badge {% if user.profile.is_admin_role %}bg-danger{% elif user.profile.is_doctor_role %}bg-primary{% elif user.profile.is_accountant_role %}bg-success{% elif user.profile.is_receptionist_role %}bg-info{% else %}bg-secondary{% endif %}">
+                                {{ user.profile.get_role_display }}
+                            </span>
                         </td>
                         <td>
                             {% if user.is_active %}
@@ -166,8 +83,9 @@
                                         <i class="fas fa-check"></i>
                                     </a>
                                 {% endif %}
+                                <!-- Reset OTP Button - Only for Admin -->
                                 {% if request.user.profile.is_admin_role %}
-                                    <a href="{% url 'core:reset_user_otp' user.pk %}" class="btn btn-outline-warning" title="Reset OTP"
+                                    <a href="{% url 'core:reset_user_otp' user.pk %}" class="btn btn-outline-warning" title="Reset OTP" 
                                        onclick="return confirm('Reset OTP cooldown for {{ user.username }}? This will allow them to request a new OTP immediately.')">
                                         <i class="fas fa-sync-alt"></i>
                                     </a>
@@ -177,16 +95,42 @@
                     </tr>
                     {% empty %}
                     <tr>
-                        <td colspan="7" class="text-center py-5">
+                        <td colspan="7" class="text-center py-4">
                             <i class="fas fa-users fa-2x d-block mb-2 text-muted"></i>
-                            <p class="text-muted mb-0">
-                                No {% if active_tab == 'patients' %}patients{% elif active_tab == 'staff' %}staff members{% else %}users{% endif %} found.
-                            </p>
+                            <p class="text-muted">No users found.</p>
                         </td>
                     </tr>
                     {% endfor %}
                 </tbody>
             </table>
+        </div>
+    </div>
+</div>
+
+<!-- Stats -->
+<div class="row mt-3">
+    <div class="col-md-3">
+        <div class="stat-card">
+            <div class="number">{{ users|length }}</div>
+            <div class="label">Total Users</div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="stat-card">
+            <div class="number">{{ users|length }}</div>
+            <div class="label">Total Users</div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="stat-card">
+            <div class="number">{{ users|length }}</div>
+            <div class="label">Total Users</div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="stat-card">
+            <div class="number">{{ users|length }}</div>
+            <div class="label">Total Users</div>
         </div>
     </div>
 </div>

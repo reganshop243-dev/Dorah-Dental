@@ -16,7 +16,7 @@ from appointments.models import Appointment, Service, Doctor, Treatment
 from billing.models import Invoice, Payment
 from billing.balance_service import get_patient_outstanding_balance
 from .models import (
-    PatientPortalAccess, PatientPortalLog, PortalOffer, PatientConversation,
+    PatientPortalAccess, PatientPortalLog, PortalOffer, PortalDentalTip, PatientConversation,
     PatientMessage, PortalNotification,
 )
 from .services import create_portal_notification, sync_upcoming_appointment_reminders
@@ -223,6 +223,7 @@ def dashboard(request):
     notifications = patient.portal_notifications.all()[:5]
     unread_notifications = patient.portal_notifications.filter(is_read=False).count()
     offers = [o for o in PortalOffer.objects.filter(is_published=True).order_by('-created_at')[:8] if o.is_current][:3]
+    dental_tips = PortalDentalTip.objects.filter(is_published=True).order_by('-created_at')[:3]
     conversations = patient.portal_conversations.order_by('-updated_at')[:3]
     unread_messages = PatientMessage.objects.filter(
         conversation__patient=patient, sender_type='staff', read_at__isnull=True
@@ -240,6 +241,7 @@ def dashboard(request):
         'notifications': notifications,
         'unread_notifications': unread_notifications,
         'offers': offers,
+        'dental_tips': dental_tips,
         'conversations': conversations,
         'unread_messages': unread_messages,
     }
@@ -384,6 +386,148 @@ def payments(request):
         'total_paid': payments_qs.aggregate(total=Sum('amount'))['total'] or 0,
         'total_balance': get_patient_outstanding_balance(patient),
     })
+
+
+
+
+def _portal_content_admin_required(request):
+    profile = getattr(request.user, 'profile', None)
+    return bool(profile and profile.is_admin_role)
+
+
+@login_required
+def portal_content(request):
+    """Staff-facing portal content manager; keeps content management out of Django admin."""
+    if not _portal_content_admin_required(request):
+        messages.error(request, 'You do not have permission to manage patient portal content.')
+        return redirect('core:dashboard')
+    tips = PortalDentalTip.objects.all().order_by('-created_at')
+    offers = PortalOffer.objects.all().order_by('-created_at')
+    return render(request, 'patient_portal/portal_content.html', {'tips': tips, 'offers': offers})
+
+
+@login_required
+def portal_tip_add(request):
+    if not _portal_content_admin_required(request):
+        messages.error(request, 'You do not have permission to manage patient portal content.')
+        return redirect('core:dashboard')
+    if request.method == 'POST':
+        title = request.POST.get('title', '').strip()
+        content = request.POST.get('content', '').strip()
+        if not title or not content:
+            messages.error(request, 'Title and content are required.')
+        else:
+            tip = PortalDentalTip(title=title, content=content, is_published=request.POST.get('is_published') == 'on')
+            if request.FILES.get('image'):
+                tip.image = request.FILES['image']
+            tip.save()
+            messages.success(request, 'Dental tip added successfully.')
+            return redirect('patient_portal:portal_content')
+    return render(request, 'patient_portal/portal_tip_form.html', {'title': 'Add Dental Tip', 'tip': None})
+
+
+@login_required
+def portal_tip_edit(request, pk):
+    if not _portal_content_admin_required(request):
+        messages.error(request, 'You do not have permission to manage patient portal content.')
+        return redirect('core:dashboard')
+    tip = get_object_or_404(PortalDentalTip, pk=pk)
+    if request.method == 'POST':
+        title = request.POST.get('title', '').strip()
+        content = request.POST.get('content', '').strip()
+        if not title or not content:
+            messages.error(request, 'Title and content are required.')
+        else:
+            tip.title = title
+            tip.content = content
+            tip.is_published = request.POST.get('is_published') == 'on'
+            if request.FILES.get('image'):
+                tip.image = request.FILES['image']
+            tip.save()
+            messages.success(request, 'Dental tip updated successfully.')
+            return redirect('patient_portal:portal_content')
+    return render(request, 'patient_portal/portal_tip_form.html', {'title': 'Edit Dental Tip', 'tip': tip})
+
+
+@login_required
+def portal_tip_delete(request, pk):
+    if not _portal_content_admin_required(request):
+        messages.error(request, 'You do not have permission to manage patient portal content.')
+        return redirect('core:dashboard')
+    tip = get_object_or_404(PortalDentalTip, pk=pk)
+    if request.method == 'POST':
+        tip.delete()
+        messages.success(request, 'Dental tip deleted.')
+    return redirect('patient_portal:portal_content')
+
+
+def _offer_from_post(offer, request):
+    offer.title = request.POST.get('title', '').strip()
+    offer.description = request.POST.get('description', '').strip()
+    offer.is_published = request.POST.get('is_published') == 'on'
+    for field in ('valid_from', 'valid_until'):
+        value = request.POST.get(field, '').strip()
+        setattr(offer, field, value or None)
+    if request.FILES.get('image'):
+        offer.image = request.FILES['image']
+    return offer
+
+
+@login_required
+def portal_offer_add(request):
+    if not _portal_content_admin_required(request):
+        messages.error(request, 'You do not have permission to manage patient portal content.')
+        return redirect('core:dashboard')
+    if request.method == 'POST':
+        offer = _offer_from_post(PortalOffer(), request)
+        if not offer.title or not offer.description:
+            messages.error(request, 'Title and description are required.')
+        else:
+            offer.save()
+            messages.success(request, 'Clinic offer added successfully.')
+            return redirect('patient_portal:portal_content')
+    return render(request, 'patient_portal/portal_offer_form.html', {'title': 'Add Clinic Offer', 'offer': None})
+
+
+@login_required
+def portal_offer_edit(request, pk):
+    if not _portal_content_admin_required(request):
+        messages.error(request, 'You do not have permission to manage patient portal content.')
+        return redirect('core:dashboard')
+    offer = get_object_or_404(PortalOffer, pk=pk)
+    if request.method == 'POST':
+        offer = _offer_from_post(offer, request)
+        if not offer.title or not offer.description:
+            messages.error(request, 'Title and description are required.')
+        elif offer.valid_from and offer.valid_until and offer.valid_from > offer.valid_until:
+            messages.error(request, 'Valid from date cannot be after valid until date.')
+        else:
+            offer.save()
+            messages.success(request, 'Clinic offer updated successfully.')
+            return redirect('patient_portal:portal_content')
+    return render(request, 'patient_portal/portal_offer_form.html', {'title': 'Edit Clinic Offer', 'offer': offer})
+
+
+@login_required
+def portal_offer_delete(request, pk):
+    if not _portal_content_admin_required(request):
+        messages.error(request, 'You do not have permission to manage patient portal content.')
+        return redirect('core:dashboard')
+    offer = get_object_or_404(PortalOffer, pk=pk)
+    if request.method == 'POST':
+        offer.delete()
+        messages.success(request, 'Clinic offer deleted.')
+    return redirect('patient_portal:portal_content')
+
+
+@patient_portal_required
+def dental_tips(request):
+    patient = get_object_or_404(
+        Patient, pk=request.session.get('patient_portal_patient_id'), is_active=True
+    )
+    tips = PortalDentalTip.objects.filter(is_published=True).order_by('-created_at')
+    log_patient_action(patient, 'Viewed Dental Tips', request)
+    return render(request, 'patient_portal/dental_tips.html', {'patient': patient, 'tips': tips})
 
 
 @patient_portal_required

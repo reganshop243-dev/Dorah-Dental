@@ -79,6 +79,25 @@ class PortalOffer(models.Model):
         )
 
 
+class PortalDentalTip(models.Model):
+    """Dental-care tip published to the patient portal."""
+    title = models.CharField(max_length=200)
+    content = models.TextField()
+    image = models.ImageField(upload_to='portal/dental-tips/', blank=True, null=True)
+    is_published = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-created_at']
+        verbose_name = 'Dental Tip'
+        verbose_name_plural = 'Dental Tips'
+        indexes = [models.Index(fields=['is_published', '-created_at'])]
+
+    def __str__(self):
+        return self.title
+
+
 class PatientConversation(models.Model):
     """Secure patient-to-clinic/doctor conversation."""
     STATUS_CHOICES = [
