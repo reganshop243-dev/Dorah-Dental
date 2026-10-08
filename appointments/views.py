@@ -1,5 +1,6 @@
 from core.permissions import is_financial_staff
 from django.shortcuts import render, redirect, get_object_or_404
+from django.urls import reverse
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from core.security import permission_required
@@ -337,7 +338,15 @@ def appointment_add(request):
                         yoola = YoolaSMS()
                         
                         # Create the message
-                        message = f"{data['clinic_name']}: Appointment confirmed for {data['patient_name']} on {data['appointment_date']} at {data['appointment_time']} with Dr. {data['doctor_name']}." + (f" Call {data['clinic_phone']} to reschedule." if data['clinic_phone'] else '')
+                        from django.conf import settings
+                        public_base = getattr(settings, 'PUBLIC_BASE_URL', 'https://dorahdental.world').rstrip('/')
+                        portal_url = public_base + '/'
+                        message = (
+                            f"{data['clinic_name']}: Appointment confirmed for {data['patient_name']} on "
+                            f"{data['appointment_date']} at {data['appointment_time']} with Dr. {data['doctor_name']}."
+                            + (f" Call {data['clinic_phone']} to reschedule." if data['clinic_phone'] else '')
+                            + f" Portal: {portal_url}"
+                        )
                         
                         # Send the SMS
                         result = yoola.send_sms(notification_phone, message)

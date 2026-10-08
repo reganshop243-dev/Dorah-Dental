@@ -5,6 +5,7 @@ import logging
 from django.core.mail import send_mail, EmailMultiAlternatives
 from django.template import Template, Context
 from django.conf import settings
+from django.urls import reverse
 from django.utils import timezone
 from datetime import datetime, timedelta
 from appointments.models import Appointment
@@ -130,12 +131,18 @@ class NotificationService:
     def prepare_data(self, appointment):
         """Prepare template data using current Company Settings."""
         clinic = self._clinic_info()
+        public_base = getattr(
+            settings, 'PUBLIC_BASE_URL', 'https://dorahdental.world'
+        ).rstrip('/')
+        portal_url = public_base + '/'
         return {
             'patient_name': appointment.patient.full_name,
             'appointment_date': appointment.appointment_date.strftime('%A, %B %d, %Y'),
             'appointment_time': appointment.appointment_time.strftime('%I:%M %p'),
             'doctor_name': appointment.doctor.name,
             'service_name': appointment.service.name,
+            'portal_url': portal_url,
+            'clinic_url': public_base,
             **clinic,
         }
 
@@ -202,10 +209,17 @@ class NotificationService:
             
             template = Template(settings_obj.sms_template)
             context = Context(data)
-            message = template.render(context)
-            
-            if len(message) > 300:
-                message = message[:297] + "..."
+            message = template.render(context).strip()
+
+            # Always include a clickable patient portal link in appointment SMS.
+            # Keep the URL intact even when the SMS is longer than the provider limit.
+            portal_url = data.get('portal_url') or 'https://dorahdental.world/'
+            if portal_url not in message:
+                link_text = f" Portal: {portal_url}"
+                available = 300 - len(link_text)
+                message = message[:max(0, available)].rstrip() + link_text
+            elif len(message) > 300:
+                message = message[:300]
             
             yoola = YoolaSMS()
             result = yoola.send_sms(phone_number, message)
