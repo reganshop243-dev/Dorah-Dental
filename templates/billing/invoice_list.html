@@ -230,6 +230,7 @@
                                 <tr>
                                     <th>Invoice #</th>
                                     <th>Patient</th>
+                                    <th>Doctor</th>
                                     <th>Date</th>
                                     <th>Type</th>
                                     {% if can_view_financials %}<th>Total</th><th>Paid</th><th>Balance</th><th>Latest Payment</th>{% endif %}
@@ -250,6 +251,13 @@
                                         <strong>{{ invoice.patient_name }}</strong>
                                         <br>
                                         <small class="text-muted">{{ invoice.patient_phone }}</small>
+                                    </td>
+                                    <td>
+                                        {% if invoice.doctor %}
+                                            <small class="text-muted"><i class="fas fa-user-md me-1"></i>{{ invoice.doctor.display_name }}</small>
+                                        {% else %}
+                                            <small class="text-muted">—</small>
+                                        {% endif %}
                                     </td>
                                     <td>
                                         {{ invoice.issue_date|date:"M d, Y" }}

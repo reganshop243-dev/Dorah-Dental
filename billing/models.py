@@ -36,6 +36,7 @@ class Invoice(models.Model):
     invoice_number = models.CharField(max_length=50, unique=True, db_index=True)
     patient = models.ForeignKey(Patient, on_delete=models.CASCADE, related_name='invoices')
     appointment = models.ForeignKey(Appointment, on_delete=models.SET_NULL, null=True, blank=True, related_name='invoices')
+    doctor = models.ForeignKey(Doctor, on_delete=models.SET_NULL, null=True, blank=True, related_name='invoices', help_text='Doctor who performed the treatment')
     
     # Patient details snapshot (in case patient info changes later)
     patient_name = models.CharField(max_length=255)

@@ -1153,10 +1153,13 @@ def invoice_detail(request, pk):
     """View invoice details with role-based financial protection."""
     invoice = get_object_or_404(Invoice, pk=pk)
     from inventory.models import InventoryItem
+    from appointments.models import Doctor
     inventory_items = InventoryItem.objects.filter(is_active=True, quantity__gt=0)
+    doctors = Doctor.objects.filter(is_active=True).order_by('name')
     return render(request, 'billing/invoice_detail.html', {
         'invoice': invoice,
         'inventory_items': inventory_items,
+        'doctors': doctors,
         'is_doctor': is_doctor(request.user),
     })
 
@@ -1181,6 +1184,7 @@ def add_payment(request, pk):
                 return redirect('billing:detail', pk=invoice.pk)
             payment_method = request.POST.get('payment_method')
             payment_date = request.POST.get('payment_date', '')
+            doctor_id = (request.POST.get('doctor') or '').strip()
             
             if amount <= 0:
                 messages.error(request, 'Amount must be greater than 0')
@@ -1200,12 +1204,20 @@ def add_payment(request, pk):
             else:
                 payment_date_obj = timezone.localdate()
             
+            # Store the treating doctor on the invoice when selected.
+            # A blank selection preserves any doctor already assigned.
+            if doctor_id:
+                from appointments.models import Doctor
+                invoice.doctor = get_object_or_404(Doctor, pk=doctor_id, is_active=True)
+                invoice.save(update_fields=['doctor', 'updated_at'])
+
             Payment.objects.create(
                 invoice=invoice,
                 amount=amount,
                 payment_method=payment_method,
                 payment_date=payment_date_obj,
-                status='completed'
+                status='completed',
+                processed_by=request.user.get_username(),
             )
             
             # Payment.save() recalculates all completed installments and
