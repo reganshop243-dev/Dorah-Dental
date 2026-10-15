@@ -704,10 +704,7 @@ def generate_portal_pin(request, pk):
             clinic_name = company.business_short_name or company.business_name
             clinic_phone = company.phone or ''
             from django.conf import settings
-            public_base = getattr(
-                settings, 'PUBLIC_BASE_URL',
-                'https://dorah-dental-production.up.railway.app'
-            ).rstrip('/')
+            public_base = 'https://dorahdental.world'
             portal_url = f'{public_base}{reverse('patient_portal:login')}'
             app_url = f'{public_base}{reverse('patient_portal:app_download')}'
             message = (

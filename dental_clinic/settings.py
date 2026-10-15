@@ -18,7 +18,10 @@ import dj_database_url
 
 from django.core.exceptions import ImproperlyConfigured
 
-
+import environ
+env = environ.Env()
+environ.Env.read_env()  # reads .env
+DEEPSEEK_API_KEY = env("DEEPSEEK_API_KEY")
 
 # =======================
 

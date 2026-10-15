@@ -2,29 +2,24 @@ from decimal import Decimal, InvalidOperation
 from datetime import datetime, date, time, timedelta
 from pathlib import Path
 import re
-
 from django.core.management.base import BaseCommand, CommandError
 from django.db import transaction, close_old_connections, connection
 from django.db.utils import OperationalError, InterfaceError
 from django.contrib.auth.models import User
 from django.db.models import Sum
 from django.utils import timezone
-
 from patients.models import Patient
 from appointments.models import Appointment, Doctor, Service, Treatment
 from billing.models import Invoice, InvoiceItem, Payment
-
 try:
     import openpyxl
 except ImportError:
     openpyxl = None
-
 SERVICE_NAMES = [
     'BRACES', 'BRACES METALLIC', 'BRACES REVIEW', 'SCALING', 'POLISHING',
     'RCT', 'EXTRACTION', 'WHITENING', 'DENTAL CHECK UP', 'X RAY', 'KIT',
     'REVIEW', 'SP 10', 'SP 6', 'DENTURES',
 ]
-
 SERVICE_MAP = [
     ('BRACES AND KIT', 'BRACES METALLIC'),
     ('BRACES METALLIC', 'BRACES METALLIC'),
@@ -48,15 +43,12 @@ SERVICE_MAP = [
     ('CROWN', 'DENTAL CHECK UP'),
     ('BRIDGE', 'DENTAL CHECK UP'),
 ]
-
 def clean_text(value):
     if value is None:
         return ''
     return re.sub(r'\s+', ' ', str(value)).strip()
-
 def normalize_name(value):
     return clean_text(value).upper()
-
 def normalize_gender(value):
     value = clean_text(value).lower()
     if value.startswith('m'):
@@ -64,7 +56,6 @@ def normalize_gender(value):
     if value.startswith('f'):
         return 'F'
     return 'O'
-
 def clean_phone(value):
     if value is None:
         return ''
@@ -80,7 +71,6 @@ def clean_phone(value):
     if first.startswith('7') and len(first) >= 9:
         return '+256' + first
     return first
-
 def split_name(full_name):
     parts = normalize_name(full_name).split()
     if not parts:
@@ -88,7 +78,6 @@ def split_name(full_name):
     if len(parts) == 1:
         return parts[0], ''
     return parts[0], ' '.join(parts[1:])
-
 def parse_money(value):
     if value is None:
         return Decimal('0')
@@ -101,11 +90,9 @@ def parse_money(value):
         return Decimal(text)
     except InvalidOperation:
         return Decimal('0')
-
 def parse_corrected_date(value):
     """
     Read the DATE column from the corrected workbook.
-
     The corrected workbook already contains real Excel date values with
     the register interpreted as DAY/MONTH/YEAR. We do not reinterpret
     numeric Excel serials here.
@@ -123,29 +110,49 @@ def parse_corrected_date(value):
         except ValueError:
             pass
     return None
-
 def service_for(treatment):
     text = normalize_name(treatment)
     for key, target in SERVICE_MAP:
         if key in text:
             return target
     return 'DENTAL CHECK UP'
-
 def doctor_name_for(raw):
     text = normalize_name(raw)
     if not text:
         return 'UNASSIGNED'
     if ' AND ' in text:
         text = text.split(' AND ', 1)[0].strip()
-    return re.sub(r'^DR\.?\s+', '', text)
-
+    return re.sub(r'^DR\\.?\s+', '', text)
 def tx_from_notes(notes):
     match = re.search(r'transaction_id=(TX-\d+)', notes or '')
     return match.group(1) if match else None
+def source_key(tx_id, visit_date):
+    return (tx_id, visit_date.isoformat() if hasattr(visit_date, 'isoformat') else str(visit_date))
+
+def source_key_from_notes(notes):
+    tx = tx_from_notes(notes)
+    if not tx:
+        return None
+    match = re.search(r'date=(\d{4}-\d{2}-\d{2})', notes or '')
+    return (tx, match.group(1)) if match else None
+
+def unique_invoice_number(tx_id, existing_numbers):
+    """Return a unique invoice number while preserving the REG-TX- prefix."""
+    base = f"REG-{tx_id}"
+    if base not in existing_numbers:
+        existing_numbers.add(base)
+        return base
+    suffix = 2
+    while True:
+        candidate = f"{base}-{suffix}"
+        if candidate not in existing_numbers:
+            existing_numbers.add(candidate)
+            return candidate
+        suffix += 1
+
 
 class Command(BaseCommand):
     help = "Import Dorah's Dental register using the rebuilt running-balance ledger workbook."
-
     def add_arguments(self, parser):
         parser.add_argument(
             'file',
@@ -164,35 +171,28 @@ class Command(BaseCommand):
         parser.add_argument('--limit', type=int, default=0)
         parser.add_argument('--start', type=int, default=1)
         parser.add_argument('--batch-size', type=int, default=200)
-
     def handle(self, *args, **options):
         if openpyxl is None:
             raise CommandError(
                 'openpyxl is required. Install it with: python -m pip install openpyxl'
             )
-
         source = Path(options['file']).expanduser()
         if not source.exists():
             raise CommandError(f'Excel file not found: {source}')
-
         self.stdout.write(self.style.NOTICE(
             f'Loading corrected register: {source}'
         ))
-
         wb = openpyxl.load_workbook(
             source, data_only=True, read_only=True
         )
-
         if 'TRANSACTIONS' not in wb.sheetnames:
             raise CommandError(
                 "Corrected workbook must contain a 'TRANSACTIONS' sheet."
             )
-
         ws = wb['TRANSACTIONS']
         rows = list(ws.iter_rows(values_only=True))
         if not rows:
             raise CommandError('The TRANSACTIONS sheet is empty.')
-
         headers = [clean_text(x).upper() for x in rows[0]]
         required = [
             'TRANSACTION_ID', 'SOURCE_ROW', 'DATE', 'NAMES', 'GENDER',
@@ -210,7 +210,6 @@ class Command(BaseCommand):
                 "This importer requires PREVIOUS_BALANCE and IMPLIED_CHARGE. "
                 "Use Dorah_Dental_Register_REBUILT_LEDGER.xlsx."
             )
-
         creator = None
         if options['created_by']:
             creator = User.objects.filter(
@@ -220,7 +219,6 @@ class Command(BaseCommand):
                 raise CommandError(
                     f"User '{options['created_by']}' does not exist."
                 )
-
         stats = {
             'rows': 0,
             'patients_created': 0,
@@ -236,31 +234,25 @@ class Command(BaseCommand):
         }
         warnings = []
         parsed = []
-
         # Read the already-corrected transactions. No MM/DD conversion occurs.
         for excel_row, row in enumerate(rows[1:], start=2):
             values = list(row)
             values += [None] * max(0, len(required) - len(values))
-
             tx_id = clean_text(values[idx['TRANSACTION_ID']])
             name = clean_text(values[idx['NAMES']])
             visit_date = parse_corrected_date(values[idx['DATE']])
-
             if not tx_id or not name:
                 continue
-
             if not re.fullmatch(r'TX-\d{6}', tx_id):
                 warnings.append(
                     f'Row {excel_row}: invalid transaction ID {tx_id!r}.'
                 )
                 continue
-
             if visit_date is None:
                 warnings.append(
                     f'Row {excel_row}: {tx_id} has no valid D/M/Y date.'
                 )
                 continue
-
             parsed.append({
                 'tx_id': tx_id,
                 'row': int(values[idx['SOURCE_ROW']]) if values[idx['SOURCE_ROW']] else excel_row,
@@ -280,7 +272,6 @@ class Command(BaseCommand):
                 'implied_charge': parse_money(values[headers.index('IMPLIED_CHARGE')]),
                 'reconciliation_flag': clean_text(values[headers.index('RECONCILIATION_FLAG')]) if 'RECONCILIATION_FLAG' in headers else 'OK',
             })
-
         tx_seen = set()
         for item in parsed:
             if item['tx_id'] in tx_seen:
@@ -288,14 +279,11 @@ class Command(BaseCommand):
                     f"Duplicate transaction ID in workbook: {item['tx_id']}"
                 )
             tx_seen.add(item['tx_id'])
-
         if not parsed:
             warnings.append('No transaction rows were parsed from the ledger workbook.')
-
         dates = sorted({x['date'] for x in parsed})
         december_rows = [x for x in parsed if x['date'].month == 12]
         future_rows = [x for x in parsed if x['date'].year > 2026]
-
         if december_rows:
             warnings.append(
                 f'Unexpected December transactions found: {len(december_rows)}.'
@@ -304,19 +292,16 @@ class Command(BaseCommand):
             warnings.append(
                 f'Unexpected dates after 2026 found: {len(future_rows)}.'
             )
-
         start = max(1, int(options.get('start', 1)))
         if start > 1:
             parsed = parsed[start - 1:]
         if options['limit'] and options['limit'] > 0:
             parsed = parsed[:options['limit']]
-
         # ============================================================
         # PRE-FLIGHT: validate database string lengths BEFORE reset.
         # This prevents a long import from failing hours later.
         # ============================================================
         length_errors = []
-
         def check_model_length(model, field_name, value, label):
             if value in (None, ''):
                 return
@@ -328,25 +313,28 @@ class Command(BaseCommand):
                 length_errors.append(
                     f"{label}: {len(str(value))} chars exceeds {max_length}"
                 )
-
         for item in parsed:
             first, last = split_name(item['name'])
             phone = (item['phone'] or '')[:20]
             doctor_name = item['doctor']
             service_name = service_for(item['treatment'])
             total_amount = item['paid'] + item['balance']
-
             check_model_length(Patient, 'first_name', first, f"{item['tx_id']} Patient.first_name")
             check_model_length(Patient, 'last_name', last, f"{item['tx_id']} Patient.last_name")
             check_model_length(Patient, 'phone', phone, f"{item['tx_id']} Patient.phone")
             check_model_length(Doctor, 'name', doctor_name, f"{item['tx_id']} Doctor.name")
             check_model_length(Service, 'name', service_name, f"{item['tx_id']} Service.name")
             check_model_length(Appointment, 'notification_phone', phone, f"{item['tx_id']} Appointment.notification_phone")
-            check_model_length(Invoice, 'invoice_number', f"REG-{item['tx_id']}", f"{item['tx_id']} Invoice.invoice_number")
+            # Allow room for the collision suffix (-2, -3, ...).
+            check_model_length(
+                Invoice,
+                'invoice_number',
+                f"REG-{item['tx_id']}-999999",
+                f"{item['tx_id']} Invoice.invoice_number"
+            )
             check_model_length(Invoice, 'patient_name', item['name'], f"{item['tx_id']} Invoice.patient_name")
             check_model_length(Invoice, 'patient_phone', phone, f"{item['tx_id']} Invoice.patient_phone")
             check_model_length(InvoiceItem, 'description', item['treatment'] or service_name, f"{item['tx_id']} InvoiceItem.description")
-
         if length_errors:
             preview = length_errors[:30]
             raise CommandError(
@@ -355,11 +343,9 @@ class Command(BaseCommand):
                 "\n".join(f"  - {x}" for x in preview) +
                 (f"\n  ... and {len(length_errors) - len(preview)} more." if len(length_errors) > len(preview) else "")
             )
-
         self.stdout.write(self.style.SUCCESS(
             f"PRE-FLIGHT OK: {len(parsed)} rows passed field-length validation."
         ))
-
         if options['dry_run']:
             self.stdout.write(self.style.SUCCESS(
                 f'Validated {len(parsed)} corrected transaction rows.'
@@ -385,7 +371,6 @@ class Command(BaseCommand):
             else:
                 self.stdout.write(self.style.SUCCESS('No warnings.'))
             return
-
         # Database connectivity check BEFORE any reset.
         try:
             close_old_connections()
@@ -398,7 +383,6 @@ class Command(BaseCommand):
                 f"PRE-FLIGHT FAILED: PostgreSQL is not reachable. "
                 f"NO DATABASE RESET WAS PERFORMED. {exc}"
             ) from exc
-
         if options['reset']:
             self.stdout.write(self.style.WARNING(
                 'RESET: deleting patients, appointments, treatments, '
@@ -411,14 +395,12 @@ class Command(BaseCommand):
                 Treatment.objects.all().delete()
                 Appointment.objects.all().delete()
                 Patient.objects.all().delete()
-
         total = len(parsed)
         if total == 0:
             self.stdout.write(self.style.WARNING(
                 'No transaction rows to import.'
             ))
             return
-
         batch_size = max(1, int(options['batch_size']))
         service_cache = {}
         doctor_cache = {}
@@ -426,16 +408,20 @@ class Command(BaseCommand):
         patient_by_name = {}
         imported_appointments = {}
         imported_invoices = {}
+        imported_treatments = {}
         appointment_slot_counts = {}
-
+        # Existing invoice numbers must be respected. This prevents a new
+        # register from colliding with historical REG-TX- invoice numbers.
+        # The set is created after --reset so a reset starts from a clean namespace.
+        existing_invoice_numbers = set(
+            Invoice.objects.values_list('invoice_number', flat=True)
+        )
         # Live progress/ETA. This is terminal-only and does not change import data.
         import time as _time
         progress_started = _time.monotonic()
         progress_done = 0
         progress_every = 10
-
         close_old_connections()
-
         for service_name in SERVICE_NAMES:
             service = Service.objects.filter(name=service_name).first()
             if service is None:
@@ -448,10 +434,8 @@ class Command(BaseCommand):
                 )
                 stats['services_created'] += 1
             service_cache[service_name] = service
-
         for service in Service.objects.all():
             service_cache[service.name] = service
-
         for patient in Patient.objects.all().only(
             'id', 'first_name', 'last_name', 'phone', 'address',
             'gender', 'registered_at', 'reason_for_visit',
@@ -466,34 +450,34 @@ class Command(BaseCommand):
                     patient_by_phone.setdefault(
                         '0' + patient.phone[4:], patient.pk
                     )
-
         for doctor in Doctor.objects.all():
             doctor_cache[doctor.name] = doctor.pk
-
         # Resume-safe: identify records using TX IDs, not old row markers.
         for appointment in Appointment.objects.filter(
             notes__contains='transaction_id=TX-'
         ).select_related('patient', 'doctor', 'service'):
-            tx = tx_from_notes(appointment.notes)
-            if tx:
-                imported_appointments[tx] = appointment.pk
-
+            key = source_key_from_notes(appointment.notes)
+            if key:
+                imported_appointments[key] = appointment.pk
         for invoice in Invoice.objects.filter(
             notes__contains='transaction_id=TX-'
         ):
-            tx = tx_from_notes(invoice.notes)
-            if tx:
-                imported_invoices[tx] = invoice.pk
-
+            key = source_key_from_notes(invoice.notes)
+            if key:
+                imported_invoices[key] = invoice.pk
+        for treatment in Treatment.objects.filter(
+            notes__contains='transaction_id=TX-'
+        ):
+            key = source_key_from_notes(treatment.notes)
+            if key:
+                imported_treatments[key] = treatment.pk
         def import_batch(batch):
             """Bulk import one batch in a single transaction.
-
             All parent rows are created/resolved before dependent rows.  PostgreSQL
             returns primary keys from bulk_create, so appointments can safely feed
             treatments/invoices without the per-row transaction overhead.
             """
             nonlocal progress_done
-
             with transaction.atomic():
                 # ------------------------------------------------------------
                 # 1) Resolve/create services and doctors with minimal queries.
@@ -513,7 +497,6 @@ class Command(BaseCommand):
                     stats['services_created'] += len(missing_services)
                     for service in Service.objects.filter(name__in=needed_service_names):
                         service_cache[service.name] = service
-
                 needed_doctor_names = {x['doctor'] for x in batch}
                 missing_doctors = [
                     name for name in needed_doctor_names
@@ -527,7 +510,6 @@ class Command(BaseCommand):
                     stats['doctors_created'] += len(missing_doctors)
                     for doctor in Doctor.objects.filter(name__in=needed_doctor_names):
                         doctor_cache[doctor.name] = doctor.pk
-
                 # ------------------------------------------------------------
                 # 2) Resolve existing patients from memory; bulk-create new ones.
                 # ------------------------------------------------------------
@@ -535,16 +517,15 @@ class Command(BaseCommand):
                 pending_keys = set()
                 row_patient = {}
                 patient_updates = {}
-
                 for item in batch:
                     first, last = split_name(item['name'])
                     phone = (item['phone'] or '')[:20]
                     name_key = normalize_name(item['name'])
-
-                    patient_id = patient_by_phone.get(phone) if phone else None
-                    if patient_id is None:
-                        patient_id = patient_by_name.get(name_key)
-
+                    # IMPORTANT: names take precedence over phone numbers.
+                    # Different patients can share one phone number.
+                    patient_id = patient_by_name.get(name_key)
+                    if patient_id is None and phone:
+                        patient_id = patient_by_phone.get(phone)
                     patient = None
                     if patient_id:
                         # Cache values may be PKs; fetch once per unique patient
@@ -554,9 +535,8 @@ class Command(BaseCommand):
                             patient = Patient.objects.filter(pk=patient_id).first()
                             if patient is not None:
                                 row_patient[patient_id] = patient
-
                     if patient is None:
-                        pending_key = ('phone', phone) if phone else ('name', name_key)
+                        pending_key = ('name', name_key)
                         patient = next(
                             (p for k, p in pending_patients if k == pending_key),
                             None,
@@ -581,7 +561,6 @@ class Command(BaseCommand):
                             stats['patients_reused'] += 1
                     else:
                         stats['patients_reused'] += 1
-
                     # Keep the earliest historical registration date.
                     historical_first = timezone.make_aware(
                         datetime.combine(item['date'], time.min),
@@ -591,46 +570,42 @@ class Command(BaseCommand):
                         patient.registered_at = historical_first
                         if patient.pk:
                             patient_updates[patient.pk] = patient
-
                     if patient.pk:
                         patient_by_name[name_key] = patient.pk
                         if phone:
                             patient_by_phone[phone] = patient.pk
                             if phone.startswith('+256'):
                                 patient_by_phone.setdefault('0' + phone[4:], patient.pk)
-                    row_patient[f'row:{item["tx_id"]}'] = patient
-
+                    row_patient[f'row:{item["tx_id"]}:{item["date"].isoformat()}'] = patient
                 if pending_patients:
                     Patient.objects.bulk_create([p for _, p in pending_patients], batch_size=len(pending_patients))
                     for pending_key, patient in pending_patients:
                         if patient.pk:
                             row_patient_key = None
-                            if pending_key[0] == 'phone' and pending_key[1]:
-                                patient_by_phone[pending_key[1]] = patient.pk
-                                if pending_key[1].startswith('+256'):
-                                    patient_by_phone.setdefault('0' + pending_key[1][4:], patient.pk)
                             patient_by_name[normalize_name(f'{patient.first_name} {patient.last_name}')] = patient.pk
-
+                            if patient.phone:
+                                patient_by_phone[patient.phone] = patient.pk
+                                if patient.phone.startswith('+256'):
+                                    patient_by_phone.setdefault('0' + patient.phone[4:], patient.pk)
                 if patient_updates:
                     Patient.objects.bulk_update(
                         list(patient_updates.values()),
                         ['registered_at'],
                         batch_size=max(1, len(patient_updates)),
                     )
-
                 # Rebuild row patient references after bulk_create assigned PKs.
                 for item in batch:
                     first, last = split_name(item['name'])
                     phone = (item['phone'] or '')[:20]
                     name_key = normalize_name(item['name'])
-                    patient_id = patient_by_phone.get(phone) if phone else None
-                    if patient_id is None:
-                        patient_id = patient_by_name.get(name_key)
-                    patient = row_patient.get(f'row:{item["tx_id"]}')
+                    # IMPORTANT: names take precedence over phone numbers.
+                    patient_id = patient_by_name.get(name_key)
+                    if patient_id is None and phone:
+                        patient_id = patient_by_phone.get(phone)
+                    patient = row_patient.get(f'row:{item["tx_id"]}:{item["date"].isoformat()}')
                     if patient is None or not patient.pk:
                         patient = Patient.objects.get(pk=patient_id)
-                        row_patient[f'row:{item["tx_id"]}'] = patient
-
+                        row_patient[f'row:{item["tx_id"]}:{item["date"].isoformat()}'] = patient
                     changed = False
                     if item['address'] and not patient.address:
                         patient.address = item['address']; changed = True
@@ -640,23 +615,21 @@ class Command(BaseCommand):
                         patient.gender = item['gender']; changed = True
                     if changed:
                         patient_updates[patient.pk] = patient
-
                 if patient_updates:
                     Patient.objects.bulk_update(
                         list(patient_updates.values()),
                         ['address', 'phone', 'gender', 'registered_at'],
                         batch_size=max(1, len(patient_updates)),
                     )
-
                 # ------------------------------------------------------------
                 # 3) Appointments.  Existing TX markers are reused when present.
                 # ------------------------------------------------------------
+                batch_keys = {source_key(x['tx_id'], x['date']) for x in batch}
                 existing_appts = {
-                    tx: Appointment.objects.get(pk=pk)
-                    for tx, pk in imported_appointments.items()
-                    if any(x['tx_id'] == tx for x in batch)
+                    key: Appointment.objects.get(pk=pk)
+                    for key, pk in imported_appointments.items()
+                    if key in batch_keys
                 }
-
                 # Slot counts are computed once per doctor/date pair.
                 slot_keys = {(doctor_cache[x['doctor']], x['date']) for x in batch}
                 for doctor_id, visit_date in slot_keys:
@@ -665,17 +638,16 @@ class Command(BaseCommand):
                         appointment_slot_counts[key] = Appointment.objects.filter(
                             doctor_id=doctor_id, appointment_date=visit_date
                         ).count()
-
                 new_appointments = []
                 row_appointment = {}
                 for item in batch:
                     tx = item['tx_id']
-                    patient = row_patient[f'row:{tx}']
+                    key = source_key(tx, item['date'])
+                    patient = row_patient[f'row:{tx}:{item["date"].isoformat()}']
                     service_name = service_for(item['treatment'])
                     service = service_cache[service_name]
                     doctor_id = doctor_cache[item['doctor']]
-                    appointment = existing_appts.get(tx)
-
+                    appointment = existing_appts.get(key)
                     marker = (
                         f"Imported from corrected register: "
                         f"transaction_id={tx};"
@@ -683,7 +655,6 @@ class Command(BaseCommand):
                         f"date={item['date'].isoformat()};"
                         f"treatment={item['treatment']};"
                     )
-
                     if not options['no_visits']:
                         if appointment is None:
                             slot_key = (doctor_id, item['date'])
@@ -711,7 +682,7 @@ class Command(BaseCommand):
                                 notification_phone=patient.phone or '',
                                 created_by=creator,
                             )
-                            new_appointments.append((tx, appointment))
+                            new_appointments.append((key, appointment))
                             stats['visits_created'] += 1
                         else:
                             changed = []
@@ -721,18 +692,15 @@ class Command(BaseCommand):
                                 appointment.patient_id = patient.pk; changed.append('patient_id')
                             if changed:
                                 appointment.save(update_fields=changed)
-
-                        row_appointment[tx] = appointment
-
+                        row_appointment[key] = appointment
                 if new_appointments:
                     Appointment.objects.bulk_create(
                         [a for _, a in new_appointments],
                         batch_size=len(new_appointments),
                     )
-                    for tx, appointment in new_appointments:
-                        imported_appointments[tx] = appointment.pk
-                        row_appointment[tx] = appointment
-
+                    for key, appointment in new_appointments:
+                        imported_appointments[key] = appointment.pk
+                        row_appointment[key] = appointment
                 # ------------------------------------------------------------
                 # 4) Treatments, invoices, invoice items and payments in bulk.
                 # ------------------------------------------------------------
@@ -740,13 +708,13 @@ class Command(BaseCommand):
                 invoices = []
                 invoice_items = []
                 payments = []
-
                 for item in batch:
                     tx = item['tx_id']
-                    patient = row_patient[f'row:{tx}']
+                    key = source_key(tx, item['date'])
+                    patient = row_patient[f'row:{tx}:{item["date"].isoformat()}']
                     service = service_cache[service_for(item['treatment'])]
                     doctor_id = doctor_cache[item['doctor']]
-                    appointment = row_appointment.get(tx)
+                    appointment = row_appointment.get(key)
                     marker = (
                         f"Imported from corrected register: "
                         f"transaction_id={tx};"
@@ -754,8 +722,7 @@ class Command(BaseCommand):
                         f"date={item['date'].isoformat()};"
                         f"treatment={item['treatment']};"
                     )
-
-                    if not options['no_visits'] and appointment is not None:
+                    if not options['no_visits'] and appointment is not None and key not in imported_treatments:
                         treatments.append(Treatment(
                             patient_id=patient.pk,
                             doctor_id=doctor_id,
@@ -764,15 +731,18 @@ class Command(BaseCommand):
                             notes=marker + ' ' + (item['treatment'] or service.name),
                             amount=max(item['implied_charge'], Decimal('0.00')),
                         ))
-
                     if not options['no_billing']:
                         # BALANCE is a running patient balance. Only the incremental
                         # charge belongs on this invoice; payments are reconciled
                         # against open register invoices after all invoices exist.
                         charge = max(item['implied_charge'], Decimal('0.00'))
-                        if charge > 0:
+                        if charge > 0 and key not in imported_invoices:
+                            invoice_number = unique_invoice_number(
+                                tx,
+                                existing_invoice_numbers,
+                            )
                             invoice = Invoice(
-                                invoice_number=f"REG-{tx}",
+                                invoice_number=invoice_number,
                                 patient_id=patient.pk,
                                 appointment_id=appointment.pk if appointment is not None else None,
                                 patient_name=patient.full_name,
@@ -792,19 +762,27 @@ class Command(BaseCommand):
                                 created_by=creator.username if creator else '',
                                 updated_by=creator.username if creator else '',
                             )
-                            invoices.append((tx, invoice, service, charge, item))
-
+                            invoices.append((key, invoice, service, charge, item))
                 if treatments:
                     Treatment.objects.bulk_create(treatments, batch_size=len(treatments))
                     stats['treatments_created'] += len(treatments)
-
+                    for treatment in treatments:
+                        key = source_key_from_notes(treatment.notes)
+                        if key and treatment.pk:
+                            imported_treatments[key] = treatment.pk
                 if invoices:
+                    # Defensive duplicate check inside the batch.
+                    batch_invoice_numbers = [x[1].invoice_number for x in invoices]
+                    if len(batch_invoice_numbers) != len(set(batch_invoice_numbers)):
+                        raise CommandError(
+                            'Duplicate invoice numbers were generated inside the import batch.'
+                        )
                     Invoice.objects.bulk_create(
                         [x[1] for x in invoices], batch_size=len(invoices)
                     )
                     stats['invoices_created'] += len(invoices)
-                    for tx, invoice, service, total_amount, item in invoices:
-                        imported_invoices[tx] = invoice.pk
+                    for key, invoice, service, total_amount, item in invoices:
+                        imported_invoices[key] = invoice.pk
                         invoice_items.append(InvoiceItem(
                             invoice_id=invoice.pk,
                             service_id=service.pk,
@@ -813,7 +791,6 @@ class Command(BaseCommand):
                             unit_price=total_amount,
                             total_price=total_amount,
                         ))
-
                 if invoice_items:
                     InvoiceItem.objects.bulk_create(invoice_items, batch_size=len(invoice_items))
             progress_done += len(batch)
@@ -826,12 +803,10 @@ class Command(BaseCommand):
                 f"({progress_done / total * 100:.1f}%) | "
                 f"{rate_per_min:.1f} rows/min | ETA {eta_min:.1f} min"
             )
-
         processed = 0
         for start_idx in range(0, total, batch_size):
             batch = parsed[start_idx:start_idx + batch_size]
             last_error = None
-
             for attempt in range(1, 4):
                 try:
                     # If a connection failure caused a retry, progress is based on
@@ -853,22 +828,52 @@ class Command(BaseCommand):
                             f"{start_idx + len(batch)}. Retrying batch ({attempt + 1}/3)..."
                         ))
                         _time.sleep(2 * attempt)
-
             if last_error is not None:
                 raise CommandError(
                     f'Database connection failed after 3 attempts for rows '
                     f'{start_idx + 1}-{start_idx + len(batch)}: {last_error}'
                 ) from last_error
-
             processed += len(batch)
-
         elapsed_total = max(_time.monotonic() - progress_started, 0.001)
         self.stdout.write(self.style.SUCCESS(
             f"Import finished: {processed}/{total} rows in "
             f"{elapsed_total/60:.1f} minutes."
         ))
-
         stats['rows'] = processed
+        # ------------------------------------------------------------
+        # HISTORICAL REGISTRATION DATE RECONCILIATION
+        # Always derive Patient.registered_at from the earliest register
+        # transaction for that patient. This protects against Django's
+        # auto_now_add behavior and also repairs dates on resumed imports.
+        # ------------------------------------------------------------
+        earliest_by_name = {}
+        for item in parsed:
+            key = normalize_name(item['name'])
+            if key not in earliest_by_name or item['date'] < earliest_by_name[key]:
+                earliest_by_name[key] = item['date']
+        patient_date_updates = []
+        for name_key, first_date in earliest_by_name.items():
+            patient_id = patient_by_name.get(name_key)
+            if not patient_id:
+                continue
+            patient = Patient.objects.filter(pk=patient_id).only('id', 'registered_at').first()
+            if patient is None:
+                continue
+            historical_first = timezone.make_aware(
+                datetime.combine(first_date, time.min),
+                timezone.get_current_timezone(),
+            )
+            if patient.registered_at != historical_first:
+                patient.registered_at = historical_first
+                patient_date_updates.append(patient)
+        if patient_date_updates:
+            Patient.objects.bulk_update(
+                patient_date_updates, ['registered_at'],
+                batch_size=min(max(batch_size, 1), len(patient_date_updates)),
+            )
+            self.stdout.write(self.style.SUCCESS(
+                f'Historical registration dates restored for {len(patient_date_updates)} patients.'
+            ))
         # Reconcile the running-balance ledger after every charge invoice exists.
         # A source payment is allocated FIFO across open register invoices.
         # Negative implied charges are treated as write-offs/adjustments, not
@@ -877,83 +882,114 @@ class Command(BaseCommand):
             from collections import defaultdict
             ledger_by_patient = defaultdict(list)
             for item in parsed:
-                patient_id = patient_by_phone.get(item['phone']) if item['phone'] else None
-                if patient_id is None:
-                    patient_id = patient_by_name.get(normalize_name(item['name']))
+                # IMPORTANT: names take precedence over phone numbers.
+                # This prevents shared family/contact numbers from merging patients.
+                patient_id = patient_by_name.get(normalize_name(item['name']))
+                if patient_id is None and item['phone']:
+                    patient_id = patient_by_phone.get(item['phone'])
                 if patient_id is not None:
                     ledger_by_patient[patient_id].append(item)
-
             for patient_id, ledger_rows in ledger_by_patient.items():
                 ledger_rows.sort(key=lambda x: (x['date'], x['row']))
                 invoice_qs = list(
                     Invoice.objects.filter(
                         patient_id=patient_id,
                         invoice_number__startswith='REG-TX-'
-                    ).prefetch_related('items').order_by('issue_date', 'id')
+                    ).order_by('issue_date', 'id')
                 )
+                invoice_by_key = {}
+                for inv in invoice_qs:
+                    key = source_key_from_notes(inv.notes)
+                    if key:
+                        invoice_by_key[key] = inv
 
-                def outstanding(inv):
-                    paid = inv.payments.filter(status='completed').aggregate(total=Sum('amount'))['total'] or Decimal('0.00')
-                    return max(Decimal(inv.total_amount or 0) - Decimal(paid), Decimal('0.00'))
+                def completed_paid(inv):
+                    return inv.payments.filter(status='completed').aggregate(
+                        total=Sum('amount')
+                    )['total'] or Decimal('0.00')
 
                 for item in ledger_rows:
-                    payment_left = Decimal(item['paid'] or 0)
+                    key = source_key(item['tx_id'], item['date'])
+                    inv = invoice_by_key.get(key)
+                    if inv is None and imported_invoices.get(key):
+                        inv = Invoice.objects.filter(pk=imported_invoices[key]).first()
+                        if inv:
+                            invoice_by_key[key] = inv
+
                     marker = (
                         f"Imported from rebuilt register: transaction_id={item['tx_id']};"
                         f"source_row={item['row']};date={item['date'].isoformat()};"
                     )
 
-                    if payment_left > 0:
-                        for inv in invoice_qs:
-                            if payment_left <= 0:
-                                break
-                            due = outstanding(inv)
-                            if due <= 0:
-                                continue
-                            amount = min(payment_left, due)
+                    # Repair the five payments created by the previous broken run:
+                    # move only payments carrying this exact register marker to the
+                    # correct October invoice. No ordinary clinic payment is touched.
+                    if inv is not None:
+                        marked_payments = Payment.objects.filter(
+                            notes__startswith=marker, status='completed'
+                        )
+                        for payment in marked_payments:
+                            if payment.invoice_id != inv.pk:
+                                old_invoice = payment.invoice
+                                payment.invoice_id = inv.pk
+                                payment.save(update_fields=['invoice'])
+                                if old_invoice is not None:
+                                    old_invoice.sync_payment_state()
+                                    old_invoice.save(update_fields=[
+                                        'amount_paid', 'balance_due', 'status',
+                                        'payment_date', 'updated_at'
+                                    ])
+
+                    payment_left = Decimal(item['paid'] or 0)
+                    if payment_left > 0 and inv is not None:
+                        already_paid = Payment.objects.filter(
+                            invoice=inv,
+                            notes__startswith=marker,
+                            status='completed'
+                        ).aggregate(total=Sum('amount'))['total'] or Decimal('0.00')
+                        payment_left = max(
+                            payment_left - Decimal(already_paid),
+                            Decimal('0.00')
+                        )
+                        if payment_left > 0:
                             Payment.objects.create(
-                                invoice=inv, amount=amount, payment_date=item['date'],
-                                payment_method='cash', status='completed',
+                                invoice=inv, amount=payment_left,
+                                payment_date=item['date'], payment_method='cash',
+                                status='completed',
                                 notes=marker + f" Register payment for {item['treatment']}.",
                                 processed_by=creator.username if creator else '',
                             )
-                            payment_left -= amount
                             stats['payments_created'] += 1
 
-                    adjustment = max(-Decimal(item['implied_charge'] or 0), Decimal('0.00'))
-                    if adjustment > 0:
-                        remaining = adjustment
-                        for inv in invoice_qs:
-                            if remaining <= 0:
-                                break
-                            due = outstanding(inv)
-                            if due <= 0:
-                                continue
-                            reduction = min(remaining, due)
-                            new_total = max(Decimal(inv.total_amount or 0) - reduction, Decimal('0.00'))
-                            inv.subtotal = new_total
-                            inv.total_amount = new_total
-                            inv.discount = Decimal('0.00')
-                            inv.tax_amount = Decimal('0.00')
-                            item_obj = inv.items.first()
-                            if item_obj is not None:
-                                item_obj.unit_price = new_total
-                                item_obj.total_price = new_total
-                                item_obj.save(update_fields=['unit_price', 'total_price'])
-                            inv.save(update_fields=['subtotal', 'total_amount', 'discount', 'tax_amount', 'updated_at'])
-                            remaining -= reduction
-                        if remaining > Decimal('0.01'):
-                            warnings.append(
-                                f"{item['tx_id']}: write-off {adjustment} exceeded available open invoices by {remaining}."
-                            )
+                    if inv is not None:
+                        paid_total = completed_paid(inv)
+                        total_amount = Decimal(inv.total_amount or 0)
+                        inv.amount_paid = min(paid_total, total_amount)
+                        inv.balance_due = max(total_amount - paid_total, Decimal('0.00'))
+                        if inv.balance_due <= Decimal('0.00'):
+                            inv.status = 'paid'
+                        elif inv.amount_paid > Decimal('0.00'):
+                            inv.status = 'partial'
+                        else:
+                            inv.status = 'sent'
+                        inv.save(update_fields=['amount_paid', 'balance_due', 'status', 'updated_at'])
 
-                for inv in invoice_qs:
-                    inv.sync_payment_state()
-                    inv.save(update_fields=['amount_paid', 'balance_due', 'status', 'payment_date', 'updated_at'])
+                    adjustment = max(-Decimal(item['implied_charge'] or 0), Decimal('0.00'))
+                    if adjustment > 0 and inv is not None:
+                        new_total = max(Decimal(inv.total_amount or 0) - adjustment, Decimal('0.00'))
+                        inv.subtotal = new_total
+                        inv.total_amount = new_total
+                        inv.discount = Decimal('0.00')
+                        inv.tax_amount = Decimal('0.00')
+                        item_obj = inv.items.first()
+                        if item_obj is not None:
+                            item_obj.unit_price = new_total
+                            item_obj.total_price = new_total
+                            item_obj.save(update_fields=['unit_price', 'total_price'])
+                        inv.save(update_fields=['subtotal', 'total_amount', 'discount', 'tax_amount', 'updated_at'])
 
         stats['ledger_writeoff_rows'] = sum(1 for x in parsed if x['implied_charge'] < 0)
         stats['warnings'] = len(warnings)
-
         self.stdout.write(self.style.SUCCESS(
             '\nREGISTER IMPORT COMPLETE'
         ))
@@ -961,7 +997,6 @@ class Command(BaseCommand):
             self.stdout.write(
                 f'{key.replace("_", " ").title()}: {value}'
             )
-
         if warnings:
             self.stdout.write(self.style.WARNING(
                 f'Warnings: {len(warnings)}'

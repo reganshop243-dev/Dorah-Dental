@@ -173,6 +173,10 @@ class Payment(models.Model):
     status = models.CharField(max_length=20, choices=PAYMENT_STATUS_CHOICES, default='pending')
     notes = models.TextField(blank=True, null=True)
     processed_by = models.CharField(max_length=150, blank=True, null=True)
+    # Patient payment-receipt SMS tracking. Sending is optional per payment.
+    sms_sent = models.BooleanField(default=False)
+    sms_sent_at = models.DateTimeField(blank=True, null=True)
+    sms_error = models.TextField(blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
     
     class Meta:

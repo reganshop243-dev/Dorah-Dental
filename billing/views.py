@@ -1185,6 +1185,7 @@ def add_payment(request, pk):
             payment_method = request.POST.get('payment_method')
             payment_date = request.POST.get('payment_date', '')
             doctor_id = (request.POST.get('doctor') or '').strip()
+            send_payment_sms = request.POST.get('send_payment_sms') == '1'
             
             if amount <= 0:
                 messages.error(request, 'Amount must be greater than 0')
@@ -1211,7 +1212,7 @@ def add_payment(request, pk):
                 invoice.doctor = get_object_or_404(Doctor, pk=doctor_id, is_active=True)
                 invoice.save(update_fields=['doctor', 'updated_at'])
 
-            Payment.objects.create(
+            payment = Payment.objects.create(
                 invoice=invoice,
                 amount=amount,
                 payment_method=payment_method,
@@ -1219,15 +1220,49 @@ def add_payment(request, pk):
                 status='completed',
                 processed_by=request.user.get_username(),
             )
-            
+
             # Payment.save() recalculates all completed installments and
             # synchronizes the invoice to paid/partially_paid automatically.
             invoice.refresh_from_db()
-            
-            messages.success(request, f'Payment of {amount} received successfully!')
+
+            sms_sent = False
+            if send_payment_sms:
+                try:
+                    from notifications.services import NotificationService
+                    sms_sent = NotificationService().send_payment_receipt_sms(payment)
+                except Exception as sms_error:
+                    # Never roll back a valid payment because an SMS provider failed.
+                    payment.sms_error = str(sms_error)
+                    payment.save(update_fields=['sms_error'])
+                    messages.warning(request, f'Payment of {amount:,.0f} received, but the patient SMS could not be sent.')
+
+            if sms_sent:
+                messages.success(request, f'Payment of {amount:,.0f} received successfully and payment SMS sent.')
+            elif not send_payment_sms:
+                messages.success(request, f'Payment of {amount:,.0f} received successfully. No SMS was sent.')
         except Exception as e:
             messages.error(request, 'Sorry, we could not complete that request. Please try again. If the problem continues, contact the administrator.')
     
+    return redirect('billing:detail', pk=invoice.pk)
+
+
+@login_required
+@financial_only("billing.payments.create")
+def send_payment_sms(request, pk, payment_pk):
+    """Manually send or resend a payment receipt SMS from the invoice."""
+    if is_doctor(request.user):
+        messages.error(request, '❌ Doctors are not allowed to send payment messages.')
+        return redirect('billing:detail', pk=pk)
+    invoice = get_object_or_404(Invoice, pk=pk)
+    payment = get_object_or_404(Payment, pk=payment_pk, invoice=invoice)
+    try:
+        from notifications.services import NotificationService
+        if NotificationService().send_payment_receipt_sms(payment):
+            messages.success(request, 'Payment SMS sent successfully to the patient.')
+        else:
+            messages.error(request, 'The payment SMS could not be sent. Check the patient phone number and SMS settings.')
+    except Exception:
+        messages.error(request, 'The payment SMS could not be sent. Please try again or check the SMS settings.')
     return redirect('billing:detail', pk=invoice.pk)
 
 

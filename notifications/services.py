@@ -131,10 +131,8 @@ class NotificationService:
     def prepare_data(self, appointment):
         """Prepare template data using current Company Settings."""
         clinic = self._clinic_info()
-        public_base = getattr(
-            settings, 'PUBLIC_BASE_URL', 'https://dorahdental.world'
-        ).rstrip('/')
-        portal_url = public_base + '/'
+        public_base = 'https://dorahdental.world'
+        portal_url = public_base + '/portal/login/'
         return {
             'patient_name': appointment.patient.full_name,
             'appointment_date': appointment.appointment_date.strftime('%A, %B %d, %Y'),
@@ -152,7 +150,10 @@ class NotificationService:
             settings_obj = self.settings
             template = Template(settings_obj.email_template)
             context = Context(data)
-            message = template.render(context)
+            message = template.render(context).strip()
+            portal_url = data.get('portal_url') or 'https://dorahdental.world/portal/login/'
+            if portal_url not in message:
+                message += f"\n\nPatient portal: {portal_url}"
             
             send_mail(
                 subject=settings_obj.email_subject,
@@ -188,6 +189,70 @@ class NotificationService:
                 error_message=str(e)
             )
     
+    def send_payment_receipt_sms(self, payment):
+        """Send an optional SMS receipt after a completed invoice payment."""
+        from .yoola_sms import YoolaSMS
+
+        payment.refresh_from_db()
+        if payment.status != 'completed':
+            return False
+        if payment.sms_sent:
+            return True
+
+        invoice = payment.invoice
+        patient = invoice.patient
+        phone_number = invoice.patient_phone or getattr(patient, 'phone', None)
+        if not phone_number:
+            payment.sms_error = 'Patient has no phone number.'
+            payment.save(update_fields=['sms_error'])
+            logger.warning('No phone number for payment receipt: invoice %s', invoice.invoice_number)
+            return False
+
+        phone_number = self._clean_phone_number(phone_number)
+        if not phone_number:
+            payment.sms_error = 'Invalid patient phone number.'
+            payment.save(update_fields=['sms_error'])
+            return False
+
+        # Always use the verified production patient portal URL.
+        portal_url = 'https://dorahdental.world/portal/login/'
+        balance = invoice.balance_due or 0
+        paid = payment.amount or 0
+        total = invoice.total_amount or 0
+
+        message = (
+            f"Dora's Dental Gem: Dear {patient.first_name or invoice.patient_name}, "
+            f"we received UGX {paid:,.0f} for invoice {invoice.invoice_number}. "
+            f"Total: UGX {total:,.0f}. "
+        )
+        if balance > 0:
+            message += f"Balance due: UGX {balance:,.0f}. "
+        else:
+            message += "Your invoice is fully paid. "
+        message += f"View your patient portal: {portal_url}"
+
+        # Keep the public URL intact. Yoola SMS has provider-specific length limits,
+        # so trim only the explanatory text if necessary, never the URL.
+        max_len = 300
+        if len(message) > max_len:
+            link = f" View your patient portal: {portal_url}"
+            prefix = message.split('View your patient portal:')[0].rstrip()
+            message = prefix[:max(0, max_len - len(link))].rstrip() + link
+
+        result = YoolaSMS().send_sms(phone_number, message)
+        if result.get('success'):
+            payment.sms_sent = True
+            payment.sms_sent_at = timezone.now()
+            payment.sms_error = ''
+            payment.save(update_fields=['sms_sent', 'sms_sent_at', 'sms_error'])
+            logger.info('Payment receipt SMS sent to %s for invoice %s', phone_number, invoice.invoice_number)
+            return True
+
+        payment.sms_error = result.get('error', 'Unknown SMS provider error')
+        payment.save(update_fields=['sms_error'])
+        logger.error('Payment receipt SMS failed for invoice %s: %s', invoice.invoice_number, payment.sms_error)
+        return False
+
     def send_sms_reminder(self, appointment, data):
         """Send SMS reminder using Yoola SMS"""
         try:
@@ -213,7 +278,7 @@ class NotificationService:
 
             # Always include a clickable patient portal link in appointment SMS.
             # Keep the URL intact even when the SMS is longer than the provider limit.
-            portal_url = data.get('portal_url') or 'https://dorahdental.world/'
+            portal_url = data.get('portal_url') or 'https://dorahdental.world/portal/login/'
             if portal_url not in message:
                 link_text = f" Portal: {portal_url}"
                 available = 300 - len(link_text)
