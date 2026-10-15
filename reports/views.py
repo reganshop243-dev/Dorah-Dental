@@ -2,7 +2,7 @@ from django.shortcuts import render
 from django.contrib.auth.decorators import login_required
 from django.db.models import Sum, Count, Avg, Q
 from datetime import date, timedelta, datetime
-from billing.models import Invoice
+from billing.models import Invoice, Payment
 from appointments.models import Appointment, Doctor
 from patients.models import Patient
 from django.utils import timezone
