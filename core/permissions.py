@@ -122,6 +122,19 @@ BASELINE = {
         'services.prices.view','services.prices.manage',
     },
     'assistant': {
-        'patients.view','appointments.view','appointments.create','dental.view','clinical.notes.view',
+        # Dental assistants can work from the doctors' appointment workflow,
+        # but do not receive financial, billing, or patient-edit permissions.
+        'patients.view',
+        'patients.images',
+        'patients.contacts.request',
+        'appointments.view',
+        'appointments.create',
+        'appointments.edit',
+        'appointments.status',
+        'dental.view',
+        'dental.create',
+        'dental.edit',
+        'clinical.notes.view',
+        'clinical.notes.create',
     },
 }

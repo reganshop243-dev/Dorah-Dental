@@ -378,11 +378,21 @@ def request_contact_access(request, pk):
     if not profile.has_permission('patients.contacts.request'):
         messages.error(request, 'You do not have permission to request patient contact information.')
         return redirect('patients:detail', pk=pk)
-    if not is_doctor(request.user):
-        messages.error(request, 'Contact access requests are for doctors who need restricted contact information.')
+    # Doctors and dental assistants may request restricted patient contact
+    # information. Approval is still required; requesting access never grants
+    # the contact details immediately.
+    if not profile.has_any_role(['doctor', 'assistant']):
+        messages.error(request, 'Contact access requests are available to doctors and dental assistants.')
         return redirect('patients:detail', pk=pk)
-    doctor = profile.doctor
-    if not doctor or not Appointment.objects.filter(patient=patient, doctor=doctor).exists():
+
+    # Doctors must be assigned to the patient. Assistants may work from the
+    # clinic appointment queue, so an existing appointment is sufficient.
+    if profile.has_role('doctor'):
+        doctor = profile.doctor
+        if not doctor or not Appointment.objects.filter(patient=patient, doctor=doctor).exists():
+            messages.error(request, 'You do not have access to this patient.')
+            return redirect('patients:list')
+    elif not Appointment.objects.filter(patient=patient).exists():
         messages.error(request, 'You do not have access to this patient.')
         return redirect('patients:list')
     existing = PatientContactAccessRequest.objects.filter(patient=patient, requester=request.user).order_by('-requested_at').first()
@@ -448,10 +458,14 @@ def patient_detail(request, pk):
 
     contact_access_approved = False
     pending_contact_request = None
-    if is_doctor(request.user):
-        contact_access_approved = PatientContactAccessRequest.objects.filter(patient=patient, requester=request.user, status='approved').exists()
-        pending_contact_request = PatientContactAccessRequest.objects.filter(patient=patient, requester=request.user, status='pending').order_by('-requested_at').first()
-        show_contact = contact_access_approved or user_profile.has_role('admin')
+    if user_profile.has_any_role(['doctor', 'assistant']) and not user_profile.has_role('admin'):
+        contact_access_approved = PatientContactAccessRequest.objects.filter(
+            patient=patient, requester=request.user, status='approved'
+        ).exists()
+        pending_contact_request = PatientContactAccessRequest.objects.filter(
+            patient=patient, requester=request.user, status='pending'
+        ).order_by('-requested_at').first()
+        show_contact = contact_access_approved
     else:
         show_contact = user_profile.has_permission('patients.contacts.view') or user_profile.has_role('admin')
     
@@ -485,7 +499,11 @@ def patient_detail(request, pk):
         'show_contact': show_contact,
         'pending_contact_request': pending_contact_request,
         'contact_access_approved': contact_access_approved,
-        'can_request_contact': user_profile.has_permission('patients.contacts.request') and is_doctor(request.user),
+        'can_request_contact': (
+            user_profile.has_permission('patients.contacts.request')
+            and user_profile.has_any_role(['doctor', 'assistant'])
+            and not user_profile.has_role('admin')
+        ),
     }
     return render(request, 'patients/detail.html', context)
 

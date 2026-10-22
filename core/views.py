@@ -125,6 +125,8 @@ def redirect_to_dashboard(user):
             return redirect('core:accountant_dashboard')
         elif role == 'receptionist':
             return redirect('core:receptionist_dashboard')
+        elif role == 'assistant':
+            return redirect('core:assistant_dashboard')
         else:
             return redirect('core:dashboard')
     except:
@@ -524,6 +526,41 @@ def doctor_dashboard(request):
         }
     
     return render(request, 'core/doctor_dashboard.html', context)
+
+
+@login_required
+@otp_required
+def assistant_dashboard(request):
+    """Dental assistant dashboard: clinic appointments and clinical workflow.
+
+    Assistants can see the appointments assigned to doctors and help document
+    the clinical workflow, but financial and restricted patient-contact data
+    remain protected by the normal permission system.
+    """
+    from appointments.models import Appointment, Treatment
+    from datetime import date
+
+    today = date.today()
+    today_appointments = Appointment.objects.select_related(
+        'patient', 'doctor', 'service'
+    ).filter(
+        appointment_date=today
+    ).order_by('appointment_time')
+
+    upcoming_appointments = Appointment.objects.select_related(
+        'patient', 'doctor', 'service'
+    ).filter(
+        appointment_date__gte=today,
+        status__in=['scheduled', 'checked_in', 'in_progress']
+    ).order_by('appointment_date', 'appointment_time')[:20]
+
+    context = {
+        'today_appointments': today_appointments,
+        'upcoming_appointments': upcoming_appointments,
+        'treatments_count': Treatment.objects.count(),
+        'today': today,
+    }
+    return render(request, 'core/assistant_dashboard.html', context)
 
 
 @login_required

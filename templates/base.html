@@ -43,8 +43,8 @@
             
             <nav class="nav flex-column">
                 <!-- Dashboard Link -->
-                <a class="nav-link {% if request.resolver_match.url_name == 'dashboard' or request.resolver_match.url_name == 'admin_dashboard' or request.resolver_match.url_name == 'doctor_dashboard' or request.resolver_match.url_name == 'receptionist_dashboard' or request.resolver_match.url_name == 'accountant_dashboard' %}active{% endif %}" 
-                   href="{% if user.profile.is_admin_role %}{% url 'core:admin_dashboard' %}{% elif user.profile.is_doctor_role %}{% url 'core:doctor_dashboard' %}{% elif user.profile.is_receptionist_role %}{% url 'core:receptionist_dashboard' %}{% elif user.profile.is_accountant_role %}{% url 'core:accountant_dashboard' %}{% else %}{% url 'core:dashboard' %}{% endif %}">
+                <a class="nav-link {% if request.resolver_match.url_name == 'dashboard' or request.resolver_match.url_name == 'admin_dashboard' or request.resolver_match.url_name == 'doctor_dashboard' or request.resolver_match.url_name == 'receptionist_dashboard' or request.resolver_match.url_name == 'accountant_dashboard' or request.resolver_match.url_name == 'assistant_dashboard' %}active{% endif %}" 
+                   href="{% if user.profile.is_admin_role %}{% url 'core:admin_dashboard' %}{% elif user.profile.is_doctor_role %}{% url 'core:doctor_dashboard' %}{% elif user.profile.is_receptionist_role %}{% url 'core:receptionist_dashboard' %}{% elif user.profile.is_accountant_role %}{% url 'core:accountant_dashboard' %}{% elif user.profile.is_assistant_role %}{% url 'core:assistant_dashboard' %}{% else %}{% url 'core:dashboard' %}{% endif %}">
                     <i class="fas fa-chart-pie"></i> <span>Dashboard</span>
                 </a>
 
@@ -201,7 +201,7 @@
                         </button>
                         <ul class="dropdown-menu dropdown-menu-end">
                             <li>
-                                <a class="dropdown-item" href="{% if user.profile.is_admin_role %}{% url 'core:admin_dashboard' %}{% elif user.profile.is_doctor_role %}{% url 'core:doctor_dashboard' %}{% elif user.profile.is_receptionist_role %}{% url 'core:receptionist_dashboard' %}{% elif user.profile.is_accountant_role %}{% url 'core:accountant_dashboard' %}{% else %}{% url 'core:dashboard' %}{% endif %}">
+                                <a class="dropdown-item" href="{% if user.profile.is_admin_role %}{% url 'core:admin_dashboard' %}{% elif user.profile.is_doctor_role %}{% url 'core:doctor_dashboard' %}{% elif user.profile.is_receptionist_role %}{% url 'core:receptionist_dashboard' %}{% elif user.profile.is_accountant_role %}{% url 'core:accountant_dashboard' %}{% elif user.profile.is_assistant_role %}{% url 'core:assistant_dashboard' %}{% else %}{% url 'core:dashboard' %}{% endif %}">
                                     <i class="fas fa-home"></i> Dashboard
                                 </a>
                             </li>

@@ -16,6 +16,7 @@ urlpatterns = [
     path('', views.dashboard, name='dashboard'),
     path('admin-dashboard/', views.admin_dashboard, name='admin_dashboard'),
     path('doctor-dashboard/', views.doctor_dashboard, name='doctor_dashboard'),
+    path('assistant-dashboard/', views.assistant_dashboard, name='assistant_dashboard'),
     path('receptionist-dashboard/', views.receptionist_dashboard, name='receptionist_dashboard'),
     path('accountant-dashboard/', views.accountant_dashboard, name='accountant_dashboard'),
     path('users/<int:pk>/reset-otp/', views.reset_user_otp, name='reset_user_otp'),

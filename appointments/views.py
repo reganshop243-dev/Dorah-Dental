@@ -438,10 +438,14 @@ def appointment_detail(request, pk):
         if doctor and appointment.doctor != doctor:
             messages.error(request, '❌ You do not have access to this appointment.')
             return redirect('appointments:list')
-    if is_doctor(request.user):
+    if user_profile.has_any_role(['doctor', 'assistant']) and not user_profile.has_role('admin'):
         try:
             from patients.models import PatientContactAccessRequest
-            show_patient_contact = PatientContactAccessRequest.objects.filter(patient=appointment.patient, requester=request.user, status='approved').exists()
+            show_patient_contact = PatientContactAccessRequest.objects.filter(
+                patient=appointment.patient,
+                requester=request.user,
+                status='approved'
+            ).exists()
         except Exception:
             show_patient_contact = False
     else:
@@ -450,8 +454,8 @@ def appointment_detail(request, pk):
         'appointment': appointment,
         'status_choices': Appointment.STATUS_CHOICES,
         'is_doctor': is_doctor(request.user),
-        'can_start_appointment': is_doctor(request.user) and appointment.status in ('scheduled', 'checked_in'),
-        'can_finish_appointment': is_doctor(request.user) and appointment.status == 'in_progress',
+        'can_start_appointment': user_profile.has_permission('appointments.status') and appointment.status in ('scheduled', 'checked_in'),
+        'can_finish_appointment': user_profile.has_permission('appointments.status') and appointment.status == 'in_progress',
         'can_edit_appointment': user_profile.has_permission('appointments.edit'),
         'can_change_status': user_profile.has_permission('appointments.status'),
         'can_delete_appointment': user_profile.has_permission('appointments.delete'),
@@ -464,9 +468,13 @@ def appointment_detail(request, pk):
 def appointment_start(request, pk):
     appointment = get_object_or_404(Appointment, pk=pk)
     profile = request.user.profile
-    if not is_doctor(request.user) or profile.doctor != appointment.doctor or not profile.has_permission('appointments.status'):
+    if not profile.has_permission('appointments.status'):
         messages.error(request, 'You do not have permission to start this appointment.')
         return redirect('appointments:detail', pk=pk)
+    if profile.has_role('doctor') and not profile.has_role('assistant'):
+        if profile.doctor != appointment.doctor:
+            messages.error(request, 'You do not have access to this appointment.')
+            return redirect('appointments:detail', pk=pk)
     if request.method == 'POST' and appointment.status in ('scheduled', 'checked_in'):
         appointment.status = 'in_progress'
         appointment.save(update_fields=['status', 'updated_at'])
@@ -483,9 +491,13 @@ def appointment_start(request, pk):
 def appointment_finish(request, pk):
     appointment = get_object_or_404(Appointment.objects.select_related('patient', 'doctor', 'service'), pk=pk)
     profile = request.user.profile
-    if not is_doctor(request.user) or profile.doctor != appointment.doctor or not profile.has_permission('appointments.status'):
+    if not profile.has_permission('appointments.status'):
         messages.error(request, 'You do not have permission to finish this appointment.')
         return redirect('appointments:detail', pk=pk)
+    if profile.has_role('doctor') and not profile.has_role('assistant'):
+        if profile.doctor != appointment.doctor:
+            messages.error(request, 'You do not have access to this appointment.')
+            return redirect('appointments:detail', pk=pk)
     if appointment.status != 'in_progress':
         messages.error(request, 'Only an appointment in progress can be finished.')
         return redirect('appointments:detail', pk=pk)
