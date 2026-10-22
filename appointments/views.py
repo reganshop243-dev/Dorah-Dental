@@ -338,9 +338,8 @@ def appointment_add(request):
                         yoola = YoolaSMS()
                         
                         # Create the message
-                        from django.conf import settings
-                        public_base = getattr(settings, 'PUBLIC_BASE_URL', 'https://dorahdental.world').rstrip('/')
-                        portal_url = public_base + '/'
+                        # Always send patients directly to the patient portal login.
+                        portal_url = 'https://dorahdental.world/portal/login/'
                         message = (
                             f"{data['clinic_name']}: Appointment confirmed for {data['patient_name']} on "
                             f"{data['appointment_date']} at {data['appointment_time']} with Dr. {data['doctor_name']}."

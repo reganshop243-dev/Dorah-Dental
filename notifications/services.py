@@ -220,24 +220,48 @@ class NotificationService:
         paid = payment.amount or 0
         total = invoice.total_amount or 0
 
-        message = (
-            f"Dora's Dental Gem: Dear {patient.first_name or invoice.patient_name}, "
-            f"we received UGX {paid:,.0f} for invoice {invoice.invoice_number}. "
-            f"Total: UGX {total:,.0f}. "
-        )
-        if balance > 0:
-            message += f"Balance due: UGX {balance:,.0f}. "
-        else:
-            message += "Your invoice is fully paid. "
-        message += f"View your patient portal: {portal_url}"
+        # Payment receipt SMS is deliberately kept to exactly 160 characters.
+        # The patient portal URL is never truncated.
+        portal_url = 'https://dorahdental.world/portal/login/'
+        patient_name = (patient.first_name or invoice.patient_name or 'Patient').strip()
+        invoice_no = str(invoice.invoice_number)
+        paid_text = f"UGX {paid:,.0f}"
+        total_text = f"UGX {total:,.0f}"
 
-        # Keep the public URL intact. Yoola SMS has provider-specific length limits,
-        # so trim only the explanatory text if necessary, never the URL.
-        max_len = 300
-        if len(message) > max_len:
-            link = f" View your patient portal: {portal_url}"
-            prefix = message.split('View your patient portal:')[0].rstrip()
-            message = prefix[:max(0, max_len - len(link))].rstrip() + link
+        if balance > 0:
+            status_text = f"Bal: UGX {balance:,.0f}."
+        else:
+            status_text = "Fully paid."
+
+        suffix = f" Portal: {portal_url}"
+        prefix = (
+            f"Dora's Dental Gem: Dear {patient_name}, received {paid_text} for "
+            f"{invoice_no}. Total: {total_text}. {status_text}"
+        )
+
+        # Preserve the complete portal URL and make the final SMS exactly 160 chars.
+        available = 160 - len(suffix)
+        if len(prefix) > available:
+            # Patient names are the safest variable part to shorten.
+            fixed_prefix = (
+                f"Dora's Dental Gem: Dear , received {paid_text} for "
+                f"{invoice_no}. Total: {total_text}. {status_text}"
+            )
+            name_room = max(0, available - len(fixed_prefix))
+            patient_name = patient_name[:name_room].rstrip()
+            prefix = (
+                f"Dora's Dental Gem: Dear {patient_name}, received {paid_text} for "
+                f"{invoice_no}. Total: {total_text}. {status_text}"
+            )
+
+        # If unusual data still exceeds the limit, shorten only the greeting/name area.
+        if len(prefix) > available:
+            prefix = prefix[:available].rstrip()
+
+        message = prefix + suffix
+        # Pad with spaces only when required; normal GSM SMS clients ignore trailing spaces.
+        if len(message) < 160:
+            message += " " * (160 - len(message))
 
         result = YoolaSMS().send_sms(phone_number, message)
         if result.get('success'):
